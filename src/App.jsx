@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
-  // Ensure dark mode is applied for shadcn
+
   React.useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
