@@ -1,17 +1,17 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import CRM from './pages/CRM';
-import DocTools from './pages/DocTools';
-import Inventory from './pages/Inventory';
-import HR from './pages/HR';
-import Accounts from './pages/Accounts';
-import Media from './pages/Media';
-import LMS from './pages/LMS';
-import Sales from './pages/Sales';
-import Admin from './pages/Admin';
+import Login from './modules/auth/pages/Login';
+import Dashboard from './modules/dashboard/pages/Dashboard';
+import CRM from './modules/crm/pages/CRM';
+import DocTools from './modules/docs/pages/DocTools';
+import Inventory from './modules/inventory/pages/Inventory';
+import HR from './modules/hr/pages/HR';
+import Accounts from './modules/accounts/pages/Accounts';
+import Media from './modules/media/pages/Media';
+import LMS from './modules/lms/pages/LMS';
+import Sales from './modules/sales/pages/Sales';
+import Admin from './modules/admin/pages/Admin';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -24,6 +24,11 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  // Ensure dark mode is applied for shadcn
+  React.useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
+
   return (
     <AuthProvider>
       <Router>

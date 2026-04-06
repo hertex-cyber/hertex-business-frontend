@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, Search, Filter, Plus, File } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const DocTools = () => {
   return (

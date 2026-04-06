@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Settings, Server, Database, Lock, Key } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const Admin = () => {
   return (

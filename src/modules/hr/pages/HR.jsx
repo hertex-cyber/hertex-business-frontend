@@ -1,6 +1,6 @@
 import React from 'react';
 import { Briefcase, Plus, Search, Filter, User } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const HR = () => {
   return (

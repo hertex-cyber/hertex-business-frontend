@@ -1,6 +1,6 @@
 import React from 'react';
 import { GraduationCap, Plus, Search, BookOpen, Clock, Star, Users } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const LMS = () => {
   return (

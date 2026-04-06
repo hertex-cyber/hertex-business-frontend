@@ -1,6 +1,6 @@
 import React from 'react';
 import { CreditCard, Plus, Search, Filter, TrendingDown, TrendingUp } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const Accounts = () => {
   return (

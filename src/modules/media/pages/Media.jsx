@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image as ImageIcon, Plus, Search, Filter, Play, MoreVertical } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const Media = () => {
   return (

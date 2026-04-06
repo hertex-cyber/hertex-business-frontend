@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp, Plus, Search, Filter, Target, BarChart3, ArrowUpRight } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const Sales = () => {
   return (

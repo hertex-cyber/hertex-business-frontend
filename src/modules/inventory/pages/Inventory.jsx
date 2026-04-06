@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Plus, Search, Filter, BoxSelect } from 'lucide-react';
-import Button from '../components/Button';
+import Button from '@/components/Button';
 
 const Inventory = () => {
   return (
