@@ -1,0 +1,57 @@
+import React from 'react';
+import { Box, Plus, Search, Filter, BoxSelect } from 'lucide-react';
+import Button from '../components/Button';
+
+const Inventory = () => {
+  return (
+    <div className="flex flex-col min-h-full">
+      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 relative z-20">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
+            <Box size={10} />
+            Inventory Management
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-white">Inventory</h1>
+          <p className="text-sm text-white/40 font-medium">Manage your products and stock levels</p>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <Button variant="secondary" className="w-auto px-4 py-2 border-none bg-white/5 hover:bg-white/10 text-white/60 text-[10px] uppercase tracking-widest">
+            <Filter size={14} className="mr-2" />
+            Filter
+          </Button>
+          <Button variant="primary" className="w-auto px-6 py-2 rounded-full text-[10px] uppercase tracking-widest font-black shadow-[0_0_20px_rgba(255,255,255,0.1)]">
+            <Plus size={14} className="mr-2" />
+            Add Product
+          </Button>
+        </div>
+      </header>
+
+      <main className="flex-1 p-10 relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="group p-6 bg-white/[0.02] border border-white/5 rounded-2xl space-y-4 hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300 relative overflow-hidden cursor-pointer">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:bg-white/[0.02] transition-colors" />
+            <div className="flex justify-between items-start relative z-10">
+              <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40 group-hover:text-white transition-colors">
+                <BoxSelect size={20} />
+              </div>
+              <div className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-green-500/10 text-green-500 group-hover:bg-green-500/20 transition-colors">
+                In Stock
+              </div>
+            </div>
+            <div className="space-y-1 relative z-10">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 group-hover:text-white/40 transition-colors">SKU-0{i}23</p>
+              <p className="text-lg font-bold tracking-tight text-white truncate">Enterprise Server Rack v{i}.0</p>
+              <div className="flex justify-between items-center pt-2 border-t border-white/5 mt-2">
+                <p className="text-[10px] text-white/20 font-medium">Quantity: 24</p>
+                <p className="text-sm font-bold text-white">$1,240.00</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </main>
+    </div>
+  );
+};
+
+export default Inventory;

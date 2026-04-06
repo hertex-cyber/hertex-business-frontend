@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Users, 
   FileText, 
@@ -18,6 +19,7 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
 const menuItems = [
+  { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   { name: 'CRM', icon: Users, href: '/crm' },
   { name: 'Doc Tools', icon: FileText, href: '/docs' },
   { name: 'Inventory', icon: Box, href: '/inventory' },
@@ -31,6 +33,7 @@ const menuItems = [
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
+  const location = useLocation();
 
   return (
     <div className="h-screen w-64 bg-black border-r border-white/5 flex flex-col font-inter z-30 relative overflow-hidden">
@@ -38,33 +41,50 @@ const Sidebar = () => {
       <div className="absolute top-0 left-0 w-full h-full bg-radial-[circle_at_0%_0%] from-white/5 to-transparent pointer-events-none" />
 
       {/* Logo Section */}
-      <div className="p-6 flex items-center gap-3 relative z-10">
-        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+      <Link to="/dashboard" className="p-6 flex items-center gap-3 relative z-10 group">
+        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300">
           <div className="w-4 h-4 bg-black rounded-sm" />
         </div>
         <span className="text-xl font-bold tracking-tight text-white">ByteHive</span>
-      </div>
+      </Link>
 
       {/* Navigation Groups */}
       <div className="flex-1 px-4 py-6 space-y-8 relative z-10 overflow-y-auto custom-scrollbar">
         <div className="space-y-1">
           <h3 className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/20 mb-4">Operations</h3>
-          {menuItems.map((item) => (
-            <a
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "group flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200",
-                "text-white/40 hover:text-white hover:bg-white/5"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <item.icon size={18} className="transition-colors group-hover:text-blue-400" />
-                <span className="text-sm font-medium">{item.name}</span>
-              </div>
-              <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-            </a>
-          ))}
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  "group flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200",
+                  isActive 
+                    ? "bg-white/5 text-white" 
+                    : "text-white/40 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <item.icon 
+                    size={18} 
+                    className={cn(
+                      "transition-colors",
+                      isActive ? "text-blue-400" : "group-hover:text-blue-400"
+                    )} 
+                  />
+                  <span className="text-sm font-medium">{item.name}</span>
+                </div>
+                <ChevronRight 
+                  size={14} 
+                  className={cn(
+                    "transition-all",
+                    isActive ? "opacity-100" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
+                  )} 
+                />
+              </Link>
+            );
+          })}
         </div>
 
         <div className="space-y-1">
