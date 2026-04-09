@@ -4,22 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { MoreVertical } from 'lucide-react';
 
-const KanbanCard = ({ card }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: card.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
+export const KanbanCardUI = ({ card, isOverlay }) => {
   const getStatusColor = (status) => {
     const colors = {
       'Lead': 'from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-400',
@@ -34,17 +19,13 @@ const KanbanCard = ({ card }) => {
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
       className={cn(
-        'p-4 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 cursor-grab active:cursor-grabbing transition-all touch-none',
-        isDragging && 'bg-white/[0.08] border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.4)] scale-105'
+        'p-4 rounded-lg bg-white/5 border border-white/10 cursor-grab active:cursor-grabbing transition-colors duration-200 touch-none relative min-w-80',
+        !isOverlay && 'hover:border-white/20',
+        isOverlay && 'bg-white/10 border-blue-500/50 shadow-[0_0_40px_rgba(59,130,246,0.3)] scale-105 z-50 cursor-grabbing'
       )}
     >
       <div className="space-y-3">
-        {/* Header with name and menu */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 pointer-events-none">
             <h3 className="font-bold text-white text-sm">{card.name}</h3>
@@ -55,13 +36,11 @@ const KanbanCard = ({ card }) => {
           </button>
         </div>
 
-        {/* Value */}
         <div className="pointer-events-none">
           <p className="text-xs text-white/40 mb-1">Value</p>
           <p className="font-bold text-white text-sm">{card.value}</p>
         </div>
 
-        {/* Priority badge */}
         <div className="flex gap-2 pointer-events-none">
           <span className={cn(
             'px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border',
@@ -71,9 +50,36 @@ const KanbanCard = ({ card }) => {
           </span>
         </div>
 
-        {/* Last contact */}
         <p className="text-[9px] text-white/30 font-medium pointer-events-none">📅 {card.lastContact}</p>
       </div>
+    </div>
+  );
+};
+
+const KanbanCard = ({ card }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: card.id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+    >
+      <KanbanCardUI card={card} />
     </div>
   );
 };

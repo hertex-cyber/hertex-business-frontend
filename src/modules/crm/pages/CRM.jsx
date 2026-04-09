@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Users, Search, Filter, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import KanbanColumn from '../components/KanbanBoard';
+import { KanbanCardUI } from '../components/KanbanCard';
 
 const CRM = () => {
   const sensors = useSensors(
@@ -12,6 +13,8 @@ const CRM = () => {
       acceleration: false,
     })
   );
+
+  const [activeCardData, setActiveCardData] = useState(null);
 
   const [deals, setDeals] = useState({
     'lead': [
@@ -101,7 +104,19 @@ const CRM = () => {
     { id: 'lost', title: 'Lost' },
   ];
 
+  const handleDragStart = (event) => {
+    const { active } = event;
+    for (const cardList of Object.values(deals)) {
+      const card = cardList.find(c => c.id === active.id);
+      if (card) {
+        setActiveCardData(card);
+        break;
+      }
+    }
+  };
+
   const handleDragEnd = (event) => {
+    setActiveCardData(null);
     const { active, over } = event;
 
     if (!over) return;
@@ -128,7 +143,7 @@ const CRM = () => {
 
     // Determine destination column
     let destColumn = null;
-    
+
     // Check if overId is a column
     if (columns.some(col => col.id === overId)) {
       destColumn = overId;
@@ -165,40 +180,38 @@ const CRM = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-full">
-      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 relative z-20">
+    <div className="flex flex-col h-full overflow-hidden">
+      <header className="px-10 py-8 flex justify-between items-end border-b border-white/10 relative z-20">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
-            <Users size={10} />
-            Customer Relations
-          </div>
+          
           <h1 className="text-4xl font-bold tracking-tight text-white">CRM</h1>
           <p className="text-sm text-white/40 font-medium">Manage your customers and pipelines</p>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white/40 transition-colors" size={16} />
-            <Input 
-              type="text" 
-              placeholder="Search deals..." 
-              className="rounded-full pl-10 w-64 h-9 bg-white/5 border-white/10 focus:border-white/20 transition-all text-xs"
+            <Input
+              type="text"
+              placeholder="Search deals..."
+              className="pl-10 w-64 h-9 bg-white/10 border-white/10 focus:border-white/20 transition-all text-xs"
             />
           </div>
-          <Button variant="secondary" size="sm" className="h-9 px-4 border-none bg-white/5 hover:bg-white/10 text-white/60 text-[10px] uppercase tracking-widest">
+          <Button variant="secondary" size="sm" className="h-9 px-4 border-none bg-white/10 hover:bg-white/20 text-white/70 text-[10px] uppercase tracking-widest">
+            <Plus size={14} className="mr-2" />
+            Add
+          </Button>
+          <Button variant="secondary" size="sm" className="h-9 px-4 border-none bg-white/10 hover:bg-white/20 text-white/70 text-[10px] uppercase tracking-widest">
             <Filter size={14} className="mr-2" />
             Filter
           </Button>
-          <Button variant="default" size="sm" className="h-9 px-6 rounded-full text-[10px] uppercase tracking-widest font-black shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-            <Plus size={14} className="mr-2" />
-            Add Deal
-          </Button>
+          
         </div>
       </header>
 
-      <main className="flex-1 p-10 relative z-10 overflow-x-auto">
-        <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
-          <div className="flex gap-6 min-w-max pb-6">
+      <main className="flex-1 p-10 relative z-10 overflow-auto custom-scrollbar">
+        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} sensors={sensors}>
+          <div className="flex gap-6 min-w-max pb-6 h-full">
             {columns.map((column) => (
               <KanbanColumn
                 key={column.id}
@@ -207,6 +220,9 @@ const CRM = () => {
               />
             ))}
           </div>
+          <DragOverlay>
+            {activeCardData ? <KanbanCardUI card={activeCardData} isOverlay /> : null}
+          </DragOverlay>
         </DndContext>
       </main>
     </div>
