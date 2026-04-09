@@ -5,11 +5,11 @@ import Button from '@/components/Button';
 import { useAuth } from '@/context/AuthContext';
 
 const LoginForm = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -18,8 +18,8 @@ const LoginForm = () => {
     setError('');
     setIsLoading(true);
 
-    const result = await login(username, password);
-    
+    const result = await login(email, password);
+
     if (result.success) {
       navigate('/dashboard');
     } else {
@@ -42,24 +42,24 @@ const LoginForm = () => {
               {error}
             </div>
           )}
-          
-          <Input 
-            label="Username" 
-            type="text" 
-            placeholder="Your username" 
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+
+          <Input
+            label="Email Address"
+            type="email"
+            placeholder="name@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <Input 
-            label="Password" 
-            type="password" 
-            placeholder="••••••••" 
+          <Input
+            label="Password"
+            type="password"
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          
+
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer group">
               <input type="checkbox" className="w-4 h-4 bg-white/5 border-white/10 rounded cursor-pointer" />
@@ -71,7 +71,7 @@ const LoginForm = () => {
           <Button variant="primary" className="mt-2 py-3" type="submit" disabled={isLoading}>
             {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
-          
+
           <Button variant="secondary" className="py-3" type="button" onClick={() => navigate('/register')}>
             Create an account
           </Button>

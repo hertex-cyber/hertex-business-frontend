@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = async () => {
       try {
         const response = await axios.get('/api/auth/profile/');
-        setUser(response.data);
+        setUser(response.data.data);
       } catch (error) {
         setUser(null);
       } finally {
@@ -28,10 +28,10 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (username, password) => {
+  const login = async (email, password) => {
     try {
-      const response = await axios.post('/api/auth/login/', { username, password });
-      setUser(response.data.user);
+      const response = await axios.post('/api/auth/login/', { email, password });
+      setUser(response.data.data.user);
       return { success: true };
     } catch (error) {
       return {
