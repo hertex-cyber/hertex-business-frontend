@@ -1,19 +1,20 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Users, 
-  FileText, 
-  Box, 
-  Briefcase, 
-  CreditCard, 
-  Image as ImageIcon, 
-  GraduationCap, 
-  TrendingUp, 
+import {
+  Users,
+  FileText,
+  Box,
+  Briefcase,
+  CreditCard,
+  Image as ImageIcon,
+  GraduationCap,
+  TrendingUp,
   ShieldCheck,
   LayoutDashboard,
   Settings,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Receipt
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +29,7 @@ const menuItems = [
   { name: 'Media', icon: ImageIcon, href: '/media' },
   { name: 'LMS', icon: GraduationCap, href: '/lms' },
   { name: 'Sales', icon: TrendingUp, href: '/sales' },
+  { name: 'Invoice', icon: Receipt, href: '/invoice' },
   { name: 'Admin', icon: ShieldCheck, href: '/admin' },
 ];
 
