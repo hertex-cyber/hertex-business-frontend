@@ -37,30 +37,30 @@ const InvoiceList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Invoices</h1>
-          <p className="text-white/40 text-sm mt-1">{count} invoice{count !== 1 ? 's' : ''}</p>
+      <div>
+        <h1 className="text-2xl font-bold text-white">Invoices</h1>
+        <p className="text-white/40 text-sm mt-1">{count} invoice{count !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Filters + New Invoice */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex gap-3">
+          <select
+            className="bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-sm text-white/70 focus:outline-none focus:border-white/30 transition-all"
+            value={filters.status}
+            onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
+          >
+            <option value="" className="bg-gray-900">All Statuses</option>
+            <option value="draft" className="bg-gray-900">Draft</option>
+            <option value="pending" className="bg-gray-900">Pending</option>
+            <option value="approved" className="bg-gray-900">Approved</option>
+            <option value="rejected" className="bg-gray-900">Rejected</option>
+            <option value="completed" className="bg-gray-900">Completed</option>
+          </select>
         </div>
         <Button variant="primary" onClick={() => navigate('/invoices/new')} className="w-auto px-5">
           + New Invoice
         </Button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-3">
-        <select
-          className="bg-white/[0.04] border border-white/10 rounded-lg px-3 py-2 text-sm text-white/70 focus:outline-none focus:border-white/30 transition-all"
-          value={filters.status}
-          onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value }))}
-        >
-          <option value="" className="bg-gray-900">All Statuses</option>
-          <option value="draft" className="bg-gray-900">Draft</option>
-          <option value="pending" className="bg-gray-900">Pending</option>
-          <option value="approved" className="bg-gray-900">Approved</option>
-          <option value="rejected" className="bg-gray-900">Rejected</option>
-          <option value="completed" className="bg-gray-900">Completed</option>
-        </select>
       </div>
 
       {/* Error */}

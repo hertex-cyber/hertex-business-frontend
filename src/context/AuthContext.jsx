@@ -3,23 +3,35 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
+// Configure axios base URL
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+// Attach JWT token to every request
+axios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Configure axios defaults
-  axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-  axios.defaults.withCredentials = true;
-  axios.defaults.xsrfCookieName = 'csrftoken';
-  axios.defaults.xsrfHeaderName = 'X-CSRFToken';
-
   useEffect(() => {
-    // Check if user is already logged in (e.g., via session cookie)
     const checkAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       try {
         const response = await axios.get('/api/auth/profile/');
         setUser(response.data.data);
       } catch (error) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         setUser(null);
       } finally {
         setLoading(false);
@@ -31,12 +43,15 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await axios.post('/api/auth/login/', { email, password });
-      setUser(response.data.data.user);
+      const { access, refresh, user } = response.data.data;
+      localStorage.setItem('access_token', access);
+      localStorage.setItem('refresh_token', refresh);
+      setUser(user);
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed'
+        message: error.response?.data?.message || 'Login failed',
       };
     }
   };
@@ -44,9 +59,12 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await axios.post('/api/auth/logout/');
-      setUser(null);
     } catch (error) {
       console.error('Logout failed', error);
+    } finally {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      setUser(null);
     }
   };
 
