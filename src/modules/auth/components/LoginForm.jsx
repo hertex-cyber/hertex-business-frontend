@@ -29,7 +29,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="w-full max-w-[400px] bg-white/[0.03] backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-[0_0_50px_rgba(255,255,255,0.02)] relative transition-all duration-500 hover:shadow-[0_0_60px_rgba(255,255,255,0.05)] hover:-translate-y-1 hover:bg-white/[0.04] hover:border-white/20">
+    <div className="w-full max-w-[400px] bg-white/[0.03] backdrop-blur-2xl p-8 rounded-2xl border border-white/10 shadow-[0_0_60px_rgba(255,255,255,0.03)] relative transition-all duration-500 hover:shadow-[0_0_80px_rgba(255,255,255,0.06)] hover:-translate-y-1 hover:bg-white/[0.04] hover:border-white/20">
       <div className="space-y-6">
         <div className="space-y-2">
           <h2 className="text-2xl font-bold tracking-tight text-white">Welcome back</h2>
