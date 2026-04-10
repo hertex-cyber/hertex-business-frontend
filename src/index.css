@@ -113,6 +113,10 @@ body {
   display: none;
 }
 
+.no-scrollbar-y::-webkit-scrollbar:vertical {
+  display: none;
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

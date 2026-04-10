@@ -14,6 +14,12 @@ export const AuthProvider = ({ children }) => {
   axios.defaults.xsrfHeaderName = 'X-CSRFToken';
 
   useEffect(() => {
+    // Restore token from localStorage if it exists
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    }
+
     // Check if user is already logged in (e.g., via session cookie)
     const checkAuth = async () => {
       try {
@@ -31,7 +37,13 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await axios.post('/api/auth/login/', { email, password });
-      setUser(response.data.data.user);
+      const { access, user } = response.data.data;
+
+      // Set the JWT token for all future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+      localStorage.setItem('access_token', access);
+
+      setUser(user);
       return { success: true };
     } catch (error) {
       return {

@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Users, 
-  FileText, 
-  Box, 
-  Briefcase, 
-  CreditCard, 
-  Image as ImageIcon, 
-  GraduationCap, 
-  TrendingUp, 
+import {
+  Users,
+  FileText,
+  Box,
+  Briefcase,
+  CreditCard,
+  Image as ImageIcon,
+  GraduationCap,
+  TrendingUp,
   ShieldCheck,
   LayoutDashboard,
   Settings,
@@ -20,8 +20,8 @@ import { useAuth } from '../context/AuthContext';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { name: 'CRM', icon: Users, href: '/crm' },
-  { name: 'Doc Tools', icon: FileText, href: '/docs' },
+  { name: 'Contacts', icon: Users, href: '/contacts' },
+  { name: 'CRM', icon: Briefcase, href: '/crm' },
   { name: 'Inventory', icon: Box, href: '/inventory' },
   { name: 'HR', icon: Briefcase, href: '/hr' },
   { name: 'Accounts', icon: CreditCard, href: '/accounts' },
@@ -60,27 +60,27 @@ const Sidebar = () => {
                 to={item.href}
                 className={cn(
                   "group flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200",
-                  isActive 
-                    ? "bg-white/5 text-white" 
+                  isActive
+                    ? "bg-white/5 text-white"
                     : "text-white/40 hover:text-white hover:bg-white/5"
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <item.icon 
-                    size={18} 
+                  <item.icon
+                    size={18}
                     className={cn(
                       "transition-colors",
                       isActive ? "text-blue-400" : "group-hover:text-blue-400"
-                    )} 
+                    )}
                   />
                   <span className="text-sm font-medium">{item.name}</span>
                 </div>
-                <ChevronRight 
-                  size={14} 
+                <ChevronRight
+                  size={14}
                   className={cn(
                     "transition-all",
                     isActive ? "opacity-100" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-                  )} 
+                  )}
                 />
               </Link>
             );
@@ -109,7 +109,7 @@ const Sidebar = () => {
             <p className="text-sm font-bold text-white truncate">{user?.username || 'Admin'}</p>
             <p className="text-[10px] font-medium text-white/20 truncate">{user?.email || 'admin@bytehive.com'}</p>
           </div>
-          <button 
+          <button
             onClick={logout}
             className="p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-white transition-colors"
             title="Logout"
