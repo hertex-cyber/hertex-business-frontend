@@ -13,7 +13,8 @@ import {
   LayoutDashboard,
   Settings,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Receipt
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +29,7 @@ const menuItems = [
   { name: 'Media', icon: ImageIcon, href: '/media' },
   { name: 'LMS', icon: GraduationCap, href: '/lms' },
   { name: 'Sales', icon: TrendingUp, href: '/sales' },
+  { name: 'Invoice', icon: Receipt, href: '/invoices' },
   { name: 'Admin', icon: ShieldCheck, href: '/admin' },
 ];
 
