@@ -12,6 +12,7 @@ import Media from './modules/media/pages/Media';
 import LMS from './modules/lms/pages/LMS';
 import Sales from './modules/sales/pages/Sales';
 import Admin from './modules/admin/pages/Admin';
+import { InvoiceList } from './modules/invoice';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -45,6 +46,7 @@ function App() {
           <Route path="/media" element={<ProtectedRoute><Media /></ProtectedRoute>} />
           <Route path="/lms" element={<ProtectedRoute><LMS /></ProtectedRoute>} />
           <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
+          <Route path="/invoice" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           
           <Route path="/" element={<Navigate to="/login" replace />} />
