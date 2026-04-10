@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -44,8 +45,8 @@ const Sidebar = () => {
 
       {/* Logo Section */}
       <Link to="/dashboard" className="p-6 flex items-center gap-3 relative z-10 group">
-        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300">
-          <div className="w-4 h-4 bg-black rounded-sm" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300 overflow-hidden">
+          <img src={logo} alt="ByteHive" className="w-full h-full object-cover" />
         </div>
         <span className="text-xl font-bold tracking-tight text-white">ByteHive</span>
       </Link>

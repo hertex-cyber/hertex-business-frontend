@@ -1,39 +1,38 @@
 # ByteHive CRM Frontend - Design & Architecture
 
-This document outlines the design system, visual language, and coding patterns used in the ByteHive CRM frontend.
+This document outlines the core design system, visual philosophy, and component patterns that define the ByteHive "Industrial Instrument" aesthetic.
+
+## 🎨 Design Philosophy: "Industrial Instrument"
+
+ByteHive is designed to feel like a high-end, precision technical instrument rather than a generic web application. The aesthetic balances a minimalist dark mode with atmospheric depth and mechanical definition.
+
+### 🌌 Atmospheric Depth
+- **The Pitched Void**: The primary background is always a true **Black (#000000)**, but it is never a flat void.
+- **Structural Grid**: A fixed `radial-gradient` point grid (32px intervals) provides a subtle sense of scale and technical precision.
+- **Ambient Glow**: Soft, moving radial "blobs" in the background (using `blur-[120px]`) provide tactile depth and prevent visual fatigue.
+
+### 💡 Lighting Architecture: "Top-Down Illumination"
+- **Instrument Header**: Headers use a semi-transparent `bg-black/50` with high-intensity `backdrop-blur-xl`.
+- **Radial Lighting**: All primary page headers are illuminated from the top-center using a radial gradient that fades into the repository area.
+- **Micro-Glows**: Interactive elements (stats, buttons, rows) feature subtle blue or neutral glows on hover to simulate a digital "powered-on" state.
+
+### ⚙️ Materiality & Borders
+- **Mechanical Gray**: Primary data containers (Kanban stages, Repositories, Modals) use a solid **`bg-zinc-900/30`** background.
+- **Sharp Definition**: Borders are never "soft" or blurry. Use **`border-zinc-800`** for primary container definition and `border-white/5` for ultra-subtle internal dividers.
+- **Refined Glass**: Glassmorphism is used sparingly for overlays, typically with `bg-white/[0.02]` and `border-white/10`.
+
+---
 
 ## 🛠 Tech Stack
 - **Framework**: [React 19](https://react.dev/)
 - **Build Tool**: [Vite 8](https://vitejs.dev/)
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com/) + [Base UI](https://base-ui.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Routing**: [React Router 7](https://reactrouter.com/)
-- **API Client**: [Axios](https://axios-http.com/)
-
-## 🎨 Design Philosophy: "Industrial Dark"
-
-A premium, minimalist dark aesthetic designed to feel high-end, precise, and professional. The design prioritizes clarity through generous spacing, subtle depth through glassmorphism, and restrained use of color for status indication.
+- **UI Components**: Custom-built with Radix/shadcn primitives
+- **Icons**: [Lucide React](https://lucide.dev/) (Thin/Normal weights only)
 
 ---
 
 ## 📐 Layout Architecture
-
-### Page Structure
-```
-┌─────────────────────────────────────────────────────┐
-│  HEADER (px-10 py-8)                               │
-│  ┌──────────────────────┐  ┌─────────────────────┐  │
-│  │ Title (text-4xl)     │  │ Actions (gap-4)     │  │
-│  │ Subtitle (text-sm)   │  │ Search | Buttons    │  │
-│  └──────────────────────┘  └─────────────────────┘  │
-├─────────────────────────────────────────────────────┤
-│  MAIN CONTENT (p-10 space-y-[n])                    │
-│  - Cards: grid with gap-6                           │
-│  - Tables: bg-white/[0.02] rounded-2xl              │
-│  - Flexible heights for content area               │
-└─────────────────────────────────────────────────────┘
-```
 
 ### Standard Spacing Scale
 | Element | Spacing |
@@ -43,218 +42,70 @@ A premium, minimalist dark aesthetic designed to feel high-end, precise, and pro
 | Card grid gap | `gap-6` |
 | Card internal padding | `p-6` |
 | Button groups | `gap-4` |
-| Icon buttons | `p-1.5` to `p-3` |
+
+### The Unified Header (Standard Pattern)
+```jsx
+<header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
+  {/* Left: Component Identity */}
+  {/* Right: Action Toolbar (Search Refinement / CTEs) */}
+</header>
+```
 
 ---
 
 ## 🎭 Color System
 
-### Base Colors (CSS Variables)
+### Technical Base
 ```css
---background: #000000       /* Pure black base */
---foreground: #FAFAFA      /* High-contrast white text */
---card: #080808            /* Slightly lifted surfaces */
---muted: #262626           /* Subtle backgrounds */
---border: #262626           /* Ultra-thin borders */
---input: #262626           /* Form field backgrounds */
+--background: #000000       /* Deep Field */
+--instrument: #18181b       /* zinc-900 - Technical container base */
+--material: #27272a         /* zinc-800 - Borders and dividers */
+--accent: #3b82f6           /* blue-500 - Operational primary color */
 ```
 
-### Transparency Scale (for overlays & glassmorphism)
-| Token | Value | Usage |
-|-------|-------|-------|
-| `white/5` | 5% opacity | Card backgrounds, subtle borders |
-| `white/10` | 10% opacity | Hover states, input backgrounds |
-| `white/20` | 20% opacity | Secondary text, muted icons |
-| `white/40` | 40% opacity | Body text, descriptions |
+### High-Density Transparency Scale
+| Token | usage |
+|-------|-------|
+| `zinc-900/30` | Standard Mechanical Background |
+| `white/10` | Interactive Hover States |
+| `white/40` | Tertiary Labels / Muted Meta-data |
+| `white/60` | Body Text / Primary Labels |
 
-### Status Colors
-| Status | Color | Usage |
-|--------|-------|-------|
-| Primary accent | `blue-500` (#3b82f6) | Live indicators, focus states, primary CTAs |
-| Success | `green-500` | Won deals, positive trends |
-| Warning | `amber-500` | Proposals, attention needed |
-| Error | `red-500` | Lost deals, destructive actions |
-| Info | `purple-500` | Qualified leads |
-
-### Pipeline Stage Colors (CRM)
-```
-Lead        → blue-500   (from-blue-500/15)
-Qualified   → purple-500 (from-purple-500/15)
-Proposal    → amber-500  (from-amber-500/15)
-Negotiation → orange-500 (from-orange-500/15)
-Won         → green-500  (from-green-500/15)
-Lost        → red-500    (from-red-500/15)
-```
+### Global Status Indicators
+| Status | Accent |
+|--------|-------|
+| **Live/Primary** | `blue-500` |
+| **Success** | `green-500` |
+| **Warning** | `amber-500` |
+| **Critical** | `red-500` |
 
 ---
 
-## 📏 Typography Scale
+## 🧩 Component Blueprints
 
-| Element | Size | Weight | Tracking | Color |
-|---------|------|--------|----------|-------|
-| Page title | `text-4xl` | `font-bold` | `tracking-tight` | `text-white` |
-| Section heading | `text-lg` | `font-bold` | `tracking-tight` | `text-white` |
-| Card title | `text-sm` | `font-bold` | default | `text-white` |
-| Body text | `text-sm` | default | default | `text-white/80` |
-| Labels | `text-xs` | `font-medium` | default | `text-white/60` |
-| Badges/Tags | `text-[10px]` | `font-black` | `tracking-widest` | varies |
-| Small text | `text-[9px]` | `font-medium` | `tracking-widest` | varies |
+### The Technical Repository (Table/Grid)
+Repositories must be house in a visible, minimum-height container to anchor the page.
+- **Base Style**: `bg-zinc-900/30 border border-zinc-800 rounded-xl shadow-xl min-h-[500px]`
+- **Row Style**: `hover:bg-white/[0.02] transition-all duration-300 border-b border-zinc-800`
 
-### Typography Rules
-- **Headings**: Use `tracking-tight` for a modern, compressed look
-- **Labels/Badges**: Uppercase with `tracking-widest` for industrial feel
-- **Font**: Inter variable font for consistent rendering
+### Interactive Stat Cards
+- **Base Style**: `p-6 bg-zinc-900/30 border border-zinc-800 rounded-2xl`
+- **Animation**: Subtle scale up (`hover:scale-[1.02]`) and color shift for icon containers.
+
+### High-Capacity Buttons
+- **Primary Action**: Blue background, text-[10px], rounded-lg, tracking-widest, font-black.
+- **Secondary Tool**: `bg-zinc-900/30` with subtle zinc borders, strictly `!w-auto`.
 
 ---
 
-## 🧩 Component Patterns
+## 📋 Operational Design Checklist
 
-### Cards
-
-**Standard Card:**
-```jsx
-<div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-```
-- Hover: `hover:bg-white/[0.04] hover:border-white/10 transition-all duration-300`
-
-**Glassmorphism Glow Effect:**
-```jsx
-<div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] rounded-full 
-                 -translate-y-1/2 translate-x-1/2 blur-2xl" />
-```
-
-### Buttons
-
-**Primary Button (for main actions):**
-```jsx
-<Button 
-  variant="primary" 
-  className="px-6 py-2 rounded-full text-[10px] uppercase tracking-widest font-black"
->
-  Action
-</Button>
-```
-
-**Secondary Button (for supporting actions):**
-```jsx
-<Button 
-  variant="secondary" 
-  size="sm" 
-  className="h-9 px-4 bg-white/10 hover:bg-white/20 text-white/70 
-             text-[10px] uppercase tracking-widest"
->
-  Action
-</Button>
-```
-
-**Button Hierarchy:**
-1. **Primary**: Bright, full-width, used for main CTA
-2. **Secondary**: Subtle ghost style, for supporting actions
-3. **Icon buttons**: Square with icon, for toolbar actions
-
-### Inputs
-
-**Search/Text Input:**
-```jsx
-<div className="relative group">
-  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 
-                      group-focus-within:text-white/40" size={16} />
-  <Input 
-    className="pl-10 w-64 h-9 bg-white/10 border-white/10 
-               focus:border-white/20 transition-all text-xs" 
-  />
-</div>
-```
-
-**Input States:**
-- Default: `bg-white/10 border-white/10`
-- Focus: `focus:border-white/20`
-- Error: Red border with destructive color
-
-### Badges & Tags
-
-**Status Badge:**
-```jsx
-<span className="px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest 
-                  bg-blue-500/10 text-blue-400 border border-blue-500/20">
-  Lead
-</span>
-```
-
-**Live Indicator Badge:**
-```jsx
-<span className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full 
-                  bg-white/5 border border-white/10 text-[9px] font-black 
-                  uppercase tracking-[0.2em] text-white/40">
-  <span className="w-1 h-1 rounded-full bg-blue-500 
-                   shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-  Live Operations
-</span>
-```
-
-### Lists & Tables
-
-**List Item Row:**
-```jsx
-<div className="group flex items-center justify-between p-4 
-                hover:bg-white/[0.02] transition-colors cursor-pointer">
-```
-
-**Table Container:**
-```jsx
-<div className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden 
-                divide-y divide-white/5">
-```
-
-### Grid Layouts
-
-**4-Column Stats Grid:**
-```jsx
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-```
-
-**2/3 + 1/3 Split:**
-```jsx
-<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-  <div className="lg:col-span-2">...</div>
-  <div>...</div>
-</div>
-```
-
----
-
-## 🔧 CSS Variables & Tokens
-
-```css
-/* Radius */
---radius: 0.75rem;  /* 12px - Standard rounded corners */
-
-/* Borders */
-border-white/5      /* Ultra-subtle separation */
-border-white/10      /* Subtle emphasis */
-border-white/20      /* Clear emphasis */
-
-/* Backgrounds */
-bg-white/[0.02]      /* Card surfaces */
-bg-white/[0.05]      /* Elevated elements */
-bg-white/[0.10]      /* Input fields, hover states */
-```
-
----
-
-## 📋 Design Checklist
-
-When building new components, ensure:
-
-- [ ] Background uses `bg-white/[0.02]` for cards
-- [ ] Borders use `border-white/5` for subtle separation
-- [ ] Text hierarchy follows the typography scale
-- [ ] Interactive elements have hover states with `transition-all duration-200`
-- [ ] Icons use `text-white/40` for muted, `text-white/80` for emphasis
-- [ ] Badges use uppercase with `tracking-widest` and `text-[10px]`
-- [ ] Buttons follow the primary/secondary hierarchy
-- [ ] Grid gaps use `gap-6` standard spacing
-- [ ] Page padding uses `px-10 py-8` for header areas
+Every new feature must satisfy:
+- [ ] Does it use the **Pitched Void** (#000000) as the base?
+- [ ] Are primary containers using the **`bg-zinc-900/30`** / **`border-zinc-800`** material combo?
+- [ ] Is the header using **`backdrop-blur-xl`** and anchored with a zinc-800 border?
+- [ ] Are badges and labels following the **Industrial Typography** (Upper case + Wide tracking)?
+- [ ] Does the page feel like a specific **Technical Instrument** (high scannability, no fluff)?
 
 ---
 
@@ -262,20 +113,11 @@ When building new components, ensure:
 
 ```text
 src/
-├── components/
-│   ├── Layout.jsx          # Main app shell
-│   ├── Sidebar.jsx         # Navigation sidebar
-│   └── ui/                 # Primitive UI components
-├── context/
-│   └── AuthContext.jsx     # Authentication state
-├── lib/
-│   ├── utils.js            # cn() utility
-│   └── axios.js            # API configuration
+├── components/             # Global primitives (Buttons, Inputs, Shell)
+├── context/                # Global state (Auth, Notification)
 ├── modules/
-│   ├── auth/               # Login, registration
-│   ├── dashboard/          # Main overview
-│   ├── crm/                # Pipeline management
-│   └── ...                 # Other domains
-├── App.jsx                 # Router configuration
-└── index.css               # Global styles & design tokens
+│   ├── crm/                # Pipeline/Deals domain
+│   ├── contacts/           # Repository/Ingestion domain
+│   ├── invoice/            # Financial/PDF domain
+│   └── ...                 # Future modules
 ```
