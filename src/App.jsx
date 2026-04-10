@@ -37,11 +37,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
 
-<<<<<<< HEAD
           {/* Protected Routes wrapped in Layout */}
-=======
-          {/* Protected Routes */}
->>>>>>> a1d523c980dca80505cc506fa97674137f8d6620
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
           <Route path="/crm" element={<ProtectedRoute><CRM /></ProtectedRoute>} />
@@ -53,8 +49,6 @@ function App() {
           <Route path="/lms" element={<ProtectedRoute><LMS /></ProtectedRoute>} />
           <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-<<<<<<< HEAD
-=======
           <Route path="/admin/invoices" element={<ProtectedRoute><ReviewDashboard /></ProtectedRoute>} />
           <Route path="/admin/company-profile" element={<ProtectedRoute><CompanyProfileAdmin /></ProtectedRoute>} />
 
@@ -64,7 +58,6 @@ function App() {
           <Route path="/invoices/new" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />
           <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
           <Route path="/invoices/:id/edit" element={<ProtectedRoute><InvoiceEditPage /></ProtectedRoute>} />
->>>>>>> a1d523c980dca80505cc506fa97674137f8d6620
 
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>

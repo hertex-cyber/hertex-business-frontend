@@ -20,16 +20,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-<<<<<<< HEAD
-    // Restore token from localStorage if it exists
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
 
-    // Check if user is already logged in (e.g., via session cookie)
-=======
->>>>>>> a1d523c980dca80505cc506fa97674137f8d6620
     const checkAuth = async () => {
       const token = localStorage.getItem('access_token');
       if (!token) {
@@ -53,18 +44,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await axios.post('/api/auth/login/', { email, password });
-<<<<<<< HEAD
-      const { access, user } = response.data.data;
-
-      // Set the JWT token for all future requests
-      axios.defaults.headers.common['Authorization'] = `Bearer ${access}`;
-      localStorage.setItem('access_token', access);
-
-=======
       const { access, refresh, user } = response.data.data;
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
->>>>>>> a1d523c980dca80505cc506fa97674137f8d6620
       setUser(user);
       return { success: true };
     } catch (error) {
