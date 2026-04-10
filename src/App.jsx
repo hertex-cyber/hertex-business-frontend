@@ -12,20 +12,20 @@ import Media from './modules/media/pages/Media';
 import LMS from './modules/lms/pages/LMS';
 import Sales from './modules/sales/pages/Sales';
 import Admin from './modules/admin/pages/Admin';
-import { InvoiceList } from './modules/invoice';
+import { InvoiceList, InvoiceDetail, InvoiceForm, ReviewDashboard, CompanyProfileAdmin } from './modules/invoice';
+import InvoiceEditPage from './modules/invoice/pages/InvoiceEditPage';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  
+
   if (loading) return <div className="h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  
+
   return <Layout>{children}</Layout>;
 };
 
 function App() {
-
   React.useEffect(() => {
     document.documentElement.classList.add('dark');
   }, []);
@@ -35,8 +35,8 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          
-          {/* Protected Routes wrapped in Layout */}
+
+          {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/crm" element={<ProtectedRoute><CRM /></ProtectedRoute>} />
           <Route path="/docs" element={<ProtectedRoute><DocTools /></ProtectedRoute>} />
@@ -46,9 +46,17 @@ function App() {
           <Route path="/media" element={<ProtectedRoute><Media /></ProtectedRoute>} />
           <Route path="/lms" element={<ProtectedRoute><LMS /></ProtectedRoute>} />
           <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
-          <Route path="/invoice" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
-          
+          <Route path="/admin/invoices" element={<ProtectedRoute><ReviewDashboard /></ProtectedRoute>} />
+          <Route path="/admin/company-profile" element={<ProtectedRoute><CompanyProfileAdmin /></ProtectedRoute>} />
+
+          {/* Invoice routes */}
+          <Route path="/invoice" element={<Navigate to="/invoices" replace />} />
+          <Route path="/invoices" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
+          <Route path="/invoices/new" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />
+          <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+          <Route path="/invoices/:id/edit" element={<ProtectedRoute><InvoiceEditPage /></ProtectedRoute>} />
+
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>
