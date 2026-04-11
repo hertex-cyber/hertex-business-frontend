@@ -22,6 +22,7 @@ import Invoices from "./modules/invoice/components/InvoiceList";
 import Admin from "./modules/admin/pages/Admin";
 import AdminMenus from "./modules/admin/pages/AdminMenus";
 import AdminMenuForm from "./modules/admin/pages/AdminMenuForm";
+import AdminMenuRoles from "./modules/admin/pages/AdminMenuRoles";
 import AdminOrganizations from "./modules/admin/pages/AdminOrganizations";
 import AdminProducts from "./modules/admin/pages/AdminProducts";
 import {
@@ -162,6 +163,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AdminMenus />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/menus/roles"
+              element={
+                <ProtectedRoute>
+                  <AdminMenuRoles />
                 </ProtectedRoute>
               }
             />

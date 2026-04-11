@@ -109,13 +109,22 @@ export default function AdminMenus() {
           </p>
         </div>
 
-        <button
-          onClick={() => navigate("/admin/menus/create")}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/20 hover:border-blue-500/40 transition-colors font-medium text-sm"
-        >
-          <Plus size={18} />
-          Create Menu
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/admin/menus/roles")}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 hover:border-emerald-500/40 transition-colors font-medium text-sm"
+          >
+            <Shield size={18} />
+            Assign Roles
+          </button>
+          <button
+            onClick={() => navigate("/admin/menus/create")}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/20 hover:border-blue-500/40 transition-colors font-medium text-sm"
+          >
+            <Plus size={18} />
+            Create Menu
+          </button>
+        </div>
       </header>
 
       {/* Filters */}
