@@ -38,8 +38,8 @@ export default function AdminMenuForm() {
       const fetchMenu = async () => {
         try {
           const response = await axios.get(`/api/menus/${id}/`);
-          if (response.data?.success) {
-            setFormData(response.data.data);
+          if (response.data && !response.data.error) {
+            setFormData(response.data.data || response.data);
           }
         } catch (err) {
           setError("Failed to load menu");
@@ -56,8 +56,10 @@ export default function AdminMenuForm() {
     const fetchProducts = async () => {
       try {
         const response = await axios.get("/api/products/");
-        if (response.data?.success) {
-          setProducts(response.data.data || []);
+        if (response.data && response.data.results) {
+          setProducts(response.data.results || []);
+        } else if (Array.isArray(response.data)) {
+          setProducts(response.data);
         }
       } catch (err) {
         console.error("Failed to load products:", err);
@@ -106,7 +108,7 @@ export default function AdminMenuForm() {
         ? await axios.patch(`/api/menus/${id}/`, data)
         : await axios.post("/api/menus/", data);
 
-      if (response.data?.success) {
+      if (response.status === 200 || response.status === 201 || response.data?.success) {
         navigate("/admin/menus");
       } else {
         setError(response.data?.error || "Failed to save menu");

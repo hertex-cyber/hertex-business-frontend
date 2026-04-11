@@ -26,11 +26,14 @@ export default function AdminMenus() {
     try {
       setLoading(true);
       const response = await axios.get("/api/menus/");
-      if (response.data?.success) {
-        setMenus(response.data.data || []);
+      if (response.data && response.data.results) {
+        setMenus(response.data.results || []);
+        setError(null);
+      } else if (Array.isArray(response.data)) {
+        setMenus(response.data);
         setError(null);
       } else {
-        throw new Error("Failed to fetch menus");
+        throw new Error("Invalid response format from server");
       }
     } catch (err) {
       setError(err.message || "Failed to load menus");
