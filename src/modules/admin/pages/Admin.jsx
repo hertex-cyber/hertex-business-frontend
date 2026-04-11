@@ -1,8 +1,11 @@
 import React from 'react';
-import { ShieldCheck, Settings, Server, Database, Lock, Key } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, Settings, Server, Database, Lock, Key, LayoutGrid, Building2, Package } from 'lucide-react';
 import Button from '@/components/Button';
 
 const Admin = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="flex flex-col min-h-full">
       <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 relative z-20">
@@ -54,9 +57,36 @@ const Admin = () => {
               <Key size={14} className="mr-3" />
               Manage API Keys
             </Button>
-            <Button variant="secondary" className="justify-start px-4 bg-white/5 border-none hover:bg-white/10">
+            <Button variant="secondary" className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full">
               <ShieldCheck size={14} className="mr-3" />
               View Audit Logs
+            </Button>
+          </div>
+        </div>
+
+        {/* New Platform Management Card */}
+        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl space-y-6 md:col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40">
+              <LayoutGrid size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">Platform Management</h3>
+              <p className="text-xs text-white/20">Manage menus, orgs, and products</p>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Button variant="secondary" className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full" onClick={() => navigate('/admin/menus')}>
+              <LayoutGrid size={14} className="mr-3" />
+              Manage Menus
+            </Button>
+            <Button variant="secondary" className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full" onClick={() => navigate('/admin/organizations')}>
+              <Building2 size={14} className="mr-3" />
+              Manage Organizations
+            </Button>
+            <Button variant="secondary" className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full" onClick={() => navigate('/admin/products')}>
+              <Package size={14} className="mr-3" />
+              Manage Products
             </Button>
           </div>
         </div>

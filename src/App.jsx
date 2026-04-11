@@ -20,6 +20,10 @@ import LMS from "./modules/lms/pages/LMS";
 import Sales from "./modules/sales/pages/Sales";
 import Invoices from "./modules/invoice/components/InvoiceList";
 import Admin from "./modules/admin/pages/Admin";
+import AdminMenus from "./modules/admin/pages/AdminMenus";
+import AdminMenuForm from "./modules/admin/pages/AdminMenuForm";
+import AdminOrganizations from "./modules/admin/pages/AdminOrganizations";
+import AdminProducts from "./modules/admin/pages/AdminProducts";
 import {
   InvoiceList,
   InvoiceDetail,
@@ -150,6 +154,46 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Admin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/menus"
+              element={
+                <ProtectedRoute>
+                  <AdminMenus />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/menus/create"
+              element={
+                <ProtectedRoute>
+                  <AdminMenuForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/menus/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <AdminMenuForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/organizations"
+              element={
+                <ProtectedRoute>
+                  <AdminOrganizations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/products"
+              element={
+                <ProtectedRoute>
+                  <AdminProducts />
                 </ProtectedRoute>
               }
             />
