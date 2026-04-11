@@ -181,10 +181,9 @@ const CRM = () => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <header className="px-10 py-8 flex justify-between items-end border-b border-white/10 relative z-20">
+      <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
         <div className="space-y-1">
-          
-          <h1 className="text-4xl font-bold tracking-tight text-white">CRM</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">CRM</h1>
           <p className="text-sm text-white/40 font-medium">Manage your customers and pipelines</p>
         </div>
 
@@ -194,24 +193,24 @@ const CRM = () => {
             <Input
               type="text"
               placeholder="Search deals..."
-              className="pl-10 w-64 h-9 bg-white/10 border-white/10 focus:border-white/20 transition-all text-xs"
+              className="pl-10 w-64 h-10 bg-white/5 border-white/10 focus:border-white/20 transition-all text-xs"
             />
           </div>
-          <Button variant="secondary" size="sm" className="h-9 px-4 border-none bg-white/10 hover:bg-white/20 text-white/70 text-[10px] uppercase tracking-widest">
-            <Plus size={14} className="mr-2" />
+          <Button variant="secondary" size="sm" className="h-10 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-[10px] uppercase tracking-[0.15em] font-bold">
+            <Plus size={14} className="mr-2 opacity-50" />
             Add
           </Button>
-          <Button variant="secondary" size="sm" className="h-9 px-4 border-none bg-white/10 hover:bg-white/20 text-white/70 text-[10px] uppercase tracking-widest">
-            <Filter size={14} className="mr-2" />
+          <Button variant="secondary" size="sm" className="h-10 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-[10px] uppercase tracking-[0.15em] font-bold">
+            <Filter size={14} className="mr-2 opacity-50" />
             Filter
           </Button>
           
         </div>
       </header>
 
-      <main className="flex-1 p-10 relative z-10 overflow-auto custom-scrollbar">
+      <main className="flex-1 p-8 relative z-10 overflow-auto custom-scrollbar">
         <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} sensors={sensors}>
-          <div className="flex gap-6 min-w-max pb-6 h-full">
+          <div className="flex gap-4 min-w-max pb-4 h-full">
             {columns.map((column) => (
               <KanbanColumn
                 key={column.id}
@@ -220,7 +219,7 @@ const CRM = () => {
               />
             ))}
           </div>
-          <DragOverlay>
+          <DragOverlay dropAnimation={null}>
             {activeCardData ? <KanbanCardUI card={activeCardData} isOverlay /> : null}
           </DragOverlay>
         </DndContext>

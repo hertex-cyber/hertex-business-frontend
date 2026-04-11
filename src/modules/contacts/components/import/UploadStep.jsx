@@ -13,8 +13,8 @@ const UploadStep = ({ fileInputRef, onFileChange }) => (
             </div>
         </div>
         <div className="text-center space-y-1">
-            <h3 className="text-md font-bold text-white group-hover:text-blue-400 transition-colors">Upload Contacts File</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-white/20">Click to browse or drop CSV / Excel</p>
+            <h3 className="text-md text-white group-hover:text-blue-400 transition-colors mt-5">Upload Contacts File</h3>
+            <p className="text-md text-white/50">Click to browse or drop CSV / Excel</p>
         </div>
         <input type="file" ref={fileInputRef} onChange={onFileChange} className="hidden" accept=".csv, .xlsx, .xls" />
     </div>

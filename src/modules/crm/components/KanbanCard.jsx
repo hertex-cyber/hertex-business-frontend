@@ -20,37 +20,37 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
   return (
     <div
       className={cn(
-        'p-4 rounded-lg bg-white/5 border border-white/10 cursor-grab active:cursor-grabbing transition-colors duration-200 touch-none relative min-w-80',
+        'p-3 rounded-lg bg-white/5 border border-white/10 cursor-grab active:cursor-grabbing transition-colors duration-200 touch-none relative min-w-72',
         !isOverlay && 'hover:border-white/20',
         isOverlay && 'bg-white/10 border-blue-500/50 shadow-[0_0_40px_rgba(59,130,246,0.3)] scale-105 z-50 cursor-grabbing'
       )}
     >
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 pointer-events-none">
-            <h3 className="font-bold text-white text-sm">{card.name}</h3>
-            <p className="text-[10px] text-white/40">{card.email}</p>
+            <h3 className="font-bold text-white text-xs">{card.name}</h3>
+            <p className="text-[9px] text-white/40">{card.email}</p>
           </div>
           <button className="p-1 rounded hover:bg-white/5 transition-colors opacity-0 hover:opacity-100">
-            <MoreVertical size={14} className="text-white/40" />
+            <MoreVertical size={12} className="text-white/40" />
           </button>
         </div>
 
         <div className="pointer-events-none">
-          <p className="text-xs text-white/40 mb-1">Value</p>
-          <p className="font-bold text-white text-sm">{card.value}</p>
+          <p className="text-[9px] text-white/40 mb-0.5">Value</p>
+          <p className="font-bold text-white text-xs">{card.value}</p>
         </div>
 
-        <div className="flex gap-2 pointer-events-none">
+        <div className="flex gap-1.5 pointer-events-none">
           <span className={cn(
-            'px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border',
+            'px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border',
             getStatusColor(card.priority)
           )}>
             {card.priority}
           </span>
         </div>
 
-        <p className="text-[9px] text-white/30 font-medium pointer-events-none">📅 {card.lastContact}</p>
+        <p className="text-[8px] text-white/30 font-medium pointer-events-none">📅 {card.lastContact}</p>
       </div>
     </div>
   );

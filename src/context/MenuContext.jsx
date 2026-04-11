@@ -34,8 +34,7 @@ export function MenuProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refreshMenus = useCallback(async () => {
-    // Only fetch if user is authenticated
+  const refreshMenus = useCallback(async (force = false) => {
     if (!user) {
       setMenus([]);
       setSections({});
@@ -43,37 +42,46 @@ export function MenuProvider({ children }) {
       return;
     }
 
+    // Use cached data if available and not forcing refresh
+    const cacheKey = `menus_${user.id || user.username}`;
+    if (!force) {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          // Cache valid for 5 minutes
+          if (Date.now() - ts < 5 * 60 * 1000) {
+            setMenus(data.all_menus || []);
+            setSections(data.sections || {});
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      // Call backend endpoint to get user's visible menus
       const response = await axios.get("/api/menus/my_menus/");
-      
-      console.log('[MenuContext] API Response:', response.data);
 
       if (response.data?.success) {
         const data = response.data.data;
-        console.log('[MenuContext] Sections:', data.sections);
-        console.log('[MenuContext] All Menus:', data.all_menus);
         setMenus(data.all_menus || []);
         setSections(data.sections || {});
+        // Cache the result
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }));
+        } catch (_) {}
       } else {
         throw new Error("Invalid response format from server");
       }
     } catch (err) {
-      // Only log error if it's not a 404 (endpoint not yet implemented)
       if (err.response?.status !== 404) {
         console.error("[MenuContext] Failed to load menus:", err);
-        console.error("[MenuContext] Error response:", err.response?.data);
       }
-
-      // Set user-friendly error message
-      const errorMsg =
-        err.response?.data?.error || err.message || "Failed to load menus";
-      setError(errorMsg);
-
-      // Set fallback empty state
+      setError(err.response?.data?.error || err.message || "Failed to load menus");
       setMenus([]);
       setSections({});
     } finally {

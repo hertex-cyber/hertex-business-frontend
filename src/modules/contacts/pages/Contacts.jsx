@@ -3,15 +3,11 @@ import axios from 'axios';
 import {
     Users,
     Upload,
-    Plus,
     Search,
-    MoreHorizontal,
     Mail,
     Phone,
-    ArrowUpRight,
-    TrendingUp,
-    UserCheck,
-    UserPlus,
+    Eye,
+    Trash2,
     ChevronLeft,
     ChevronRight,
     Loader2
@@ -30,7 +26,7 @@ const Contacts = () => {
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const pageSize = 20;
+    const pageSize = 100;
 
     const fetchContacts = useCallback(async (page = 1, search = '') => {
         try {
@@ -69,17 +65,10 @@ const Contacts = () => {
         fetchContacts(newPage, searchQuery);
     };
 
-    const stats = [
-        { label: 'Total Database', value: totalCount, icon: Users, trend: '+12%', color: 'blue' },
-        { label: 'Growth Rate', value: '18%', icon: TrendingUp, trend: '+5%', color: 'purple' },
-        { label: 'Active Leads', value: '142', icon: UserPlus, trend: '+2%', color: 'green' },
-        { label: 'Connectivity', value: '99%', icon: UserCheck, trend: 'Stable', color: 'amber' },
-    ];
-
     const totalPages = Math.ceil(totalCount / pageSize);
 
     return (
-        <div className="flex flex-col bg-black">
+        <div className="flex flex-col bg-black h-full">
             {/* Header Section per DESIGN ARCHITECTURE (px-10 py-8) */}
             <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
                 <div className="space-y-1">
@@ -107,33 +96,17 @@ const Contacts = () => {
                         <Upload size={14} className="mr-2 opacity-50" />
                         Import
                     </Button>
-                    <Button variant="default" className="!w-auto h-10 px-6 rounded-full text-[10px] uppercase tracking-widest font-black shadow-[0_0_30px_rgba(255,255,255,0.05)]">
-                        <Plus size={14} className="mr-2" />
-                        New Contact
-                    </Button>
+                    
                 </div>
             </header>
 
             {/* Main Content (p-10 space-y-10) */}
-            <main className="flex-1 p-10 space-y-10 relative z-10 overflow-y-auto custom-scrollbar">
+            <main className="flex-1 p-10 relative z-10 overflow-hidden flex flex-col gap-8 min-h-0">
 
                 {/* Contacts Container */}
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-[0.2em]">
-                        <div className="flex items-center gap-4">
-                            <h3 className="text-white">Active Repository</h3>
-                            <span className="px-2 py-0.5 rounded-md bg-white/5 text-white/40">Showing {contacts.length} of {totalCount}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-white/20">Sort by</span>
-                            <select className="bg-transparent text-white/60 focus:outline-none cursor-pointer">
-                                <option>Recent</option>
-                                <option>A-Z</option>
-                            </select>
-                        </div>
-                    </div>
+                <div className="flex flex-col flex-1 min-h-0">
 
-                    <div className="bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-800 shadow-xl relative min-h-[500px]">
+                    <div className="bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-800 shadow-xl relative flex flex-col min-h-0 flex-1">
                         {isLoading && (
                             <div className="absolute inset-0 bg-black/60 backdrop-blur-[4px] z-50 flex items-center justify-center transition-all duration-500">
                                 <div className="flex flex-col items-center gap-3">
@@ -143,12 +116,11 @@ const Contacts = () => {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-12 gap-4 px-8 py-5 bg-zinc-900/20 text-[10px] font-black uppercase tracking-widest text-white/20 border-b border-zinc-800">
-                            <div className="col-span-4">Contact Detail</div>
-                            <div className="col-span-2 text-center">Status</div>
-                            <div className="col-span-3">Unique Identifier</div>
-                            <div className="col-span-2 text-right">Registered</div>
-                            <div className="col-span-1"></div>
+                        <div className="grid grid-cols-12 gap-4 px-8 py-5 bg-zinc-900/20 text-[10px] font-black uppercase tracking-widest text-white/20 border-b border-zinc-800 shrink-0">
+                            <div className="col-span-4">Name</div>
+                            <div className="col-span-4">Email</div>
+                            <div className="col-span-2">Phone</div>
+                            <div className="col-span-2 text-right">Actions</div>
                         </div>
 
                         {contacts.length === 0 && !isLoading ? (
@@ -157,52 +129,32 @@ const Contacts = () => {
                                 <p className="text-md font-bold text-white uppercase tracking-widest opacity-20">Repository Empty</p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-zinc-800">
+                            <div className="divide-y divide-zinc-800 overflow-y-auto custom-scrollbar flex-1">
                                 {contacts.map((contact) => (
-                                    <div key={contact.id} className="grid grid-cols-12 gap-4 px-6 py-5 hover:bg-white/[0.02] transition-colors items-center group cursor-pointer relative">
-                                        <div className="col-span-4 flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:border-blue-500/20 group-hover:bg-blue-500/5 group-hover:text-blue-400 transition-all font-bold">
+                                    <div key={contact.id} className="grid grid-cols-12 gap-4 px-8 py-4 hover:bg-white/[0.02] transition-colors items-center group cursor-pointer">
+                                        <div className="col-span-4 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:border-blue-500/20 group-hover:bg-blue-500/5 group-hover:text-blue-400 transition-all font-bold text-xs shrink-0">
                                                 {contact.name?.charAt(0).toUpperCase()}
                                             </div>
-                                            <div className="min-w-0">
-                                                <h4 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors truncate">{contact.name}</h4>
-                                                <div className="flex items-center gap-2 mt-0.5 opacity-40 group-hover:opacity-60 transition-opacity">
-                                                    <Mail size={10} />
-                                                    <span className="text-[10px] font-medium truncate">{contact.email || '—'}</span>
-                                                </div>
-                                            </div>
+                                            <span className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors truncate">{contact.name}</span>
                                         </div>
 
-                                        <div className="col-span-2 flex justify-center">
-                                            <span className={cn(
-                                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border",
-                                                contact.status === 'Customer' ? "bg-green-500/10 text-green-400 border-green-500/20" :
-                                                    contact.status === 'Lead' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
-                                                        "bg-white/5 text-white/40 border-white/10"
-                                            )}>
-                                                {contact.status}
-                                            </span>
+                                        <div className="col-span-4 flex items-center gap-2 text-white/40">
+                                            <Mail size={11} className="shrink-0" />
+                                            <span className="text-xs truncate">{contact.email || '—'}</span>
                                         </div>
 
-                                        <div className="col-span-3">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-bold text-white/60 tracking-tight">{contact.contact_id || 'CON-9999'}</span>
-                                                <div className="flex items-center gap-2 text-[10px] text-white/20 mt-0.5">
-                                                    <Phone size={10} />
-                                                    <span>{contact.phone || '—'}</span>
-                                                </div>
-                                            </div>
+                                        <div className="col-span-2 flex items-center gap-2 text-white/40">
+                                            <Phone size={11} className="shrink-0" />
+                                            <span className="text-xs truncate">{contact.phone || '—'}</span>
                                         </div>
 
-                                        <div className="col-span-2 text-right">
-                                            <p className="text-[10px] font-bold text-white/40">
-                                                {contact.created_at ? new Date(contact.created_at).toLocaleDateString() : 'Just now'}
-                                            </p>
-                                        </div>
-
-                                        <div className="col-span-1 text-right">
-                                            <button className="p-1.5 rounded-lg hover:bg-white/10 text-white/20 hover:text-white transition-colors">
-                                                <MoreHorizontal size={16} />
+                                        <div className="col-span-2 flex items-center justify-end gap-2">
+                                            <button className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/80 hover:text-blue-400 transition-colors" title="View">
+                                                <Eye size={14} />
+                                            </button>
+                                            <button className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-600/80 hover:text-red-400 transition-colors" title="Delete">
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     </div>
@@ -225,21 +177,26 @@ const Contacts = () => {
                                 </button>
 
                                 <div className="flex items-center px-2 gap-1">
-                                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                                        const pageNum = i + 1; // Simplistic for now
-                                        return (
-                                            <button
-                                                key={pageNum}
-                                                onClick={() => handlePageChange(pageNum)}
-                                                className={cn(
-                                                    "w-8 h-8 rounded-lg text-[10px] font-black transition-all",
-                                                    currentPage === pageNum ? "bg-white text-black" : "text-white/40 hover:bg-white/5"
-                                                )}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        );
-                                    })}
+                                    {(() => {
+                                        const delta = 2;
+                                        const start = Math.max(1, currentPage - delta);
+                                        const end = Math.min(totalPages, currentPage + delta);
+                                        return [...Array(end - start + 1)].map((_, i) => {
+                                            const pageNum = start + i;
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    onClick={() => handlePageChange(pageNum)}
+                                                    className={cn(
+                                                        "w-8 h-8 rounded-lg text-[10px] font-black transition-all",
+                                                        currentPage === pageNum ? "bg-white text-black" : "text-white/40 hover:bg-white/5"
+                                                    )}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        });
+                                    })()}
                                 </div>
 
                                 <button
