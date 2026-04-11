@@ -5,7 +5,7 @@
  * Org admins can manage their custom menus
  */
 import React, { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Filter, Search, Loader } from "lucide-react";
+import { Plus, Edit, Trash2, Filter, Search, Loader, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
