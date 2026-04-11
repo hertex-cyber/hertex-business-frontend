@@ -96,13 +96,10 @@ export default function AdminMenuForm() {
         order: formData.order,
         description: formData.description,
         is_active: formData.is_active,
-        organization: formData.organization,
-        required_product: formData.required_product,
+        organization: formData.organization || null,
+        required_product: formData.required_product || null,
+        type: formData.type || "CUSTOM",
       };
-
-      if (user?.role === "Superadmin") {
-        data.type = formData.type;
-      }
 
       const response = id
         ? await axios.patch(`/api/menus/${id}/`, data)
