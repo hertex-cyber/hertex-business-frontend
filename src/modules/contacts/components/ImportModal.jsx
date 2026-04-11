@@ -38,6 +38,7 @@ const BACKEND_STATUSES = ['Lead', 'Prospect', 'Customer', 'Inactive'];
 const ImportModal = ({ isOpen, onClose, onSuccess }) => {
     const [step, setStep] = useState(STEPS.UPLOAD);
     const [file, setFile] = useState(null);
+    const [importName, setImportName] = useState('');
     const [allHeaders, setAllHeaders] = useState([]);
     const [selectedHeaders, setSelectedHeaders] = useState([]);
     const [mapping, setMapping] = useState({});
@@ -51,6 +52,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
         if (!isOpen) {
             setStep(STEPS.UPLOAD);
             setFile(null);
+            setImportName('');
             setAllHeaders([]);
             setSelectedHeaders([]);
             setMapping({});
@@ -143,7 +145,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                 });
                 return { ...contact, additional_data: additional };
             }).filter(c => c.name);
-            await axios.post('/api/contacts/bulk-create/', transformedData);
+            await axios.post(`/api/contacts/bulk-create/?batch_name=${encodeURIComponent(importName || 'Unnamed Import')}`, transformedData);
             onSuccess();
         } catch (err) { setError('Import failed.'); }
         finally { setIsImporting(false); }
@@ -215,7 +217,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
 
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-zinc-950 outline-none ring-0 focus:outline-none">
-                    {step === STEPS.UPLOAD && <UploadStep fileInputRef={fileInputRef} onFileChange={handleFileChange} />}
+                    {step === STEPS.UPLOAD && <UploadStep fileInputRef={fileInputRef} onFileChange={handleFileChange} importName={importName} onImportNameChange={setImportName} />}
                     {step === STEPS.SELECT_COLS && <ColumnSelectStep allHeaders={allHeaders} selectedHeaders={selectedHeaders} onToggleHeader={toggleHeader} />}
                     {step === STEPS.MAP && (
                         <MappingStep
