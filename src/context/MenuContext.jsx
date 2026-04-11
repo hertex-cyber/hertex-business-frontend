@@ -48,17 +48,25 @@ export function MenuProvider({ children }) {
       setError(null);
 
       // Call backend endpoint to get user's visible menus
-      const response = await axios.get("/api/menus/my-menus/");
+      const response = await axios.get("/api/menus/my_menus/");
+      
+      console.log('[MenuContext] API Response:', response.data);
 
       if (response.data?.success) {
         const data = response.data.data;
+        console.log('[MenuContext] Sections:', data.sections);
+        console.log('[MenuContext] All Menus:', data.all_menus);
         setMenus(data.all_menus || []);
         setSections(data.sections || {});
       } else {
         throw new Error("Invalid response format from server");
       }
     } catch (err) {
-      console.error("[MenuContext] Failed to load menus:", err);
+      // Only log error if it's not a 404 (endpoint not yet implemented)
+      if (err.response?.status !== 404) {
+        console.error("[MenuContext] Failed to load menus:", err);
+        console.error("[MenuContext] Error response:", err.response?.data);
+      }
 
       // Set user-friendly error message
       const errorMsg =

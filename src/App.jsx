@@ -18,6 +18,7 @@ import Accounts from "./modules/accounts/pages/Accounts";
 import Media from "./modules/media/pages/Media";
 import LMS from "./modules/lms/pages/LMS";
 import Sales from "./modules/sales/pages/Sales";
+import Invoices from "./modules/invoice/components/InvoiceList";
 import Admin from "./modules/admin/pages/Admin";
 import {
   InvoiceList,
@@ -69,6 +70,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CRM />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contacts"
+              element={
+                <ProtectedRoute>
+                  <Contacts />
                 </ProtectedRoute>
               }
             />
@@ -125,6 +134,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Sales />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices"
+              element={
+                <ProtectedRoute>
+                  <Invoices />
                 </ProtectedRoute>
               }
             />
