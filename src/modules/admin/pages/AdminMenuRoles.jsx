@@ -13,13 +13,21 @@ export default function AdminMenuRoles() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchMenus = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/menus/");
+      const response = await axios.get("/api/menus/", {
+        params: { page: currentPage }
+      });
       if (response.data && response.data.results) {
         setMenus(response.data.results || []);
+        if (response.data.count) {
+          const pageSize = response.data.results.length > 0 ? (response.data.results.length >= 20 ? 20 : (response.data.count > response.data.results.length ? response.data.results.length : 20)) : 20;
+          setTotalPages(Math.ceil(response.data.count / (pageSize || 20)));
+        }
       } else if (Array.isArray(response.data)) {
         setMenus(response.data);
       }
@@ -32,14 +40,9 @@ export default function AdminMenuRoles() {
 
   useEffect(() => {
     fetchMenus();
-  }, []);
+  }, [currentPage]);
 
   const handleRoleToggle = async (menu, role) => {
-    // If not superadmin and it's a SYSTEM menu, return early
-    if (menu.type === "SYSTEM" && user?.role !== "Superadmin") {
-      alert("Only Superadmin can modify System menu roles.");
-      return;
-    }
     // If it's a Custom menu and user is not in the same org
     if (menu.type === "CUSTOM" && user?.organization && menu.organization !== user?.organization) {
       alert("You can only modify menus belonging to your organization.");
@@ -137,6 +140,9 @@ export default function AdminMenuRoles() {
                   <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-white/40">
                     Type
                   </th>
+                  <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-white/40">
+                    Status
+                  </th>
                   {AVAILABLE_ROLES.map((role) => (
                     <th key={role} className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-white/60">
                       {role}
@@ -146,7 +152,7 @@ export default function AdminMenuRoles() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {filteredMenus.map((menu) => {
-                  const canEdit = user?.role === "Superadmin" || (menu.type === "CUSTOM" && user?.role === "Admin" && menu.organization === user?.organization);
+                  const canEdit = user?.role === "Superadmin" || user?.role === "Admin";
                   
                   return (
                     <tr key={menu.id} className="hover:bg-white/[0.02] transition-colors">
@@ -157,6 +163,11 @@ export default function AdminMenuRoles() {
                       <td className="px-6 py-4 text-center text-xs font-medium">
                         <span className={`inline-block px-2 py-1 rounded ${menu.type === "SYSTEM" ? "bg-blue-500/10 text-blue-400" : "bg-emerald-500/10 text-emerald-400"}`}>
                           {menu.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center text-xs font-medium">
+                        <span className={`inline-block px-2 py-1 rounded ${menu.is_active ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
+                          {menu.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
                       {AVAILABLE_ROLES.map((role) => (
@@ -175,6 +186,28 @@ export default function AdminMenuRoles() {
                 })}
               </tbody>
             </table>
+            
+            {totalPages > 1 && (
+              <div className="flex gap-2 justify-end p-4 border-t border-white/10">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-white/60 text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -62,7 +62,10 @@ const Sidebar = () => {
                   .sort((a, b) => (a.order || 0) - (b.order || 0))
                   .map((item) => {
                     const Icon = getLucideIcon(item.icon);
-                    const isActive = location.pathname === item.href;
+                    let isActive = location.pathname === item.href;
+                    if (!isActive && item.href !== '/' && item.href !== '/dashboard') {
+                      isActive = location.pathname.startsWith(item.href + '/');
+                    }
 
                     return (
                       <Link

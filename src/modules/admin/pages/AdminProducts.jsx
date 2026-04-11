@@ -4,7 +4,7 @@
  * Superadmins only
  */
 import React, { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Search, Loader } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Loader, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -72,6 +72,13 @@ export default function AdminProducts() {
       {/* Header */}
       <header className="px-10 py-8 flex justify-between items-end border-b border-white/5">
         <div className="space-y-1">
+          <button
+            onClick={() => navigate("/admin")}
+            className="flex items-center gap-2 text-white/40 hover:text-white mb-4 transition-colors text-sm"
+          >
+            <ChevronLeft size={16} />
+            Back to Admin Panel
+          </button>
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
             📦 Management
           </div>

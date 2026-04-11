@@ -5,7 +5,7 @@
  * Org admins can manage their custom menus
  */
 import React, { useEffect, useState } from "react";
-import { Plus, Edit, Trash2, Filter, Search, Loader, Shield } from "lucide-react";
+import { Plus, Edit, Trash2, Filter, Search, Loader, Shield, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
@@ -18,19 +18,33 @@ export default function AdminMenus() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState("all"); // all, system, custom
-  const [sortBy, setSortBy] = useState("name"); // name, section, created
+  const [filterType, setFilterType] = useState("all"); 
+  const [sortBy, setSortBy] = useState("name"); 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Fetch menus
   const fetchMenus = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/menus/");
+      const response = await axios.get("/api/menus/", {
+        params: { page: currentPage }
+      });
       if (response.data && response.data.results) {
         setMenus(response.data.results || []);
+        if (response.data.count) {
+          // Default DRF pagination size is often 10 or 20, calculating total pages based on next/previous existance is safer, or assuming PAGE_SIZE
+          // We'll estimate based on returned array length if it's the first page
+          const pageSize = response.data.results.length > 0 ? (response.data.results.length >= 20 ? 20 : (response.data.count > response.data.results.length ? response.data.results.length : 20)) : 20;
+          setTotalPages(Math.ceil(response.data.count / (pageSize || 20)));
+          setTotalCount(response.data.count);
+        }
         setError(null);
       } else if (Array.isArray(response.data)) {
         setMenus(response.data);
+        setTotalPages(1);
+        setTotalCount(response.data.length);
         setError(null);
       } else {
         throw new Error("Invalid response format from server");
@@ -45,7 +59,7 @@ export default function AdminMenus() {
 
   useEffect(() => {
     fetchMenus();
-  }, []);
+  }, [currentPage]);
 
   // Filter and sort menus
   const filteredMenus = menus
@@ -98,6 +112,13 @@ export default function AdminMenus() {
       {/* Header */}
       <header className="px-10 py-8 flex justify-between items-end border-b border-white/5">
         <div className="space-y-1">
+          <button
+            onClick={() => navigate("/admin")}
+            className="flex items-center gap-2 text-white/40 hover:text-white mb-4 transition-colors text-sm"
+          >
+            <ChevronLeft size={16} />
+            Back to Admin Panel
+          </button>
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
             ⚙️ Management
           </div>
@@ -309,16 +330,34 @@ export default function AdminMenus() {
           </div>
         )}
 
-        {/* Stats */}
+        {/* Stats and Pagination */}
         {!loading && filteredMenus.length > 0 && (
-          <div className="mt-6 flex gap-4 text-sm text-white/40">
-            <span>Total: {filteredMenus.length} menus</span>
-            <span>
-              System: {filteredMenus.filter((m) => m.type === "SYSTEM").length}
-            </span>
-            <span>
-              Custom: {filteredMenus.filter((m) => m.type === "CUSTOM").length}
-            </span>
+          <div className="mt-6 flex items-center justify-between">
+            <div className="flex gap-4 text-sm text-white/40">
+              <span>Total items: {totalCount}</span>
+            </div>
+            
+            {totalPages > 1 && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-white/60 text-sm">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
