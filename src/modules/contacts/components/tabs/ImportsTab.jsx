@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FileInput, Calendar, Loader2, MoreVertical, Download, GitMerge, Trash2 } from 'lucide-react';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 const ImportsTab = ({ onViewBatch }) => {
     const [batches, setBatches] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [openMenu, setOpenMenu] = useState(null);
+    const [batchToDelete, setBatchToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         axios.get('/api/contacts/batches/')
@@ -13,6 +16,20 @@ const ImportsTab = ({ onViewBatch }) => {
             .catch(() => setBatches([]))
             .finally(() => setIsLoading(false));
     }, []);
+
+    const handleDeleteBatch = async () => {
+        if (!batchToDelete) return;
+        try {
+            setIsDeleting(true);
+            await axios.delete(`/api/contacts/batches/${batchToDelete.id}/`);
+            setBatches(prev => prev.filter(b => b.id !== batchToDelete.id));
+            setBatchToDelete(null);
+        } catch (err) {
+            console.error('Delete failed:', err);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     useEffect(() => {
         const handler = () => setOpenMenu(null);
@@ -37,6 +54,7 @@ const ImportsTab = ({ onViewBatch }) => {
     );
 
     return (
+        <>
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
             <div className="grid grid-cols-3 gap-4">
                 {batches.map(batch => (
@@ -67,7 +85,9 @@ const ImportsTab = ({ onViewBatch }) => {
                                             Export
                                         </button>
                                         <div className="my-1 border-t border-zinc-800" />
-                                        <button className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+                                        <button
+                                            onClick={() => { setBatchToDelete(batch); setOpenMenu(null); }}
+                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
                                             <Trash2 size={13} />
                                             Delete
                                         </button>
@@ -91,6 +111,16 @@ const ImportsTab = ({ onViewBatch }) => {
                 ))}
             </div>
         </div>
+
+        <ConfirmDeleteDialog
+            isOpen={!!batchToDelete}
+            title="Delete Import"
+            description={`This will permanently delete "${batchToDelete?.name}" and all ${batchToDelete?.contact_count} contacts within it.`}
+            isDeleting={isDeleting}
+            onConfirm={handleDeleteBatch}
+            onCancel={() => setBatchToDelete(null)}
+        />
+        </>
     );
 };
 

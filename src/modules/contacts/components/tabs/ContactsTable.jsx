@@ -2,12 +2,17 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { Users, Mail, Phone, Eye, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ContactDetailModal from '../ContactDetailModal';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 const ContactsTable = ({ batchId = null, batchName = null, onBack = null, searchQuery = '' }) => {
     const [contacts, setContacts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
+    const [selectedContact, setSelectedContact] = useState(null);
+    const [contactToDelete, setContactToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const pageSize = 100;
     const listRef = useRef(null);
 
@@ -41,9 +46,24 @@ const ContactsTable = ({ batchId = null, batchName = null, onBack = null, search
         listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const handleDelete = async () => {
+        if (!contactToDelete) return;
+        try {
+            setIsDeleting(true);
+            await axios.delete(`/api/contacts/${contactToDelete.id}/`);
+            setContacts(prev => prev.filter(c => c.id !== contactToDelete.id));
+            setContactToDelete(null);
+        } catch (err) {
+            console.error('Delete failed:', err);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const totalPages = Math.ceil(totalCount / pageSize);
 
     return (
+        <>
         <div className="flex flex-col flex-1 min-h-0 gap-4">
             {batchName && (
                 <div className="flex items-center justify-between">
@@ -101,10 +121,18 @@ const ContactsTable = ({ batchId = null, batchName = null, onBack = null, search
                                     <span className="text-xs truncate">{contact.phone || '—'}</span>
                                 </div>
                                 <div className="col-span-2 flex items-center justify-end gap-1">
-                                    <button className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors" title="View">
+                                    <button
+                                        className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors"
+                                        title="View"
+                                        onClick={() => setSelectedContact(contact)}
+                                    >
                                         <Eye size={14} />
                                     </button>
-                                    <button className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/20 hover:text-red-400 transition-colors" title="Delete">
+                                    <button
+                                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500/50 hover:text-red-400 transition-colors"
+                                        title="Delete"
+                                        onClick={() => setContactToDelete(contact)}
+                                    >
                                         <Trash2 size={14} />
                                     </button>
                                 </div>
@@ -146,6 +174,23 @@ const ContactsTable = ({ batchId = null, batchName = null, onBack = null, search
                 </div>
             </div>
         </div>
+
+        <ContactDetailModal
+            key={selectedContact?.id}
+            contact={selectedContact}
+            onClose={() => setSelectedContact(null)}
+            onDeleted={(id) => setContacts(prev => prev.filter(c => c.id !== id))}
+        />
+
+        <ConfirmDeleteDialog
+            isOpen={!!contactToDelete}
+            title="Delete Contact"
+            description={`Are you sure you want to delete ${contactToDelete?.name}? This action cannot be undone.`}
+            isDeleting={isDeleting}
+            onConfirm={handleDelete}
+            onCancel={() => setContactToDelete(null)}
+        />
+    </>
     );
 };
 
