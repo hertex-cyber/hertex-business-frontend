@@ -54,7 +54,7 @@ const AdminRoute = ({ children }) => {
   if (loading) return <div className="h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
 
-  const isAdmin = ['Admin', 'Manager'].includes(user.role) || user.is_staff;
+  const isAdmin = ['Superadmin', 'Admin'].includes(user.role) || user.is_superuser;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   return <Layout>{children}</Layout>;
