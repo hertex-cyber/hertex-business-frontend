@@ -58,7 +58,7 @@ const InvoiceList = () => {
             <option value="completed" className="bg-gray-900">Completed</option>
           </select>
         </div>
-        <Button variant="primary" onClick={() => navigate('/invoices/new')} className="w-auto px-5">
+        <Button variant="primary" onClick={() => navigate('/invoices/new')} className="w-auto px-3 py-1.5 text-xs">
           + New Invoice
         </Button>
       </div>
