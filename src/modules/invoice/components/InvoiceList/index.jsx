@@ -1,25 +1,43 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
-import Button from '@/components/Button';
 import { useInvoiceList } from '../../hooks/useInvoice';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
 import { formatINR } from '../../utils/gstUtils';
+import { useAuth } from '@/context/AuthContext';
+import ApproveModal from '../AdminPanel/ReviewDashboard/ApproveModal';
+import RejectModal from '../AdminPanel/ReviewDashboard/RejectModal';
 
 /**
  * Invoice list page — shows the current user's invoices with actions.
  */
 const InvoiceList = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = ['Superadmin', 'Admin'].includes(user?.role) || user?.is_superuser;
+
   const [filters, setFilters] = useState({ status: '', domain: '' });
   const { invoices, count, loading, error, refetch } = useInvoiceList(
     Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
   );
-  const { submitInvoice, downloadPDF, loading: actionLoading } = useInvoiceActions();
+  const { submitInvoice, approveInvoice, rejectInvoice, downloadPDF, loading: actionLoading } = useInvoiceActions();
+
+  const [approveTarget, setApproveTarget] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
 
   const handleSubmit = async (invoice) => {
     const result = await submitInvoice(invoice.id);
     if (result.success) refetch();
+  };
+
+  const handleApprove = async (id, note) => {
+    const result = await approveInvoice(id, note);
+    if (result.success) { setApproveTarget(null); refetch(); }
+  };
+
+  const handleReject = async (id, admin_remarks, note) => {
+    const result = await rejectInvoice(id, admin_remarks, note);
+    if (result.success) { setRejectTarget(null); refetch(); }
   };
 
   const handleDownload = (invoice) => {
@@ -58,9 +76,12 @@ const InvoiceList = () => {
             <option value="completed" className="bg-gray-900">Completed</option>
           </select>
         </div>
-        <Button variant="primary" onClick={() => navigate('/invoices/new')} className="w-auto px-3 py-1.5 text-xs">
+        <button
+          onClick={() => navigate('/invoices/new')}
+          className="text-sm px-5 py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-gray-100 transition-all"
+        >
           + New Invoice
-        </Button>
+        </button>
       </div>
 
       {/* Error */}
@@ -128,6 +149,23 @@ const InvoiceList = () => {
                   </>
                 )}
 
+                {invoice.status === 'pending' && isAdmin && (
+                  <>
+                    <button
+                      onClick={() => setApproveTarget(invoice)}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => setRejectTarget(invoice)}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+
                 {(invoice.status === 'approved' || invoice.status === 'completed') && (
                   <button
                     onClick={() => handleDownload(invoice)}
@@ -158,6 +196,23 @@ const InvoiceList = () => {
           </div>
         ))}
       </div>
+
+      {approveTarget && (
+        <ApproveModal
+          invoice={approveTarget}
+          onConfirm={handleApprove}
+          onCancel={() => setApproveTarget(null)}
+          loading={actionLoading}
+        />
+      )}
+      {rejectTarget && (
+        <RejectModal
+          invoice={rejectTarget}
+          onConfirm={handleReject}
+          onCancel={() => setRejectTarget(null)}
+          loading={actionLoading}
+        />
+      )}
     </div>
   );
 };
