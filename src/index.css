@@ -51,7 +51,7 @@ body {
     linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 100% 100%, 24px 24px, 24px 24px;
   background-attachment: fixed;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 @keyframes float {
@@ -81,12 +81,13 @@ body {
 }
 
 #root {
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .text-gradient {
   background: linear-gradient(to bottom right, #fff 40%, rgba(255, 255, 255, 0.4) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -110,6 +111,10 @@ body {
 }
 
 .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar-y::-webkit-scrollbar:vertical {
   display: none;
 }
 

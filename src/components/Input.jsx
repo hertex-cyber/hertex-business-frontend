@@ -11,7 +11,7 @@ const Input = ({ label, type = 'text', placeholder, ...props }) => {
       <input
         type={type}
         placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 bg-white/[0.03] border border-white/10 rounded-md text-sm text-white placeholder:text-white/20 outline-none transition-all duration-200 focus:bg-white/[0.05] focus:border-white/20"
+        className="w-full px-3.5 py-2.5 bg-white/[0.03] backdrop-blur-md border border-white/10 rounded-md text-sm text-white placeholder:text-white/20 outline-none transition-all duration-200 focus:bg-white/[0.05] focus:border-white/20"
         {...props}
       />
     </div>

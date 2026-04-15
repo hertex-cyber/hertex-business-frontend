@@ -26,19 +26,19 @@ const KanbanColumn = ({ column, cards }) => {
   };
 
   return (
-    <div className="flex flex-col gap-4 min-w-80 flex-shrink-0">
+    <div className="flex flex-col gap-3 min-w-72 flex-shrink-0">
       {/* Column Header */}
       <div className={cn(
-        'rounded-lg border p-4 bg-gradient-to-b',
+        'rounded-lg border p-3 bg-gradient-to-b',
         getColumnColor(column.id)
       )}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-white text-sm">{column.title}</h2>
+            <h2 className="font-bold text-white text-xs">{column.title}</h2>
             <p className="text-[9px] text-white/60 font-medium">{cards.length} deals</p>
           </div>
-          <button className="p-1.5 rounded hover:bg-white/10 transition-colors">
-            <Plus size={14} className="text-white/60 hover:text-white" />
+          <button className="p-1 rounded hover:bg-white/10 transition-colors">
+            <Plus size={12} className="text-white/60 hover:text-white" />
           </button>
         </div>
       </div>
@@ -47,7 +47,7 @@ const KanbanColumn = ({ column, cards }) => {
       <div
         ref={setNodeRef}
         className={cn(
-          'space-y-3 flex-1 rounded-lg p-4 min-h-[500px] transition-colors bg-white/5'
+          'space-y-2 flex-1 rounded-lg p-3 min-h-[400px] max-h-[calc(100vh-280px)] transition-colors bg-white/5 overflow-y-auto custom-scrollbar'
         )}
       >
         <SortableContext

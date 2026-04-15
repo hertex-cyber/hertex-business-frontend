@@ -1,77 +1,123 @@
 # ByteHive CRM Frontend - Design & Architecture
 
-This document outlines the technical architecture, design system, and coding patterns used in the ByteHive CRM frontend. It serves as a guide for developers and AI tools to understand the project's structure and aesthetic.
+This document outlines the core design system, visual philosophy, and component patterns that define the ByteHive "Industrial Instrument" aesthetic.
+
+## 🎨 Design Philosophy: "Industrial Instrument"
+
+ByteHive is designed to feel like a high-end, precision technical instrument rather than a generic web application. The aesthetic balances a minimalist dark mode with atmospheric depth and mechanical definition.
+
+### 🌌 Atmospheric Depth
+- **The Pitched Void**: The primary background is always a true **Black (#000000)**, but it is never a flat void.
+- **Structural Grid**: A fixed `radial-gradient` point grid (32px intervals) provides a subtle sense of scale and technical precision.
+- **Ambient Glow**: Soft, moving radial "blobs" in the background (using `blur-[120px]`) provide tactile depth and prevent visual fatigue.
+
+### 💡 Lighting Architecture: "Top-Down Illumination"
+- **Instrument Header**: Headers use a semi-transparent `bg-black/50` with high-intensity `backdrop-blur-xl`.
+- **Radial Lighting**: All primary page headers are illuminated from the top-center using a radial gradient that fades into the repository area.
+- **Micro-Glows**: Interactive elements (stats, buttons, rows) feature subtle blue or neutral glows on hover to simulate a digital "powered-on" state.
+
+### ⚙️ Materiality & Borders
+- **Mechanical Gray**: Primary data containers (Kanban stages, Repositories, Modals) use a solid **`bg-zinc-900/30`** background.
+- **Sharp Definition**: Borders are never "soft" or blurry. Use **`border-zinc-800`** for primary container definition and `border-white/5` for ultra-subtle internal dividers.
+- **Refined Glass**: Glassmorphism is used sparingly for overlays, typically with `bg-white/[0.02]` and `border-white/10`.
+
+---
 
 ## 🛠 Tech Stack
 - **Framework**: [React 19](https://react.dev/)
 - **Build Tool**: [Vite 8](https://vitejs.dev/)
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com/) (Customized for Industrial Dark)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Routing**: [React Router 7](https://reactrouter.com/)
-- **API Client**: [Axios](https://axios-http.com/)
+- **UI Components**: Custom-built with Radix/shadcn primitives
+- **Icons**: [Lucide React](https://lucide.dev/) (Thin/Normal weights only)
+
+---
+
+## 📐 Layout Architecture
+
+### Standard Spacing Scale
+| Element | Spacing |
+|---------|---------|
+| Page padding | `px-10 py-8` |
+| Section gap | `space-y-10` or `gap-8` |
+| Card grid gap | `gap-6` |
+| Card internal padding | `p-6` |
+| Button groups | `gap-4` |
+
+### The Unified Header (Standard Pattern)
+```jsx
+<header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
+  {/* Left: Component Identity */}
+  {/* Right: Action Toolbar (Search Refinement / CTEs) */}
+</header>
+```
+
+---
+
+## 🎭 Color System
+
+### Technical Base
+```css
+--background: #000000       /* Deep Field */
+--instrument: #18181b       /* zinc-900 - Technical container base */
+--material: #27272a         /* zinc-800 - Borders and dividers */
+--accent: #3b82f6           /* blue-500 - Operational primary color */
+```
+
+### High-Density Transparency Scale
+| Token | usage |
+|-------|-------|
+| `zinc-900/30` | Standard Mechanical Background |
+| `white/10` | Interactive Hover States |
+| `white/40` | Tertiary Labels / Muted Meta-data |
+| `white/60` | Body Text / Primary Labels |
+
+### Global Status Indicators
+| Status | Accent |
+|--------|-------|
+| **Live/Primary** | `blue-500` |
+| **Success** | `green-500` |
+| **Warning** | `amber-500` |
+| **Critical** | `red-500` |
+
+---
+
+## 🧩 Component Blueprints
+
+### The Technical Repository (Table/Grid)
+Repositories must be house in a visible, minimum-height container to anchor the page.
+- **Base Style**: `bg-zinc-900/30 border border-zinc-800 rounded-xl shadow-xl min-h-[500px]`
+- **Row Style**: `hover:bg-white/[0.02] transition-all duration-300 border-b border-zinc-800`
+
+### Interactive Stat Cards
+- **Base Style**: `p-6 bg-zinc-900/30 border border-zinc-800 rounded-2xl`
+- **Animation**: Subtle scale up (`hover:scale-[1.02]`) and color shift for icon containers.
+
+### High-Capacity Buttons
+- **Primary Action**: Blue background, text-[10px], rounded-lg, tracking-widest, font-black.
+- **Secondary Tool**: `bg-zinc-900/30` with subtle zinc borders, strictly `!w-auto`.
+
+---
+
+## 📋 Operational Design Checklist
+
+Every new feature must satisfy:
+- [ ] Does it use the **Pitched Void** (#000000) as the base?
+- [ ] Are primary containers using the **`bg-zinc-900/30`** / **`border-zinc-800`** material combo?
+- [ ] Is the header using **`backdrop-blur-xl`** and anchored with a zinc-800 border?
+- [ ] Are badges and labels following the **Industrial Typography** (Upper case + Wide tracking)?
+- [ ] Does the page feel like a specific **Technical Instrument** (high scannability, no fluff)?
+
+---
 
 ## 🏗 Architecture: Domain-Driven Modular Structure
-The project uses a **Domain-Driven Modular Structure**. Instead of grouping by technical type (e.g., all pages in one folder, all components in another), files are grouped by their functional domain (module) under `src/modules/`.
 
-### Folder Structure Overview
 ```text
 src/
-├── components/          # Shared global UI components (Layout, Sidebar, etc.)
-│   └── ui/              # shadcn/ui primitive components
-├── context/             # Global state (AuthContext, etc.)
-├── lib/                 # Utility functions (cn, axios config)
-├── modules/             # Domain-specific modules
-│   ├── auth/            # Login, Registration, Password recovery
-│   │   ├── components/
-│   │   └── pages/
-│   ├── dashboard/       # Main overview and system metrics
-│   ├── crm/             # Customer Relationship Management
-│   ├── inventory/       # Stock and product management
-│   └── ... (hr, sales, accounts, admin, etc.)
-├── App.jsx              # Main router and provider setup
-└── index.css            # Global styles and design tokens
+├── components/             # Global primitives (Buttons, Inputs, Shell)
+├── context/                # Global state (Auth, Notification)
+├── modules/
+│   ├── crm/                # Pipeline/Deals domain
+│   ├── contacts/           # Repository/Ingestion domain
+│   ├── invoice/            # Financial/PDF domain
+│   └── ...                 # Future modules
 ```
-
-## 🎨 Design System: "Industrial Dark"
-The application follows a premium, minimalist **Industrial Dark** aesthetic. It is designed to feel high-end, precise, and professional.
-
-### Color Palette (CSS Variables in index.css)
-- **Background**: `#000000` (Pure Black)
-- **Foreground**: `#FAFAFA` (High-contrast White)
-- **Borders**: `white/5` (`rgba(255, 255, 255, 0.05)`) for an ultra-thin, subtle feel.
-- **Accents**: `blue-500` (`#3b82f6`) used sparingly for focus, live status indicators, and primary actions.
-- **Cards**: `white/[0.02]` background with `white/5` borders.
-
-### Styling Patterns
-- **Glows**: Subtle radial gradients (`white/5`) are used for depth without adding clutter.
-- **Typography**: Uses the `Inter` variable font for high legibility and an industrial look.
-- **Scrollbars**: Minimalist custom scrollbars (`4px` width, semi-transparent thumb) to avoid breaking the "single-screen" feel.
-- **Transitions**: All interactive elements (buttons, links) use a `duration-200` transition for a smooth, high-quality experience.
-
-## ⚙️ Key Patterns & Guidelines
-
-### 1. Component Imports
-Use the `@/` path alias for all imports to maintain clean and robust paths:
-```javascript
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/context/AuthContext';
-```
-
-### 2. Styling with `cn()`
-Always use the `cn()` utility for conditional class merging:
-```javascript
-import { cn } from '@/lib/utils';
-<div className={cn("base-style", isActive && "active-style")}>
-```
-
-### 3. API & Authentication
-- **Axios Config**: Configured in [AuthContext.jsx](file:///c:/Users/MY%20PC/bytehive/crm/src/context/AuthContext.jsx) with `withCredentials: true` and CSRF header handling.
-- **Protected Routes**: Wrap all internal module routes in the `<ProtectedRoute>` component in [App.jsx](file:///c:/Users/MY%20PC/bytehive/crm/src/App.jsx).
-
-### 4. Modular Development
-When adding a new feature:
-1. Create a new folder under `src/modules/[feature]`.
-2. Add a `pages/` and `components/` subfolder.
-3. Define the main view in `pages/` and extract reusable logic into `components/`.
-4. Register the new route in `App.jsx`.
