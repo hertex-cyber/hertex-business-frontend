@@ -11,6 +11,7 @@
 export { default as InvoiceList }          from './components/InvoiceList';
 export { default as InvoiceDetail }        from './components/InvoiceDetail';
 export { default as InvoiceForm }          from './components/InvoiceForm';
+export { default as InvoiceCreatePage }    from './pages/InvoiceCreatePage';
 export { default as ReviewDashboard }      from './components/AdminPanel/ReviewDashboard';
 export { default as CompanyProfileAdmin }  from './components/AdminPanel/CompanyProfile';
 
