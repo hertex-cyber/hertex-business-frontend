@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
-import SupplyTypeSelector from './SupplyTypeSelector';
-import DynamicFields from './DynamicFields';
-import LineItemsTable, { EMPTY_ITEM } from './LineItemsTable';
-import GSTSummary from './GSTSummary';
 import { useInvoiceSchemas } from '../../hooks/useInvoiceSchema';
-import { useGSTCalculator } from '../../hooks/useGSTCalculator';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
+
+const GST_RATES = [0, 5, 12, 18, 28];
+const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Cheque', 'Other'];
 
 const DEFAULT_FORM = {
   domain: '',
@@ -23,23 +21,25 @@ const DEFAULT_FORM = {
   currency: 'INR',
   notes: '',
   due_date: '',
-  extra_data: {},
-  line_items: [EMPTY_ITEM()],
+  extra_data: {
+    cost_per_adult: '',
+    gst_rate: '0',
+    payment_method: '',
+    advance_amount: '',
+    additional_services: [],
+  },
+  line_items: [],
 };
 
-/**
- * Main invoice creation / edit form.
- * Fetches InvoiceSchemas to populate domain selector and render extra_data fields.
- *
- * @param {Object}   [invoice]    - existing invoice for edit mode
- * @param {Function} [onSuccess]  - called with saved invoice on success
- */
+const fmt = (n) =>
+  n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const InvoiceForm = ({ invoice = null, onSuccess }) => {
   const navigate = useNavigate();
   const isEdit = !!invoice;
 
   const { schemas, loading: schemasLoading } = useInvoiceSchemas();
-  const { createInvoice, updateInvoice, loading, error } = useInvoiceActions();
+  const { createInvoice, updateInvoice, loading } = useInvoiceActions();
 
   const [form, setForm] = useState(() => {
     if (invoice) {
@@ -47,16 +47,11 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
         ...DEFAULT_FORM,
         ...invoice,
         schema: invoice.schema?.id || invoice.schema,
-        line_items: invoice.line_items?.length
-          ? invoice.line_items.map((li) => ({
-              description: li.description,
-              hsn_sac_code: li.hsn_sac_code || '',
-              quantity: li.quantity,
-              unit_price: li.unit_price,
-              gst_rate: li.gst_rate,
-              order: li.order,
-            }))
-          : [EMPTY_ITEM()],
+        extra_data: {
+          ...DEFAULT_FORM.extra_data,
+          ...invoice.extra_data,
+          additional_services: invoice.extra_data?.additional_services || [],
+        },
       };
     }
     return DEFAULT_FORM;
@@ -65,43 +60,97 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
   const [submitError, setSubmitError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // Live GST calculation
-  const { totals } = useGSTCalculator(form.line_items, form.supply_type, form.discount_amount);
-
-  // Auto-select domain when schemas load
   useEffect(() => {
     if (!form.domain && schemas.length > 0) {
-      const first = schemas[0];
-      setForm((f) => ({ ...f, domain: first.domain, schema: first.id }));
+      const ta = schemas.find((s) => s.domain === 'travel_agency') || schemas[0];
+      setForm((f) => ({ ...f, domain: ta.domain, schema: ta.id }));
     }
   }, [schemas]);
 
-  const selectedSchema = schemas.find((s) => s.domain === form.domain);
-
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
 
-  const handleDomainChange = (e) => {
-    const schema = schemas.find((s) => s.domain === e.target.value);
-    setForm((f) => ({
-      ...f,
-      domain: e.target.value,
-      schema: schema?.id || '',
-      extra_data: {},
-    }));
-  };
-
-  const handleExtraDataChange = (name, value) => {
+  const setExtra = (name, value) =>
     setForm((f) => ({ ...f, extra_data: { ...f.extra_data, [name]: value } }));
+
+  // ---- Additional services helpers ----
+  const addService = () =>
+    setExtra('additional_services', [
+      ...(form.extra_data.additional_services || []),
+      { description: '', amount: '' },
+    ]);
+
+  const updateService = (idx, field, value) => {
+    const updated = [...(form.extra_data.additional_services || [])];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setExtra('additional_services', updated);
   };
 
+  const removeService = (idx) => {
+    const updated = (form.extra_data.additional_services || []).filter((_, i) => i !== idx);
+    setExtra('additional_services', updated);
+  };
+
+  // ---- Live computed values ----
+  const adults       = parseInt(form.extra_data.adults) || 0;
+  const costPerAdult = parseFloat(form.extra_data.cost_per_adult) || 0;
+  const packageCost  = adults * costPerAdult;
+
+  const additionalTotal = (form.extra_data.additional_services || []).reduce(
+    (sum, s) => sum + (parseFloat(s.amount) || 0),
+    0,
+  );
+
+  const subtotal    = packageCost + additionalTotal;
+  const gstRate     = parseFloat(form.extra_data.gst_rate) || 0;
+  const gstAmount   = parseFloat(((subtotal * gstRate) / 100).toFixed(2));
+  const grandTotal  = subtotal + gstAmount;
+  const advance     = parseFloat(form.extra_data.advance_amount) || 0;
+  const balance     = grandTotal - advance;
+
+  // ---- Submit ----
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError('');
     setFieldErrors({});
 
+    // Build line items automatically
+    const lineItems = [];
+    if (costPerAdult > 0) {
+      lineItems.push({
+        description: 'Tour Package Cost per Adult',
+        hsn_sac_code: '',
+        quantity: adults || 1,
+        unit_price: costPerAdult,
+        gst_rate: gstRate,
+        order: 0,
+      });
+    }
+    (form.extra_data.additional_services || []).forEach((s, idx) => {
+      if (parseFloat(s.amount) > 0) {
+        lineItems.push({
+          description: s.description || 'Additional Services',
+          hsn_sac_code: '',
+          quantity: 1,
+          unit_price: parseFloat(s.amount),
+          gst_rate: 0,
+          order: idx + 1,
+        });
+      }
+    });
+
+    if (lineItems.length === 0) {
+      setSubmitError('Please enter at least a cost per adult.');
+      return;
+    }
+
     const payload = {
       ...form,
-      line_items: form.line_items.map((li, idx) => ({ ...li, order: idx })),
+      due_date: form.due_date || null,
+      line_items: lineItems,
+      extra_data: {
+        ...form.extra_data,
+        balance_payable: balance.toFixed(2),
+      },
     };
 
     const result = isEdit
@@ -109,11 +158,7 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
       : await createInvoice(payload);
 
     if (result.success) {
-      if (onSuccess) {
-        onSuccess(result.data);
-      } else {
-        navigate('/invoices');
-      }
+      onSuccess ? onSuccess(result.data) : navigate('/invoices');
     } else {
       setSubmitError(result.message);
       if (result.errors) setFieldErrors(result.errors);
@@ -130,37 +175,14 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* ---- Global error ---- */}
+
       {submitError && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
           {submitError}
         </div>
       )}
 
-      {/* ---- Domain Selector ---- */}
-      <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-white/80">Invoice Domain</h2>
-        <div>
-          <label className="text-xs font-medium text-white/60 block mb-1.5 uppercase tracking-wider">
-            Domain *
-          </label>
-          <select
-            className="w-full bg-white/[0.04] border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none focus:border-white/30 focus:bg-white/[0.06] transition-all"
-            value={form.domain}
-            onChange={handleDomainChange}
-            required
-          >
-            <option value="" disabled className="bg-gray-900">Select domain…</option>
-            {schemas.map((s) => (
-              <option key={s.domain} value={s.domain} className="bg-gray-900">
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* ---- Client Info ---- */}
+      {/* ---- Client Details ---- */}
       <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-4">
         <h2 className="text-sm font-semibold text-white/80">Client Details</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -179,6 +201,20 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
             value={form.client_email}
             onChange={(e) => set('client_email', e.target.value)}
           />
+          <Input
+            label="Mobile Number"
+            type="tel"
+            placeholder="+91 98765 43210"
+            value={form.extra_data.client_contact || ''}
+            onChange={(e) => setExtra('client_contact', e.target.value)}
+          />
+          <Input
+            label="Booking Reference"
+            type="text"
+            placeholder="e.g. LKD/2026/15MAY"
+            value={form.extra_data.booking_reference || ''}
+            onChange={(e) => setExtra('booking_reference', e.target.value)}
+          />
           <div className="md:col-span-2">
             <label className="text-xs font-medium text-white/60 block mb-1.5 uppercase tracking-wider">
               Client Address
@@ -191,74 +227,280 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
               onChange={(e) => set('client_address', e.target.value)}
             />
           </div>
-          <Input
-            label="Client GSTIN"
-            type="text"
-            placeholder="22AAAAA0000A1Z5"
-            value={form.client_gstin}
-            onChange={(e) => set('client_gstin', e.target.value.toUpperCase())}
-          />
-          <Input
-            label="Due Date"
-            type="date"
-            value={form.due_date}
-            onChange={(e) => set('due_date', e.target.value)}
-          />
         </div>
       </div>
 
-      {/* ---- GST Settings ---- */}
+      {/* ---- Package Details ---- */}
       <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-white/80">GST Settings</h2>
-        <SupplyTypeSelector
-          value={form.supply_type}
-          onChange={(v) => set('supply_type', v)}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <h2 className="text-sm font-semibold text-white/80">Package Details</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
-            label="Place of Supply"
+            label="From"
             type="text"
-            placeholder="Kerala / KL"
-            value={form.place_of_supply}
-            onChange={(e) => set('place_of_supply', e.target.value)}
+            placeholder="Departure city / airport"
+            value={form.extra_data.from_location || ''}
+            onChange={(e) => setExtra('from_location', e.target.value)}
           />
           <Input
-            label="Discount Amount (₹)"
+            label="To (Destination)"
+            type="text"
+            placeholder="e.g. Lakshadweep"
+            value={form.extra_data.destination || ''}
+            onChange={(e) => setExtra('destination', e.target.value)}
+          />
+          <Input
+            label="Nights"
             type="number"
             min="0"
-            step="0.01"
-            placeholder="0.00"
-            value={form.discount_amount}
-            onChange={(e) => set('discount_amount', e.target.value)}
+            placeholder="3"
+            value={form.extra_data.nights || ''}
+            onChange={(e) => setExtra('nights', e.target.value)}
+          />
+          <Input
+            label="Days"
+            type="number"
+            min="0"
+            placeholder="4"
+            value={form.extra_data.days || ''}
+            onChange={(e) => setExtra('days', e.target.value)}
+          />
+          <Input
+            label="Travel Date (From)"
+            type="date"
+            value={form.extra_data.travel_from || ''}
+            onChange={(e) => setExtra('travel_from', e.target.value)}
+          />
+          <Input
+            label="Travel Date (To)"
+            type="date"
+            value={form.extra_data.travel_to || ''}
+            onChange={(e) => setExtra('travel_to', e.target.value)}
+          />
+          <Input
+            label="Adults"
+            type="number"
+            min="0"
+            placeholder="2"
+            value={form.extra_data.adults || ''}
+            onChange={(e) => setExtra('adults', e.target.value)}
+          />
+          <Input
+            label="Children"
+            type="number"
+            min="0"
+            placeholder="0"
+            value={form.extra_data.children || ''}
+            onChange={(e) => setExtra('children', e.target.value)}
+          />
+          <Input
+            label="Package Type"
+            type="text"
+            placeholder="e.g. Deluxe"
+            value={form.extra_data.package_type || ''}
+            onChange={(e) => setExtra('package_type', e.target.value)}
+          />
+          <Input
+            label="Meal Plan"
+            type="text"
+            placeholder="e.g. MAPAI (Breakfast & Dinner)"
+            value={form.extra_data.meal_plan || ''}
+            onChange={(e) => setExtra('meal_plan', e.target.value)}
           />
         </div>
       </div>
 
-      {/* ---- Domain Extra Fields ---- */}
-      {selectedSchema?.extra_fields?.length > 0 && (
-        <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6">
-          <DynamicFields
-            extraFields={selectedSchema.extra_fields}
-            values={form.extra_data}
-            onChange={handleExtraDataChange}
-          />
-        </div>
-      )}
+      {/* ---- Cost Breakdown ---- */}
+      <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-white/80">Cost Breakdown</h2>
 
-      {/* ---- Line Items ---- */}
-      <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6">
-        <LineItemsTable
-          items={form.line_items}
-          onChange={(items) => set('line_items', items)}
-          supplyType={form.supply_type}
-        />
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10 text-xs text-white/40 uppercase tracking-wider">
+                <th className="text-left pb-3 pr-4">Particulars</th>
+                <th className="text-center pb-3 px-3 w-16">Qty</th>
+                <th className="text-right pb-3 px-3 w-36">Rate (₹)</th>
+                <th className="text-right pb-3 pl-3 w-36">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-white/80">
+
+              {/* Tour Package Cost per Adult */}
+              <tr>
+                <td className="py-3 pr-4">Tour Package Cost per Adult</td>
+                <td className="py-3 px-3 text-center text-white/50">
+                  {adults || <span className="text-white/20">—</span>}
+                </td>
+                <td className="py-3 px-3">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm text-right focus:outline-none focus:border-white/30"
+                    value={form.extra_data.cost_per_adult || ''}
+                    onChange={(e) => setExtra('cost_per_adult', e.target.value)}
+                  />
+                </td>
+                <td className="py-3 pl-3 text-right font-medium">
+                  {packageCost > 0 ? fmt(packageCost) : <span className="text-white/20">—</span>}
+                </td>
+              </tr>
+
+              {/* Additional services */}
+              {(form.extra_data.additional_services || []).map((svc, idx) => (
+                <tr key={idx}>
+                  <td className="py-3 pr-4">
+                    <input
+                      type="text"
+                      placeholder="Service description"
+                      className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-white/30"
+                      value={svc.description}
+                      onChange={(e) => updateService(idx, 'description', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-3 px-3 text-center text-white/30">—</td>
+                  <td className="py-3 px-3 text-center text-white/30">—</td>
+                  <td className="py-3 pl-3 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm text-right focus:outline-none focus:border-white/30"
+                      value={svc.amount}
+                      onChange={(e) => updateService(idx, 'amount', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeService(idx)}
+                      className="text-red-400/60 hover:text-red-400 text-lg leading-none shrink-0"
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {/* Subtotal */}
+              <tr className="border-t border-white/10">
+                <td colSpan={3} className="py-3 pr-4 font-semibold">Subtotal</td>
+                <td className="py-3 pl-3 text-right font-semibold">
+                  {subtotal > 0 ? fmt(subtotal) : <span className="text-white/20">—</span>}
+                </td>
+              </tr>
+
+              {/* GST */}
+              <tr>
+                <td className="py-3 pr-4 text-white/60">
+                  GST
+                  <select
+                    className="ml-2 bg-white/[0.05] border border-white/10 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-white/30"
+                    value={form.extra_data.gst_rate || '0'}
+                    onChange={(e) => setExtra('gst_rate', e.target.value)}
+                  >
+                    {GST_RATES.map((r) => (
+                      <option key={r} value={r} className="bg-gray-900">{r}%</option>
+                    ))}
+                  </select>
+                </td>
+                <td colSpan={2} className="py-3 px-3 text-right text-white/40 text-xs">
+                  {gstRate > 0 && subtotal > 0 ? `${gstRate}% of ${fmt(subtotal)}` : ''}
+                </td>
+                <td className="py-3 pl-3 text-right">
+                  {gstAmount > 0 ? fmt(gstAmount) : <span className="text-white/20">—</span>}
+                </td>
+              </tr>
+
+              {/* Grand Total */}
+              <tr className="border-t border-white/20 text-white font-bold">
+                <td colSpan={3} className="py-3 pr-4">Total Package Value</td>
+                <td className="py-3 pl-3 text-right">
+                  {grandTotal > 0 ? fmt(grandTotal) : <span className="text-white/20">—</span>}
+                </td>
+              </tr>
+
+              {/* Advance Amount */}
+              <tr>
+                <td className="py-3 pr-4">Advance Amount Received</td>
+                <td colSpan={2} className="py-3 px-3">
+                  <select
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-white/30"
+                    value={form.extra_data.payment_method || ''}
+                    onChange={(e) => setExtra('payment_method', e.target.value)}
+                  >
+                    <option value="" className="bg-gray-900">Payment Method</option>
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m} value={m} className="bg-gray-900">{m}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="py-3 pl-3">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm text-right focus:outline-none focus:border-white/30"
+                    value={form.extra_data.advance_amount || ''}
+                    onChange={(e) => setExtra('advance_amount', e.target.value)}
+                  />
+                </td>
+              </tr>
+
+              {/* Payment Status & Date */}
+              <tr>
+                <td className="py-3 pr-4 text-white/60">Payment Status</td>
+                <td colSpan={2} className="py-3 px-3">
+                  <select
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-white/30"
+                    value={form.extra_data.payment_status || ''}
+                    onChange={(e) => setExtra('payment_status', e.target.value)}
+                  >
+                    <option value="" className="bg-gray-900">Select status</option>
+                    <option value="Advance Paid" className="bg-gray-900">Advance Paid</option>
+                    <option value="Fully Paid" className="bg-gray-900">Fully Paid</option>
+                    <option value="Pending" className="bg-gray-900">Pending</option>
+                  </select>
+                </td>
+                <td className="py-3 pl-3">
+                  <input
+                    type="date"
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-white/30"
+                    value={form.extra_data.payment_date || ''}
+                    onChange={(e) => setExtra('payment_date', e.target.value)}
+                  />
+                </td>
+              </tr>
+
+              {/* Balance Payable */}
+              <tr className="border-t border-white/10">
+                <td colSpan={3} className="py-3 pr-4 text-white/70">
+                  Balance Payable
+                  <span className="ml-2 text-white/30 text-xs">(Due 10 Days Before Check-in)</span>
+                </td>
+                <td className={`py-3 pl-3 text-right font-semibold ${balance > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {grandTotal > 0 ? fmt(balance) : <span className="text-white/20">—</span>}
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        {/* Add additional service row */}
+        <button
+          type="button"
+          onClick={addService}
+          className="text-xs text-white/40 hover:text-white/70 border border-dashed border-white/10 hover:border-white/20 rounded-lg px-4 py-2 transition-all w-full"
+        >
+          + Add Additional Service
+        </button>
+
         {fieldErrors.line_items && (
-          <p className="mt-2 text-xs text-red-400">{fieldErrors.line_items}</p>
+          <p className="text-xs text-red-400">{fieldErrors.line_items}</p>
         )}
       </div>
-
-      {/* ---- GST Summary ---- */}
-      <GSTSummary totals={totals} supplyType={form.supply_type} currency={form.currency} />
 
       {/* ---- Notes ---- */}
       <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-2">
@@ -275,19 +517,20 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
       </div>
 
       {/* ---- Actions ---- */}
-      <div className="flex gap-3">
-        <Button variant="primary" type="submit" disabled={loading} className="flex-1 py-3">
+      <div className="flex gap-3 justify-end">
+        <Button variant="primary" type="submit" disabled={loading} className="!w-auto">
           {loading ? 'Saving…' : isEdit ? 'Update Invoice' : 'Save as Draft'}
         </Button>
         <Button
           variant="secondary"
           type="button"
-          className="flex-1 py-3"
+          className="!w-auto"
           onClick={() => navigate('/invoices')}
         >
           Cancel
         </Button>
       </div>
+
     </form>
   );
 };
