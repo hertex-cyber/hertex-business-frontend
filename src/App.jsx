@@ -19,6 +19,7 @@ import Media from "./modules/media/pages/Media";
 import LMS from "./modules/lms/pages/LMS";
 import Sales from "./modules/sales/pages/Sales";
 import Admin from "./modules/admin/pages/Admin";
+import AdminUsers from "./modules/admin/pages/AdminUsers";
 import AdminMenus from "./modules/admin/pages/AdminMenus";
 import AdminMenuForm from "./modules/admin/pages/AdminMenuForm";
 import AdminMenuRoles from "./modules/admin/pages/AdminMenuRoles";
@@ -51,10 +52,16 @@ const ProtectedRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <div className="h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
+  if (loading)
+    return (
+      <div className="h-screen bg-black flex items-center justify-center text-white">
+        Loading...
+      </div>
+    );
   if (!user) return <Navigate to="/login" replace />;
 
-  const isAdmin = ['Superadmin', 'Admin'].includes(user.role) || user.is_superuser;
+  const isAdmin =
+    ["Superadmin", "Admin"].includes(user.role) || user.is_superuser;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   return <Layout>{children}</Layout>;
@@ -155,12 +162,17 @@ function App() {
             />
 
             {/* Invoice routes */}
-            <Route path="/invoice" element={<Navigate to="/invoices" replace />} />
+            <Route
+              path="/invoice"
+              element={<Navigate to="/invoices" replace />}
+            />
             <Route
               path="/invoices"
               element={
                 <ProtectedRoute>
-                  <div className="p-8"><InvoiceList /></div>
+                  <div className="p-8">
+                    <InvoiceList />
+                  </div>
                 </ProtectedRoute>
               }
             />
@@ -176,7 +188,9 @@ function App() {
               path="/invoices/:id"
               element={
                 <ProtectedRoute>
-                  <div className="p-8"><InvoiceDetail /></div>
+                  <div className="p-8">
+                    <InvoiceDetail />
+                  </div>
                 </ProtectedRoute>
               }
             />
@@ -196,6 +210,14 @@ function App() {
                 <ProtectedRoute>
                   <Admin />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <AdminRoute>
+                  <AdminUsers />
+                </AdminRoute>
               }
             />
             <Route
@@ -250,7 +272,9 @@ function App() {
               path="/admin/invoices"
               element={
                 <AdminRoute>
-                  <div className="p-8"><ReviewDashboard /></div>
+                  <div className="p-8">
+                    <ReviewDashboard />
+                  </div>
                 </AdminRoute>
               }
             />
@@ -258,7 +282,9 @@ function App() {
               path="/admin/company-profile"
               element={
                 <AdminRoute>
-                  <div className="p-8"><CompanyProfileAdmin /></div>
+                  <div className="p-8">
+                    <CompanyProfileAdmin />
+                  </div>
                 </AdminRoute>
               }
             />
