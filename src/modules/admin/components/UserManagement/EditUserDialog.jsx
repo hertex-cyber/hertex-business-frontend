@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { Save, X, User, Phone, Shield } from "lucide-react";
-import Input from "../../../../../components/Input";
+import Input from "../../../../components/Input";
 
 const EditUserDialog = ({ user, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({

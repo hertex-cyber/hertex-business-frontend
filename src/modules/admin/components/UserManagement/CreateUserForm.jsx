@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { Mail, Lock, User, Phone, Users, Shield } from "lucide-react";
-import Input from "../../../../../components/Input";
+import Input from "../../../../components/Input";
 
 const CreateUserForm = ({ onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect } from "react";
-import { useAuditLog } from "../hooks/useUsers";
+import { useAuditLog } from "../../hooks/useUsers";
 import {
   Activity,
   CheckCircle,

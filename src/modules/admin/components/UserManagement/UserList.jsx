@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { People, Plus, Search, Filter, Download } from "lucide-react";
-import { useUsers, useAuditLog } from "../hooks/useUsers";
+import { Users, Plus, Search, Filter, Download } from "lucide-react";
+import { useUsers, useAuditLog } from "../../hooks/useUsers";
 import UserTable from "./UserTable";
 import CreateUserForm from "./CreateUserForm";
 import EditUserDialog from "./EditUserDialog";
@@ -13,7 +13,7 @@ import UserDetail from "./UserDetail";
 import AuditLog from "./AuditLog";
 import UserFilters from "./UserFilters";
 import BulkActions from "./BulkActions";
-import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
+import ConfirmDeleteDialog from "../../../../components/ConfirmDeleteDialog";
 
 const UserList = () => {
   const {
@@ -127,7 +127,7 @@ const UserList = () => {
       <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
-            <People className="w-8 h-8 text-blue-500" />
+            <Users className="w-8 h-8 text-blue-500" />
             User Management
           </h1>
           <p className="text-white/40 text-sm mt-1">
