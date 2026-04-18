@@ -5,8 +5,10 @@ import { useInvoiceList } from '../../hooks/useInvoice';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
 import { formatINR } from '../../utils/gstUtils';
 import { useAuth } from '@/context/AuthContext';
+import { useCompanyProfile } from '../../hooks/useCompanyProfile';
 import ApproveModal from '../AdminPanel/ReviewDashboard/ApproveModal';
 import RejectModal from '../AdminPanel/ReviewDashboard/RejectModal';
+import SignatureUploadModal from '../AdminPanel/CompanyProfile/SignatureUploadModal';
 
 /**
  * Invoice list page — shows the current user's invoices with actions.
@@ -15,6 +17,9 @@ const InvoiceList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = ['Superadmin', 'Admin'].includes(user?.role) || user?.is_superuser;
+
+  const { profile } = useCompanyProfile();
+  const [showSigModal, setShowSigModal] = useState(false);
 
   const [filters, setFilters] = useState({ status: '', domain: '' });
   const { invoices, count, loading, error, refetch } = useInvoiceList(
@@ -55,9 +60,24 @@ const InvoiceList = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white">Invoices</h1>
-        <p className="text-white/40 text-sm mt-1">{count} invoice{count !== 1 ? 's' : ''}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Invoices</h1>
+          <p className="text-white/40 text-sm mt-1">{count} invoice{count !== 1 ? 's' : ''}</p>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={() => setShowSigModal(true)}
+            className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-all ${
+              profile?.signature_url
+                ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
+                : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${profile?.signature_url ? 'bg-green-400' : 'bg-yellow-400'}`} />
+            {profile?.signature_url ? 'Signature set' : 'Add signature'}
+          </button>
+        )}
       </div>
 
       {/* Filters + New Invoice */}
@@ -196,6 +216,10 @@ const InvoiceList = () => {
           </div>
         ))}
       </div>
+
+      {showSigModal && (
+        <SignatureUploadModal onClose={() => setShowSigModal(false)} />
+      )}
 
       {approveTarget && (
         <ApproveModal

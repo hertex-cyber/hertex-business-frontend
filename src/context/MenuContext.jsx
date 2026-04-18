@@ -34,6 +34,26 @@ export function MenuProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const ensureInvoiceMenu = (allMenus, sections) => {
+    const hasInvoice = allMenus.some(
+      (m) => m.href === '/invoices' || m.code === 'invoices'
+    );
+    if (!hasInvoice) {
+      const invoiceItem = {
+        id: '__invoice_fallback',
+        code: 'invoices',
+        name: 'Invoices',
+        href: '/invoices',
+        icon: 'FileText',
+        order: 10,
+      };
+      allMenus.push(invoiceItem);
+      const sectionKey = Object.keys(sections)[0] || 'Main';
+      sections[sectionKey] = [...(sections[sectionKey] || []), invoiceItem];
+    }
+    return { allMenus, sections };
+  };
+
   const refreshMenus = useCallback(async (force = false) => {
     if (!user) {
       setMenus([]);
@@ -51,8 +71,9 @@ export function MenuProvider({ children }) {
           const { data, ts } = JSON.parse(cached);
           // Cache valid for 5 minutes
           if (Date.now() - ts < 5 * 60 * 1000) {
-            setMenus(data.all_menus || []);
-            setSections(data.sections || {});
+            const { allMenus, sections } = ensureInvoiceMenu(data.all_menus || [], data.sections || {});
+            setMenus(allMenus);
+            setSections(sections);
             setLoading(false);
             return;
           }
@@ -68,11 +89,12 @@ export function MenuProvider({ children }) {
 
       if (response.data?.success) {
         const data = response.data.data;
-        setMenus(data.all_menus || []);
-        setSections(data.sections || {});
+        const { allMenus, sections } = ensureInvoiceMenu(data.all_menus || [], data.sections || {});
+        setMenus(allMenus);
+        setSections(sections);
         // Cache the result
         try {
-          sessionStorage.setItem(cacheKey, JSON.stringify({ data, ts: Date.now() }));
+          sessionStorage.setItem(cacheKey, JSON.stringify({ data: { all_menus: allMenus, sections }, ts: Date.now() }));
         } catch (_) {}
       } else {
         throw new Error("Invalid response format from server");

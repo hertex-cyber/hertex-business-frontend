@@ -1,27 +1,18 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 
-/**
- * Reusable image upload field with live preview, file size hint, and remove action.
- *
- * @param {string}   label        - field label text
- * @param {string}   hint         - dimension recommendation
- * @param {string}   currentUrl   - URL of currently saved image
- * @param {Function} onUpload     - (file: File) => Promise<{ success, message }>
- * @param {Function} onRemove     - () => Promise<{ success }>
- * @param {boolean}  showWarning  - show "appears on all invoices" warning
- */
 const ImageUploadField = ({ label, hint, currentUrl, onUpload, onRemove, showWarning }) => {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const [dragging, setDragging] = useState(false);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
+  const hasImage = !!(preview || currentUrl);
+
+  const processFile = useCallback(async (file) => {
     if (!file) return;
 
-    // Local preview
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target.result);
     reader.readAsDataURL(file);
@@ -34,51 +25,124 @@ const ImageUploadField = ({ label, hint, currentUrl, onUpload, onRemove, showWar
     if (result.success) {
       setMessage(result.message || 'Uploaded successfully.');
       setMessageType('success');
-      setPreview(null); // will show the new currentUrl on next render
+      setPreview(null);
     } else {
       setMessage(result.message || 'Upload failed.');
       setMessageType('error');
       setPreview(null);
     }
-    // Reset file input
     if (inputRef.current) inputRef.current.value = '';
-  };
+  }, [onUpload]);
+
+  const handleFileChange = (e) => processFile(e.target.files[0]);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.type === 'image/png' || file.type === 'image/jpeg')) {
+      processFile(file);
+    } else if (file) {
+      setMessage('Only PNG and JPG images are allowed.');
+      setMessageType('error');
+    }
+  }, [processFile]);
+
+  const handleDragOver = (e) => { e.preventDefault(); setDragging(true); };
+  const handleDragLeave = () => setDragging(false);
 
   const handleRemove = async () => {
     setUploading(true);
+    setMessage('');
     const result = await onRemove();
     setUploading(false);
     if (result.success) {
       setMessage('Removed.');
       setMessageType('success');
+    } else {
+      setMessage(result.message || 'Remove failed.');
+      setMessageType('error');
     }
   };
 
   const displayUrl = preview || currentUrl;
 
   return (
-    <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 space-y-3">
-      <div className="flex items-start justify-between">
+    <div className="space-y-2">
+      {/* Label row */}
+      <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-medium text-white">{label}</h4>
-          {hint && <p className="text-xs text-white/30 mt-0.5">{hint}</p>}
+          <span className="text-xs font-medium text-white/70 uppercase tracking-wider">{label}</span>
           {showWarning && (
-            <p className="text-xs text-yellow-400/70 mt-1">
-              ⚠ This image appears on all approved invoices.
-            </p>
+            <span className="ml-2 text-xs text-yellow-400/60">· appears on all invoices</span>
           )}
         </div>
+        {hasImage && (
+          <span className="text-xs text-green-400/70 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+            Uploaded
+          </span>
+        )}
+      </div>
 
+      {/* Drop zone / preview */}
+      <div
+        onClick={() => !uploading && inputRef.current?.click()}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        className={`relative rounded-xl border transition-all cursor-pointer h-28 flex items-center justify-center overflow-hidden
+          ${dragging
+            ? 'border-white/40 bg-white/[0.08]'
+            : hasImage
+              ? 'border-white/10 bg-white/[0.03] hover:border-white/20'
+              : 'border-dashed border-white/15 bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]'
+          }
+          ${uploading ? 'opacity-60 pointer-events-none' : ''}
+        `}
+      >
+        {uploading ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            <span className="text-xs text-white/40">Uploading…</span>
+          </div>
+        ) : displayUrl ? (
+          <>
+            <img
+              src={displayUrl}
+              alt={label}
+              className="max-h-20 max-w-full object-contain px-4"
+            />
+            <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
+              <span className="text-xs text-white font-medium bg-black/60 px-3 py-1 rounded-lg">
+                Click to change
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-white/25 select-none">
+            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+            <span className="text-xs">Drop image here or click to browse</span>
+          </div>
+        )}
+      </div>
+
+      {/* Hint + actions row */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-white/25">{hint}</span>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => inputRef.current?.click()}
+            onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
             disabled={uploading}
             className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.10] transition-all disabled:opacity-40"
           >
-            {uploading ? 'Uploading…' : 'Upload'}
+            {hasImage ? 'Change' : 'Upload'}
           </button>
-          {currentUrl && (
+          {currentUrl && !preview && (
             <button
               type="button"
               onClick={handleRemove}
@@ -91,22 +155,6 @@ const ImageUploadField = ({ label, hint, currentUrl, onUpload, onRemove, showWar
         </div>
       </div>
 
-      {/* Preview */}
-      {displayUrl ? (
-        <div className="flex items-center justify-center bg-white/[0.02] rounded-lg p-3 h-24">
-          <img
-            src={displayUrl}
-            alt={label}
-            className="max-h-20 max-w-full object-contain"
-          />
-        </div>
-      ) : (
-        <div className="flex items-center justify-center bg-white/[0.02] border border-dashed border-white/10 rounded-lg h-24 text-white/20 text-xs">
-          No image uploaded
-        </div>
-      )}
-
-      {/* Feedback */}
       {message && (
         <p className={`text-xs ${messageType === 'success' ? 'text-green-400' : 'text-red-400'}`}>
           {message}

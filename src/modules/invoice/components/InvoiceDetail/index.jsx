@@ -1,19 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import StatusBadge from '../InvoiceList/StatusBadge';
 import Button from '@/components/Button';
+import { useAuth } from '@/context/AuthContext';
 import { useInvoiceDetail } from '../../hooks/useInvoice';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
-import { formatINR } from '../../utils/gstUtils';
+import { useCompanyProfile } from '../../hooks/useCompanyProfile';
+import SignatureUploadModal from '../AdminPanel/CompanyProfile/SignatureUploadModal';
 
-/**
- * Invoice detail page — shows all fields, line items, GST breakdown, and status log.
- */
 const InvoiceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = ['Superadmin', 'Admin'].includes(user?.role) || user?.is_superuser;
+
   const { invoice, loading, error, refetch } = useInvoiceDetail(id);
   const { submitInvoice, downloadPDF, loading: actionLoading } = useInvoiceActions();
+  const { profile } = useCompanyProfile();
+
+  const [showSigModal, setShowSigModal] = useState(false);
 
   if (loading) {
     return (
@@ -27,10 +32,7 @@ const InvoiceDetail = () => {
     return (
       <div className="text-center py-20 text-white/40">
         <p>{error || 'Invoice not found.'}</p>
-        <button
-          onClick={() => navigate('/invoices')}
-          className="mt-4 text-sm text-white/60 hover:text-white underline"
-        >
+        <button onClick={() => navigate('/invoices')} className="mt-4 text-sm text-white/60 hover:text-white underline">
           Back to list
         </button>
       </div>
@@ -42,150 +44,256 @@ const InvoiceDetail = () => {
     if (result.success) refetch();
   };
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold text-white">{invoice.invoice_number}</h1>
-            <StatusBadge status={invoice.status} />
-          </div>
-          <p className="text-white/40 text-sm">
-            {invoice.domain} ·{' '}
-            {new Date(invoice.created_at).toLocaleDateString('en-IN', {
-              day: '2-digit', month: 'long', year: 'numeric',
-            })}
-          </p>
-        </div>
+  const ex = invoice.extra_data || {};
 
-        <div className="flex gap-3">
+  const packageCost = (invoice.line_items || []).find(
+    (li) => li.description === 'Tour Package Cost per Adult',
+  );
+  const additionalItems = (invoice.line_items || []).filter(
+    (li) => li.description !== 'Tour Package Cost per Adult',
+  );
+
+  const fmtDate = (d) =>
+    d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+
+  const fmtNum = (n) =>
+    n != null && n !== '' && !isNaN(n)
+      ? Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : '—';
+
+  const signatureUrl = profile?.signature_url;
+  const sealUrl = profile?.seal_url;
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-4">
+
+      {/* ---- Action bar ---- */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/invoices')} className="text-white/40 hover:text-white text-sm">
+            ← Back
+          </button>
+          <StatusBadge status={invoice.status} />
+        </div>
+        <div className="flex gap-3 items-center">
+          {/* Signature status + admin quick-action */}
+          {isAdmin && (
+            <button
+              onClick={() => setShowSigModal(true)}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                signatureUrl
+                  ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
+                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${signatureUrl ? 'bg-green-400' : 'bg-yellow-400'}`} />
+              {signatureUrl ? 'Signature set' : 'Add signature'}
+            </button>
+          )}
+
           {invoice.status === 'draft' && (
             <>
-              <Button
-                variant="secondary"
-                className="w-auto px-4 py-2"
-                onClick={() => navigate(`/invoices/${invoice.id}/edit`)}
-              >
+              <Button variant="secondary" className="!w-auto" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
                 Edit
               </Button>
-              <Button
-                variant="primary"
-                className="w-auto px-4 py-2"
-                disabled={actionLoading}
-                onClick={handleSubmit}
-              >
+              <Button variant="primary" className="!w-auto" disabled={actionLoading} onClick={handleSubmit}>
                 Submit for Review
               </Button>
             </>
           )}
           {(invoice.status === 'approved' || invoice.status === 'completed') && invoice.pdf_url && (
-            <Button
-              variant="primary"
-              className="w-auto px-4 py-2"
-              disabled={actionLoading}
-              onClick={() => downloadPDF(invoice.id, invoice.invoice_number)}
-            >
+            <Button variant="primary" className="!w-auto" disabled={actionLoading}
+              onClick={() => downloadPDF(invoice.id, invoice.invoice_number)}>
               Download PDF
             </Button>
           )}
         </div>
       </div>
 
-      {/* Rejection notice */}
       {invoice.status === 'rejected' && invoice.admin_remarks && (
         <div className="p-4 bg-red-500/[0.08] border border-red-500/20 rounded-xl text-sm text-red-400">
-          <span className="font-semibold">Rejection Reason: </span>
-          {invoice.admin_remarks}
+          <span className="font-semibold">Rejection Reason: </span>{invoice.admin_remarks}
         </div>
       )}
 
-      {/* Main info grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InfoCard title="Client">
-          <Field label="Name" value={invoice.client_name} />
-          {invoice.client_email && <Field label="Email" value={invoice.client_email} />}
-          {invoice.client_address && <Field label="Address" value={invoice.client_address} />}
-          {invoice.client_gstin && <Field label="GSTIN" value={invoice.client_gstin} />}
-        </InfoCard>
+      {/* ---- Invoice paper ---- */}
+      <div className="bg-white rounded-xl overflow-hidden text-gray-800 text-sm shadow-2xl">
 
-        <InfoCard title="GST Details">
-          <Field label="Supply Type" value={invoice.supply_type_display} />
-          {invoice.place_of_supply && <Field label="Place of Supply" value={invoice.place_of_supply} />}
-          {invoice.supplier_gstin && <Field label="Supplier GSTIN" value={invoice.supplier_gstin} />}
-        </InfoCard>
-      </div>
+        {/* Header */}
+        <div className="bg-[#1B2B6B] text-white text-center py-6 px-4">
+          <div className="text-2xl font-bold">{invoice.supplier_name || 'Company Name'}</div>
+        </div>
 
-      {/* Extra data */}
-      {invoice.extra_data && Object.keys(invoice.extra_data).length > 0 && (
-        <InfoCard title="Additional Details">
-          <div className="grid grid-cols-2 gap-3">
-            {Object.entries(invoice.extra_data).map(([key, value]) => (
-              <Field key={key} label={key.replace(/_/g, ' ')} value={String(value)} />
-            ))}
+        {/* Address bar */}
+        {invoice.supplier_address && (
+          <div className="px-6 py-3 text-xs text-gray-600 border-b border-gray-200">
+            Registered Address: {invoice.supplier_address}
           </div>
-        </InfoCard>
-      )}
+        )}
 
-      {/* Line items */}
-      <div className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h3 className="text-sm font-semibold text-white/70">Line Items</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-white/40 text-xs uppercase">
-                <th className="text-left px-5 py-3">Description</th>
-                <th className="text-left px-3 py-3">HSN</th>
-                <th className="text-right px-3 py-3">Qty</th>
-                <th className="text-right px-3 py-3">Rate</th>
-                <th className="text-right px-3 py-3">GST</th>
-                <th className="text-right px-5 py-3">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.05]">
-              {invoice.line_items?.map((item, idx) => (
-                <tr key={idx} className="text-white/80">
-                  <td className="px-5 py-3">{item.description}</td>
-                  <td className="px-3 py-3 text-white/50">{item.hsn_sac_code || '—'}</td>
-                  <td className="px-3 py-3 text-right">{item.quantity}</td>
-                  <td className="px-3 py-3 text-right">₹ {formatINR(item.unit_price)}</td>
-                  <td className="px-3 py-3 text-right text-white/50">{item.gst_rate}%</td>
-                  <td className="px-5 py-3 text-right font-medium">₹ {formatINR(item.line_total)}</td>
-                </tr>
-              ))}
+        <div className="px-6 pb-6 space-y-0">
+
+          {/* Invoice Details */}
+          <SectionHeader title="Invoice Details" />
+          <table className="w-full border-collapse">
+            <tbody>
+              <InfoRow label="Invoice No." value={invoice.invoice_number} />
+              <InfoRow label="Invoice Date" value={fmtDate(invoice.created_at)} />
+              <InfoRow label="Payment Status" value={ex.payment_status || '—'} />
+              <InfoRow label="Payment Date" value={ex.payment_date ? fmtDate(ex.payment_date) : '—'} />
+              <InfoRow label="Mode of Payment" value={ex.payment_method || '—'} />
             </tbody>
           </table>
-        </div>
-      </div>
 
-      {/* Totals */}
-      <div className="flex justify-end">
-        <div className="w-72 space-y-2 bg-white/[0.03] border border-white/10 rounded-xl p-5">
-          <TotalRow label="Subtotal" value={`₹ ${formatINR(invoice.subtotal)}`} />
-          {invoice.supply_type === 'intra_state' ? (
-            <>
-              <TotalRow label="CGST" value={`₹ ${formatINR(invoice.cgst_total)}`} />
-              <TotalRow label="SGST" value={`₹ ${formatINR(invoice.sgst_total)}`} />
-            </>
-          ) : (
-            <TotalRow label="IGST" value={`₹ ${formatINR(invoice.igst_total)}`} />
-          )}
-          {parseFloat(invoice.discount_amount) > 0 && (
-            <TotalRow label="Discount" value={`− ₹ ${formatINR(invoice.discount_amount)}`} className="text-red-400" />
-          )}
-          <div className="border-t border-white/10 pt-2">
-            <TotalRow
-              label="Grand Total"
-              value={`${invoice.currency} ${formatINR(invoice.grand_total)}`}
-              bold
-            />
+          {/* Client Details */}
+          <SectionHeader title="Client Details" />
+          <table className="w-full border-collapse">
+            <tbody>
+              <InfoRow label="Client Name" value={invoice.client_name} />
+              <InfoRow label="Email" value={invoice.client_email || '—'} />
+              <InfoRow label="Contact No." value={ex.client_contact || '—'} />
+              <InfoRow label="Booking Reference" value={ex.booking_reference || '—'} />
+            </tbody>
+          </table>
+
+          {/* Booking Summary */}
+          <SectionHeader title="Booking Summary" />
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-white">
+                {['Destination', 'Duration', 'Travel Dates', 'Guests', 'Package Type', 'Meal Plan'].map((h) => (
+                  <th key={h} className="border border-gray-300 px-3 py-2 text-center text-xs font-semibold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                  {ex.from_location ? `${ex.from_location} → ` : ''}{ex.destination || '—'}
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                  {ex.nights ? `${ex.nights} Nights / ${ex.days} Days` : '—'}
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                  {ex.travel_from ? `${ex.travel_from}${ex.travel_to ? ` – ${ex.travel_to}` : ''}` : '—'}
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                  {ex.adults ? `${ex.adults} Adult${ex.children ? `, ${ex.children} Child` : ''}` : '—'}
+                </td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{ex.package_type || '—'}</td>
+                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{ex.meal_plan || '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Cost Breakdown */}
+          <SectionHeader title="Cost Breakdown" />
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-white">
+                <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Particulars</th>
+                <th className="border border-gray-300 px-3 py-2 text-center text-xs font-semibold w-16">Qty</th>
+                <th className="border border-gray-300 px-3 py-2 text-right text-xs font-semibold w-28">Rate (INR)</th>
+                <th className="border border-gray-300 px-3 py-2 text-right text-xs font-semibold w-28">Amount (INR)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {packageCost && (
+                <tr>
+                  <td className="border border-gray-300 px-3 py-2 text-xs">Tour Package Cost per Adult</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{packageCost.quantity}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-xs">{fmtNum(packageCost.unit_price)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-xs">{fmtNum(packageCost.amount)}</td>
+                </tr>
+              )}
+              {additionalItems.map((item, idx) => (
+                <tr key={idx}>
+                  <td className="border border-gray-300 px-3 py-2 text-xs">{item.description}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">—</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-xs">—</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-xs">{fmtNum(item.amount)}</td>
+                </tr>
+              ))}
+              {!packageCost && additionalItems.length === 0 && (
+                <tr>
+                  <td className="border border-gray-300 px-3 py-2 text-xs">Additional Services (if any)</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">—</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">—</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right text-xs">—</td>
+                </tr>
+              )}
+              <SummaryRow label="Total Package Value" value={fmtNum(invoice.grand_total)} />
+              <SummaryRow label="Advance Amount Received" value={fmtNum(ex.advance_amount)} />
+              <SummaryRow label="Balance Payable (Due 10 Days Before Check-in)" value={fmtNum(ex.balance_payable)} />
+            </tbody>
+          </table>
+
+          {/* Terms & Notes */}
+          <SectionHeader title="Terms & Notes" />
+          <div className="border border-gray-300 text-xs text-gray-700 divide-y divide-gray-200">
+            <div className="px-3 py-2">- Advance payment confirms the booking.</div>
+            {ex.balance_payable && (
+              <div className="px-3 py-2">
+                - Balance payment of Rs.{ex.balance_payable} is due 10 days before check-in.
+              </div>
+            )}
+            <div className="px-3 py-2">- Package once confirmed is non-refundable as per the company cancellation policy.</div>
+            <div className="px-3 py-2">- Any change in travel dates or number of guests is subject to availability and price revision.</div>
+            <div className="px-3 py-2">- All communication and receipts are issued under {invoice.supplier_name || 'the company'}.</div>
           </div>
+
+          {/* Signatory block */}
+          <div className="mt-8 flex justify-end">
+            <div className="text-center w-52">
+              <p className="text-xs text-gray-500 mb-3">Authorised Signatory</p>
+
+              {/* Signature image */}
+              {signatureUrl ? (
+                <div className="h-14 flex items-end justify-center mb-2">
+                  <img
+                    src={signatureUrl}
+                    alt="Digital Signature"
+                    className="max-h-14 max-w-[200px] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="h-14 flex items-end justify-center mb-2">
+                  <div className="w-full border-b border-gray-400" />
+                </div>
+              )}
+
+              {/* Seal */}
+              {sealUrl && (
+                <div className="flex justify-center mb-2">
+                  <img
+                    src={sealUrl}
+                    alt="Company Seal"
+                    className="h-16 w-16 object-contain"
+                  />
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-1">(Seal &amp; Signature)</p>
+              <p className="text-xs font-semibold text-gray-700 mt-1">
+                For {invoice.supplier_name || 'the company'}
+              </p>
+
+              {/* Admin quick-update link */}
+              {isAdmin && (
+                <button
+                  onClick={() => setShowSigModal(true)}
+                  className="mt-3 text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
+                >
+                  {signatureUrl ? 'Update signature' : '+ Add signature'}
+                </button>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
 
-      {/* Status log */}
+      {/* Status history */}
       {invoice.status_logs?.length > 0 && (
         <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-white/70 mb-4">Status History</h3>
@@ -199,8 +307,7 @@ const InvoiceDetail = () => {
                   </span>
                   {log.note && <span className="text-white/40"> — {log.note}</span>}
                   <p className="text-white/30 text-xs mt-0.5">
-                    {log.actor?.email} ·{' '}
-                    {new Date(log.created_at).toLocaleString('en-IN')}
+                    {log.actor?.email} · {new Date(log.created_at).toLocaleString('en-IN')}
                   </p>
                 </div>
               </div>
@@ -208,29 +315,33 @@ const InvoiceDetail = () => {
           </div>
         </div>
       )}
+
+      {/* Signature upload modal */}
+      {showSigModal && (
+        <SignatureUploadModal onClose={() => setShowSigModal(false)} />
+      )}
     </div>
   );
 };
 
-const InfoCard = ({ title, children }) => (
-  <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
-    <h3 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">{title}</h3>
-    <div className="space-y-2">{children}</div>
+const SectionHeader = ({ title }) => (
+  <div className="bg-[#F0A500] text-gray-900 font-bold text-xs text-center py-2 px-3 uppercase tracking-wider mt-4 mb-0">
+    {title}
   </div>
 );
 
-const Field = ({ label, value }) => (
-  <div className="flex gap-2 text-sm">
-    <span className="text-white/40 shrink-0 capitalize">{label}:</span>
-    <span className="text-white/80">{value}</span>
-  </div>
+const InfoRow = ({ label, value }) => (
+  <tr>
+    <td className="border border-gray-300 px-3 py-2 text-xs text-gray-500 w-2/5">{label}</td>
+    <td className="border border-gray-300 px-3 py-2 text-xs text-gray-800">{value}</td>
+  </tr>
 );
 
-const TotalRow = ({ label, value, bold, className = '' }) => (
-  <div className={`flex justify-between text-sm ${bold ? 'font-bold text-white' : 'text-white/60'} ${className}`}>
-    <span>{label}</span>
-    <span>{value}</span>
-  </div>
+const SummaryRow = ({ label, value }) => (
+  <tr>
+    <td colSpan={3} className="border border-gray-300 px-3 py-2 text-xs font-semibold">{label}</td>
+    <td className="border border-gray-300 px-3 py-2 text-right text-xs font-semibold">{value}</td>
+  </tr>
 );
 
 export default InvoiceDetail;

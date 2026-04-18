@@ -4,12 +4,12 @@ import Button from '@/components/Button';
 import BrandingUpload from './BrandingUpload';
 import { useCompanyProfile } from '../../../hooks/useCompanyProfile';
 
-const TABS = ['Company Info', 'Bank Details', 'Branding'];
+const TABS = [
+  { label: 'Company Info', key: 'info' },
+  { label: 'Bank Details', key: 'bank' },
+  { label: 'Branding', key: 'branding' },
+];
 
-/**
- * Admin company profile page with three tabs:
- * Company Info | Bank Details | Branding (logo, signature, seal)
- */
 const CompanyProfileAdmin = () => {
   const [activeTab, setActiveTab] = useState(0);
   const { profile, loading, error, updateProfile, uploadAsset, removeAsset } = useCompanyProfile();
@@ -17,7 +17,6 @@ const CompanyProfileAdmin = () => {
   const [form, setForm] = useState(null);
   const [saveStatus, setSaveStatus] = useState('');
 
-  // Sync form with loaded profile
   React.useEffect(() => {
     if (profile) setForm({ ...profile });
   }, [profile]);
@@ -29,6 +28,9 @@ const CompanyProfileAdmin = () => {
     const result = await updateProfile(form);
     setSaveStatus(result.success ? 'Saved successfully.' : result.message);
   };
+
+  // Branding completeness indicators
+  const brandingMissing = profile && !(profile.signature_url);
 
   if (loading) {
     return (
@@ -57,15 +59,19 @@ const CompanyProfileAdmin = () => {
       <div className="flex border-b border-white/10">
         {TABS.map((tab, idx) => (
           <button
-            key={tab}
+            key={tab.key}
             onClick={() => setActiveTab(idx)}
-            className={`px-5 py-2.5 text-sm font-medium transition-all ${
+            className={`relative px-5 py-2.5 text-sm font-medium transition-all ${
               activeTab === idx
                 ? 'text-white border-b-2 border-white -mb-px'
                 : 'text-white/40 hover:text-white/70'
             }`}
           >
-            {tab}
+            {tab.label}
+            {/* Amber dot if signature is missing (branding tab only) */}
+            {tab.key === 'branding' && brandingMissing && (
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-yellow-400" />
+            )}
           </button>
         ))}
       </div>
@@ -76,7 +82,7 @@ const CompanyProfileAdmin = () => {
         </div>
       )}
 
-      {/* Tab panels */}
+      {/* Company Info */}
       {activeTab === 0 && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -112,6 +118,7 @@ const CompanyProfileAdmin = () => {
         </div>
       )}
 
+      {/* Bank Details */}
       {activeTab === 1 && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,6 +130,7 @@ const CompanyProfileAdmin = () => {
         </div>
       )}
 
+      {/* Branding */}
       {activeTab === 2 && (
         <BrandingUpload
           profile={profile}
@@ -131,11 +139,11 @@ const CompanyProfileAdmin = () => {
         />
       )}
 
-      {/* Save button (not shown on Branding tab — handled per-field) */}
+      {/* Save button (not shown on Branding tab) */}
       {activeTab !== 2 && (
         <div className="space-y-2">
           {saveStatus && (
-            <p className={`text-xs ${saveStatus.includes('success') || saveStatus === 'Saved successfully.' ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`text-xs ${saveStatus === 'Saved successfully.' ? 'text-green-400' : 'text-red-400'}`}>
               {saveStatus}
             </p>
           )}

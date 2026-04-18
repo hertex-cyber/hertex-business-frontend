@@ -33,6 +33,7 @@ import {
 } from "./modules/invoice";
 import InvoiceCreatePage from "./modules/invoice/pages/InvoiceCreatePage";
 import InvoiceEditPage from "./modules/invoice/pages/InvoiceEditPage";
+import InvoiceAuditLog from "./modules/invoice/pages/InvoiceAuditLog";
 import Layout from "./components/Layout";
 
 const ProtectedRoute = ({ children }) => {
@@ -188,7 +189,7 @@ function App() {
               path="/invoices/:id"
               element={
                 <ProtectedRoute>
-                  <div className="p-8">
+                  <div className="h-full overflow-y-auto p-8">
                     <InvoiceDetail />
                   </div>
                 </ProtectedRoute>
@@ -199,6 +200,17 @@ function App() {
               element={
                 <ProtectedRoute>
                   <InvoiceEditPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/invoices/audit-logs"
+              element={
+                <ProtectedRoute>
+                  <div className="h-full overflow-y-auto">
+                    <InvoiceAuditLog />
+                  </div>
                 </ProtectedRoute>
               }
             />
