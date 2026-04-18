@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
+import { useAuth } from '@/context/AuthContext';
 import { useInvoiceSchemas } from '../../hooks/useInvoiceSchema';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
 
@@ -37,6 +38,8 @@ const fmt = (n) =>
 const InvoiceForm = ({ invoice = null, onSuccess }) => {
   const navigate = useNavigate();
   const isEdit = !!invoice;
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin';
 
   const { schemas, loading: schemasLoading } = useInvoiceSchemas();
   const { createInvoice, updateInvoice, loading } = useInvoiceActions();
@@ -158,7 +161,11 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
       : await createInvoice(payload);
 
     if (result.success) {
-      onSuccess ? onSuccess(result.data) : navigate('/invoices');
+      if (onSuccess) {
+        onSuccess(result.data);
+      } else {
+        navigate(isAdmin ? `/invoices/${result.data.id}` : '/invoices');
+      }
     } else {
       setSubmitError(result.message);
       if (result.errors) setFieldErrors(result.errors);
@@ -519,7 +526,7 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
       {/* ---- Actions ---- */}
       <div className="flex gap-3 justify-end">
         <Button variant="primary" type="submit" disabled={loading} className="!w-auto">
-          {loading ? 'Saving…' : isEdit ? 'Update Invoice' : 'Save as Draft'}
+          {loading ? 'Saving…' : isEdit ? 'Update Invoice' : isAdmin ? 'Save' : 'Save as Draft'}
         </Button>
         <Button
           variant="secondary"
