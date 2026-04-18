@@ -16,7 +16,7 @@ const ReviewDashboard = () => {
   const { invoices, count, loading, error, refetch } = useAdminInvoiceList(
     Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
   );
-  const { approveInvoice, rejectInvoice, loading: actionLoading } = useInvoiceActions();
+  const { approveInvoice, rejectInvoice, downloadPDF, loading: actionLoading } = useInvoiceActions();
 
   const [approveTarget, setApproveTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -127,6 +127,16 @@ const ReviewDashboard = () => {
                   >
                     View
                   </button>
+
+                  {(invoice.status === 'approved' || invoice.status === 'completed') && invoice.pdf_url && (
+                    <button
+                      onClick={() => downloadPDF(invoice.id, invoice.invoice_number)}
+                      disabled={actionLoading}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.10] transition-all disabled:opacity-50"
+                    >
+                      Download PDF
+                    </button>
+                  )}
 
                   {invoice.status === 'pending' && (
                     <>

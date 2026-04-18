@@ -5,10 +5,8 @@ import { useInvoiceList } from '../../hooks/useInvoice';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
 import { formatINR } from '../../utils/gstUtils';
 import { useAuth } from '@/context/AuthContext';
-import { useCompanyProfile } from '../../hooks/useCompanyProfile';
 import ApproveModal from '../AdminPanel/ReviewDashboard/ApproveModal';
 import RejectModal from '../AdminPanel/ReviewDashboard/RejectModal';
-import SignatureUploadModal from '../AdminPanel/CompanyProfile/SignatureUploadModal';
 
 /**
  * Invoice list page — shows the current user's invoices with actions.
@@ -17,9 +15,6 @@ const InvoiceList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = ['Superadmin', 'Admin'].includes(user?.role) || user?.is_superuser;
-
-  const { profile } = useCompanyProfile();
-  const [showSigModal, setShowSigModal] = useState(false);
 
   const [filters, setFilters] = useState({ status: '', domain: '' });
   const { invoices, count, loading, error, refetch } = useInvoiceList(
@@ -65,19 +60,6 @@ const InvoiceList = () => {
           <h1 className="text-2xl font-bold text-white">Invoices</h1>
           <p className="text-white/40 text-sm mt-1">{count} invoice{count !== 1 ? 's' : ''}</p>
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => setShowSigModal(true)}
-            className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-all ${
-              profile?.signature_url
-                ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
-                : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${profile?.signature_url ? 'bg-green-400' : 'bg-yellow-400'}`} />
-            {profile?.signature_url ? 'Signature set' : 'Add signature'}
-          </button>
-        )}
       </div>
 
       {/* Filters + New Invoice */}
@@ -186,13 +168,16 @@ const InvoiceList = () => {
                   </>
                 )}
 
-                {(invoice.status === 'approved' || invoice.status === 'completed') && (
+                {invoice.pdf_url && (
                   <button
                     onClick={() => handleDownload(invoice)}
                     disabled={actionLoading}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.10] transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 hover:border-blue-500/50 transition-all disabled:opacity-50"
                   >
-                    Download PDF
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                    PDF
                   </button>
                 )}
 
@@ -216,10 +201,6 @@ const InvoiceList = () => {
           </div>
         ))}
       </div>
-
-      {showSigModal && (
-        <SignatureUploadModal onClose={() => setShowSigModal(false)} />
-      )}
 
       {approveTarget && (
         <ApproveModal

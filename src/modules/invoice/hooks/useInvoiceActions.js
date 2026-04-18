@@ -47,17 +47,23 @@ export function useInvoiceActions() {
     setError(null);
     try {
       const res = await invoiceApi.download(id);
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${invoiceNumber || id}.pdf`);
+      link.download = `${invoiceNumber || id}.pdf`;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
-      link.remove();
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       return { success: true };
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to download PDF.';
+      let msg = 'Failed to download PDF.';
+      try {
+        const text = await err.response?.data?.text?.();
+        if (text) msg = JSON.parse(text)?.message || msg;
+      } catch (_) {}
       setError(msg);
       return { success: false, message: msg };
     } finally {
