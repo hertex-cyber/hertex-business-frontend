@@ -34,6 +34,7 @@ import {
 import InvoiceCreatePage from "./modules/invoice/pages/InvoiceCreatePage";
 import InvoiceEditPage from "./modules/invoice/pages/InvoiceEditPage";
 import InvoiceAuditLog from "./modules/invoice/pages/InvoiceAuditLog";
+import Settings from "./modules/settings/pages/Settings";
 import Layout from "./components/Layout";
 
 const ProtectedRoute = ({ children }) => {
@@ -298,6 +299,15 @@ function App() {
                     <CompanyProfileAdmin />
                   </div>
                 </AdminRoute>
+              }
+            />
+
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
               }
             />
 

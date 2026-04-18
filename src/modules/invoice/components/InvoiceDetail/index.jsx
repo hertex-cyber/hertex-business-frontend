@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import StatusBadge from '../InvoiceList/StatusBadge';
 import Button from '@/components/Button';
@@ -6,7 +6,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useInvoiceDetail } from '../../hooks/useInvoice';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
 import { useCompanyProfile } from '../../hooks/useCompanyProfile';
-import SignatureUploadModal from '../AdminPanel/CompanyProfile/SignatureUploadModal';
 
 const InvoiceDetail = () => {
   const { id } = useParams();
@@ -17,8 +16,6 @@ const InvoiceDetail = () => {
   const { invoice, loading, error, refetch } = useInvoiceDetail(id);
   const { submitInvoice, downloadPDF, loading: actionLoading } = useInvoiceActions();
   const { profile } = useCompanyProfile();
-
-  const [showSigModal, setShowSigModal] = useState(false);
 
   if (loading) {
     return (
@@ -76,21 +73,6 @@ const InvoiceDetail = () => {
           <StatusBadge status={invoice.status} />
         </div>
         <div className="flex gap-3 items-center">
-          {/* Signature status + admin quick-action */}
-          {isAdmin && (
-            <button
-              onClick={() => setShowSigModal(true)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${
-                signatureUrl
-                  ? 'bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20'
-                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${signatureUrl ? 'bg-green-400' : 'bg-yellow-400'}`} />
-              {signatureUrl ? 'Signature set' : 'Add signature'}
-            </button>
-          )}
-
           {invoice.status === 'draft' && (
             <>
               <Button variant="secondary" className="!w-auto" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
@@ -101,7 +83,7 @@ const InvoiceDetail = () => {
               </Button>
             </>
           )}
-          {(invoice.status === 'approved' || invoice.status === 'completed') && invoice.pdf_url && (
+          {invoice.pdf_url && (
             <Button variant="primary" className="!w-auto" disabled={actionLoading}
               onClick={() => downloadPDF(invoice.id, invoice.invoice_number)}>
               Download PDF
@@ -248,17 +230,13 @@ const InvoiceDetail = () => {
               <p className="text-xs text-gray-500 mb-3">Authorised Signatory</p>
 
               {/* Signature image */}
-              {signatureUrl ? (
+              {signatureUrl && (
                 <div className="h-14 flex items-end justify-center mb-2">
                   <img
                     src={signatureUrl}
                     alt="Digital Signature"
                     className="max-h-14 max-w-[200px] object-contain"
                   />
-                </div>
-              ) : (
-                <div className="h-14 flex items-end justify-center mb-2">
-                  <div className="w-full border-b border-gray-400" />
                 </div>
               )}
 
@@ -278,15 +256,6 @@ const InvoiceDetail = () => {
                 For {invoice.supplier_name || 'the company'}
               </p>
 
-              {/* Admin quick-update link */}
-              {isAdmin && (
-                <button
-                  onClick={() => setShowSigModal(true)}
-                  className="mt-3 text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
-                >
-                  {signatureUrl ? 'Update signature' : '+ Add signature'}
-                </button>
-              )}
             </div>
           </div>
 
@@ -316,10 +285,6 @@ const InvoiceDetail = () => {
         </div>
       )}
 
-      {/* Signature upload modal */}
-      {showSigModal && (
-        <SignatureUploadModal onClose={() => setShowSigModal(false)} />
-      )}
     </div>
   );
 };
