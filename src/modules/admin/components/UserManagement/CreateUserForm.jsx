@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from "react";
-import { Mail, Lock, User, Phone, Users, Shield } from "lucide-react";
+import { Mail, Lock, User, Phone, Shield } from "lucide-react";
 import Input from "../../../../components/Input";
 
 const CreateUserForm = ({ onSubmit, onCancel }) => {
@@ -54,8 +54,7 @@ const CreateUserForm = ({ onSubmit, onCancel }) => {
 
     setLoading(true);
     try {
-      const { password_confirm, ...submitData } = formData;
-      await onSubmit(submitData);
+      await onSubmit(formData);
     } catch (err) {
       setError(err.message || "Error creating user");
     } finally {

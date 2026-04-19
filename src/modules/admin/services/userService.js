@@ -137,8 +137,16 @@ class UserService {
   static handleError(error) {
     if (error.response) {
       const { status, data } = error.response;
-      const message = data?.message || data?.detail || "An error occurred";
-      return new Error(`${status} - ${message}`);
+      let message = data?.message || data?.detail;
+      if (!message && data && typeof data === "object") {
+        message = Object.entries(data)
+          .map(([field, errors]) => {
+            const msgs = Array.isArray(errors) ? errors.join(", ") : String(errors);
+            return `${field}: ${msgs}`;
+          })
+          .join(" | ");
+      }
+      return new Error(`${status} - ${message || "An error occurred"}`);
     }
     return error;
   }

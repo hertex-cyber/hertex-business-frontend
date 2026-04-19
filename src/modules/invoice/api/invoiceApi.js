@@ -16,6 +16,9 @@ export const invoiceApi = {
   /** List current user's invoices — supports ?domain= and ?status= */
   list: (params = {}) => axios.get(`${BASE}/`, { params }),
 
+  /** Count per status for current user (or all for admins) */
+  statusCounts: () => axios.get(`${BASE}/status-counts/`),
+
   /** Get full invoice detail */
   get: (id) => axios.get(`${BASE}/${id}/`),
 

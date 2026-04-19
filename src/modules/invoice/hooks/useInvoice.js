@@ -32,6 +32,20 @@ export function useInvoiceList(filters = {}) {
   return { invoices, count, loading, error, refetch: fetchInvoices };
 }
 
+export function useInvoiceStatusCounts() {
+  const [counts, setCounts] = useState({});
+  const fetchCounts = useCallback(async () => {
+    try {
+      const res = await invoiceApi.statusCounts();
+      setCounts(res.data.data || {});
+    } catch {
+      // silently ignore
+    }
+  }, []);
+  useEffect(() => { fetchCounts(); }, [fetchCounts]);
+  return { counts, refetchCounts: fetchCounts };
+}
+
 /**
  * Fetch a single invoice by ID.
  * @param {string} id

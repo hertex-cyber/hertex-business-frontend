@@ -13,7 +13,7 @@ import { formatINR } from '../../../utils/gstUtils';
 const ReviewDashboard = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState({ status: 'pending', domain: '' });
-  const { invoices, count, loading, error, refetch } = useAdminInvoiceList(
+  const { invoices, loading, error, refetch } = useAdminInvoiceList(
     Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
   );
   const { approveInvoice, rejectInvoice, downloadPDF, loading: actionLoading } = useInvoiceActions();
@@ -88,76 +88,101 @@ const ReviewDashboard = () => {
         </div>
       )}
 
-      {/* Invoice rows */}
+      {/* Invoice cards */}
       {!loading && (
-        <div className="space-y-3">
-          {invoices.map((invoice) => (
-            <div
-              key={invoice.id}
-              className="bg-white/[0.03] border border-white/10 rounded-xl p-5 hover:bg-white/[0.05] transition-all"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="text-white font-semibold text-sm hover:underline cursor-pointer"
-                      onClick={() => navigate(`/invoices/${invoice.id}`)}
-                    >
-                      {invoice.invoice_number}
-                    </span>
-                    <StatusBadge status={invoice.status} />
+        <div className="space-y-4">
+          {invoices.map((invoice) => {
+            const creator = invoice.created_by;
+            const creatorName = creator
+              ? `${creator.first_name} ${creator.last_name}`.trim() || creator.email
+              : '—';
+            return (
+              <div
+                key={invoice.id}
+                className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 hover:bg-white/[0.05] transition-all space-y-4"
+              >
+                {/* Top row: number + status + amount + actions */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="text-white font-semibold text-sm hover:underline cursor-pointer"
+                        onClick={() => navigate(`/invoices/${invoice.id}`)}
+                      >
+                        {invoice.invoice_number}
+                      </span>
+                      <StatusBadge status={invoice.status} />
+                    </div>
+                    <p className="text-white/60 text-sm">{invoice.client_name}</p>
+                    <p className="text-white/30 text-xs">
+                      {invoice.domain} ·{' '}
+                      {new Date(invoice.created_at).toLocaleDateString('en-IN', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                      })}
+                    </p>
                   </div>
-                  <p className="text-white/60 text-sm">{invoice.client_name}</p>
-                  <p className="text-white/30 text-xs">
-                    {invoice.domain} · by {invoice.created_by?.email} ·{' '}
-                    {new Date(invoice.created_at).toLocaleDateString('en-IN', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    })}
-                  </p>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-white font-semibold">
+                      {invoice.currency} {formatINR(invoice.grand_total)}
+                    </span>
+                    <button
+                      onClick={() => navigate(`/invoices/${invoice.id}`)}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.10] transition-all"
+                    >
+                      View
+                    </button>
+                    {(invoice.status === 'approved' || invoice.status === 'completed') && invoice.pdf_url && (
+                      <button
+                        onClick={() => downloadPDF(invoice.id, invoice.invoice_number)}
+                        disabled={actionLoading}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 transition-all disabled:opacity-50"
+                      >
+                        Download PDF
+                      </button>
+                    )}
+                    {invoice.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => setApproveTarget(invoice)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => setRejectTarget(invoice)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-white font-semibold">
-                    {invoice.currency} {formatINR(invoice.grand_total)}
-                  </span>
-
-                  <button
-                    onClick={() => navigate(`/invoices/${invoice.id}`)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.10] transition-all"
-                  >
-                    View
-                  </button>
-
-                  {(invoice.status === 'approved' || invoice.status === 'completed') && invoice.pdf_url && (
-                    <button
-                      onClick={() => downloadPDF(invoice.id, invoice.invoice_number)}
-                      disabled={actionLoading}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-white/70 hover:bg-white/[0.10] transition-all disabled:opacity-50"
-                    >
-                      Download PDF
-                    </button>
+                {/* Creator info */}
+                <div className="pt-3 border-t border-white/[0.06] flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/70 text-xs font-semibold shrink-0">
+                    {creatorName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-white/80 text-xs font-medium">{creatorName}</p>
+                    <p className="text-white/40 text-xs truncate">{creator?.email}</p>
+                  </div>
+                  {creator?.role && (
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-white/50 shrink-0">
+                      {creator.role}
+                    </span>
                   )}
-
-                  {invoice.status === 'pending' && (
-                    <>
-                      <button
-                        onClick={() => setApproveTarget(invoice)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => setRejectTarget(invoice)}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all"
-                      >
-                        Reject
-                      </button>
-                    </>
+                  {creator?.department?.name && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-white/50 shrink-0">
+                      {creator.department.name}
+                    </span>
                   )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
