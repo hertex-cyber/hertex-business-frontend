@@ -11,6 +11,7 @@ import {
   Building2,
   Package,
   Users,
+  Briefcase,
 } from "lucide-react";
 import Button from "@/components/Button";
 
@@ -97,6 +98,33 @@ const Admin = () => {
             >
               <ShieldCheck size={14} className="mr-3" />
               View Audit Logs
+            </Button>
+          </div>
+        </div>
+
+        {/* Company Profile Card */}
+        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl space-y-6 md:col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40">
+              <Briefcase size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                Company Profile
+              </h3>
+              <p className="text-xs text-white/20">
+                Logo, name, address and seal for invoices
+              </p>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Button
+              variant="secondary"
+              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full"
+              onClick={() => navigate("/admin/company-profile")}
+            >
+              <Briefcase size={14} className="mr-3" />
+              Manage Company Profile
             </Button>
           </div>
         </div>

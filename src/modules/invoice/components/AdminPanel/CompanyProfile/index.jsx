@@ -14,11 +14,17 @@ const CompanyProfileAdmin = () => {
   const [activeTab, setActiveTab] = useState(0);
   const { profile, loading, error, updateProfile, uploadAsset, removeAsset } = useCompanyProfile();
 
-  const [form, setForm] = useState(null);
+  const EMPTY_FORM = {
+    company_name: '', company_address: '', gstin: '', pan_number: '',
+    phone: '', email: '', website: '', state: '', state_code: '',
+    bank_name: '', bank_account: '', bank_ifsc: '', bank_branch: '',
+  };
+
+  const [form, setForm] = useState(EMPTY_FORM);
   const [saveStatus, setSaveStatus] = useState('');
 
   React.useEffect(() => {
-    if (profile) setForm({ ...profile });
+    if (profile) setForm({ ...EMPTY_FORM, ...profile });
   }, [profile]);
 
   const set = (field, value) => setForm((f) => ({ ...f, [field]: value }));
@@ -26,7 +32,14 @@ const CompanyProfileAdmin = () => {
   const handleSave = async () => {
     setSaveStatus('');
     const result = await updateProfile(form);
-    setSaveStatus(result.success ? 'Saved successfully.' : result.message);
+    if (result.success) {
+      setSaveStatus('Saved successfully.');
+    } else {
+      const errDetail = result.errors
+        ? Object.entries(result.errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ')
+        : result.message;
+      setSaveStatus(errDetail);
+    }
   };
 
   // Branding completeness indicators
@@ -41,7 +54,7 @@ const CompanyProfileAdmin = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6 w-full">
       <div>
         <h1 className="text-2xl font-bold text-white">Company Profile</h1>
         <p className="text-white/40 text-sm mt-1">
@@ -84,7 +97,7 @@ const CompanyProfileAdmin = () => {
 
       {/* Company Info */}
       {activeTab === 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Input
@@ -120,7 +133,7 @@ const CompanyProfileAdmin = () => {
 
       {/* Bank Details */}
       {activeTab === 1 && (
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Bank Name" type="text" value={form?.bank_name || ''} onChange={(e) => set('bank_name', e.target.value)} placeholder="HDFC Bank" />
             <Input label="Account Number" type="text" value={form?.bank_account || ''} onChange={(e) => set('bank_account', e.target.value)} placeholder="00000000000000" />
@@ -141,15 +154,18 @@ const CompanyProfileAdmin = () => {
 
       {/* Save button (not shown on Branding tab) */}
       {activeTab !== 2 && (
-        <div className="space-y-2">
+        <div className="flex items-center justify-end gap-3">
           {saveStatus && (
             <p className={`text-xs ${saveStatus === 'Saved successfully.' ? 'text-green-400' : 'text-red-400'}`}>
               {saveStatus}
             </p>
           )}
-          <Button variant="primary" onClick={handleSave} className="py-2.5">
+          <button
+            onClick={handleSave}
+            className="py-2 px-5 text-sm rounded-lg bg-white text-black font-semibold hover:bg-gray-100 transition-all"
+          >
             Save Changes
-          </Button>
+          </button>
         </div>
       )}
     </div>

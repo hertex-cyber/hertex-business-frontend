@@ -214,7 +214,7 @@ const InvoiceList = () => {
                   </button>
                 )}
 
-                {invoice.pdf_url && (
+                {['approved', 'completed'].includes(invoice.status) && (
                   <button
                     onClick={() => handleDownload(invoice)}
                     disabled={actionLoading}
