@@ -1,10 +1,20 @@
-import React, { useState } from 'react';
-import { Users, Search, Filter, Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import { Users, Search, Filter, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import KanbanColumn from '../components/KanbanBoard';
 import { KanbanCardUI } from '../components/KanbanCard';
+
+const COLUMNS = [
+  { id: 'lead', title: 'Lead' },
+  { id: 'qualified', title: 'Qualified' },
+  { id: 'proposal', title: 'Proposal' },
+  { id: 'negotiation', title: 'Negotiation' },
+  { id: 'won', title: 'Won' },
+  { id: 'lost', title: 'Lost' },
+];
 
 const CRM = () => {
   const sensors = useSensors(
@@ -14,95 +24,49 @@ const CRM = () => {
     })
   );
 
-  const [activeCardData, setActiveCardData] = useState(null);
-
   const [deals, setDeals] = useState({
-    'lead': [
-      {
-        id: 'deal-1',
-        name: 'Acme Corp',
-        email: 'contact@acmecorp.com',
-        value: '$45,000',
-        priority: 'Lead',
-        lastContact: 'Yesterday',
-      },
-      {
-        id: 'deal-2',
-        name: 'Tech Innovations Inc',
-        email: 'sales@techinnovations.com',
-        value: '$62,000',
-        priority: 'Lead',
-        lastContact: '3 days ago',
-      },
-    ],
-    'qualified': [
-      {
-        id: 'deal-3',
-        name: 'Global Solutions Ltd',
-        email: 'procurement@globalsolutions.com',
-        value: '$85,000',
-        priority: 'Qualified',
-        lastContact: '2 hours ago',
-      },
-      {
-        id: 'deal-4',
-        name: 'Future Systems',
-        email: 'buyer@futuresystems.com',
-        value: '$120,000',
-        priority: 'Qualified',
-        lastContact: '1 hour ago',
-      },
-    ],
-    'proposal': [
-      {
-        id: 'deal-5',
-        name: 'Enterprise Co',
-        email: 'decision@enterpriseco.com',
-        value: '$250,000',
-        priority: 'Proposal',
-        lastContact: '30 mins ago',
-      },
-    ],
-    'negotiation': [
-      {
-        id: 'deal-6',
-        name: 'Premium Industries',
-        email: 'cfo@premiumind.com',
-        value: '$180,000',
-        priority: 'Negotiation',
-        lastContact: '1 day ago',
-      },
-    ],
-    'won': [
-      {
-        id: 'deal-7',
-        name: 'Victory Partners',
-        email: 'admin@victorypartners.com',
-        value: '$320,000',
-        priority: 'Won',
-        lastContact: 'Today',
-      },
-    ],
-    'lost': [
-      {
-        id: 'deal-8',
-        name: 'Closed Door LLC',
-        email: 'contact@closeddoor.com',
-        value: '$95,000',
-        priority: 'Lost',
-        lastContact: '1 week ago',
-      },
-    ],
+    'lead': [], 'qualified': [], 'proposal': [], 'negotiation': [], 'won': [], 'lost': []
   });
+  const [activeCardData, setActiveCardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const columns = [
-    { id: 'lead', title: 'Lead' },
-    { id: 'qualified', title: 'Qualified' },
-    { id: 'proposal', title: 'Proposal' },
-    { id: 'negotiation', title: 'Negotiation' },
-    { id: 'won', title: 'Won' },
-    { id: 'lost', title: 'Lost' },
-  ];
+  const fetchDeals = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get('/api/crm/pipeline/');
+      
+      // Transform backend list into column-grouped object
+      const grouped = {
+        'lead': [], 'qualified': [], 'proposal': [], 'negotiation': [], 'won': [], 'lost': []
+      };
+      
+      response.data.results.forEach(deal => {
+        const stage = deal.stage.toLowerCase();
+        if (grouped[stage]) {
+          grouped[stage].push({
+            id: deal.id,
+            name: deal.contact_details?.name || 'Unknown',
+            email: deal.contact_details?.email || 'No Email',
+            value: `₹ ${deal.value}`,
+            priority: deal.priority,
+            lastContact: new Date(deal.updated_at).toLocaleDateString(),
+            raw: deal // Keep raw for updates
+          });
+        }
+      });
+      
+      setDeals(grouped);
+    } catch (error) {
+      console.error('Error fetching deals:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDeals();
+  }, [fetchDeals]);
 
   const handleDragStart = (event) => {
     const { active } = event;
@@ -115,7 +79,7 @@ const CRM = () => {
     }
   };
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = async (event) => {
     setActiveCardData(null);
     const { active, over } = event;
 
@@ -124,12 +88,9 @@ const CRM = () => {
     const activeId = active.id;
     const overId = over.id;
 
-    if (activeId === overId) return;
-
     let sourceColumn = null;
     let sourceIndex = -1;
 
-    // Find the card's source column and index
     for (const [colId, cardList] of Object.entries(deals)) {
       const idx = cardList.findIndex(card => card.id === activeId);
       if (idx !== -1) {
@@ -141,15 +102,11 @@ const CRM = () => {
 
     if (sourceColumn === null) return;
 
-    // Determine destination column
     let destColumn = null;
-
-    // Check if overId is a column
-    if (columns.some(col => col.id === overId)) {
+    if (COLUMNS.some(col => col.id === overId)) {
       destColumn = overId;
     } else {
-      // Find which column the card being hovered is in
-      for (const col of columns) {
+      for (const col of COLUMNS) {
         if (deals[col.id].some(card => card.id === overId)) {
           destColumn = col.id;
           break;
@@ -157,26 +114,33 @@ const CRM = () => {
       }
     }
 
-    if (!destColumn) return;
+    if (!destColumn || (sourceColumn === destColumn && overId === activeId)) return;
 
-    // Move the card
+    // Optimistic Update
     const newDeals = { ...deals };
     const draggedCard = newDeals[sourceColumn][sourceIndex];
-
+    newDeals[sourceColumn].splice(sourceIndex, 1);
+    
     if (sourceColumn === destColumn) {
-      // Reorder within same column
       const destIndex = newDeals[destColumn].findIndex(c => c.id === overId);
-      if (destIndex !== -1 && destIndex !== sourceIndex) {
-        newDeals[sourceColumn].splice(sourceIndex, 1);
-        newDeals[destColumn].splice(destIndex > sourceIndex ? destIndex - 1 : destIndex, 0, draggedCard);
-      }
+      newDeals[destColumn].splice(destIndex === -1 ? 0 : destIndex, 0, draggedCard);
     } else {
-      // Move to different column
-      newDeals[sourceColumn].splice(sourceIndex, 1);
       newDeals[destColumn].push(draggedCard);
     }
-
+    
     setDeals(newDeals);
+
+    // Backend Update
+    if (sourceColumn !== destColumn) {
+      try {
+        await axios.patch(`/api/crm/pipeline/${activeId}/`, {
+          stage: destColumn
+        });
+      } catch (err) {
+        console.error('Failed to update stage:', err);
+        fetchDeals(); // Revert on failure
+      }
+    }
   };
 
   return (
@@ -193,36 +157,42 @@ const CRM = () => {
             <Input
               type="text"
               placeholder="Search deals..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 w-64 h-10 bg-white/5 border-white/10 focus:border-white/20 transition-all text-xs"
             />
           </div>
-          <Button variant="secondary" size="sm" className="h-10 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-[10px] uppercase tracking-[0.15em] font-bold">
-            <Plus size={14} className="mr-2 opacity-50" />
-            Add
+          <Button 
+            onClick={fetchDeals}
+            variant="secondary" size="sm" className="h-10 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-[10px] uppercase tracking-[0.15em] font-bold"
+          >
+            Refresh
           </Button>
-          <Button variant="secondary" size="sm" className="h-10 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-[10px] uppercase tracking-[0.15em] font-bold">
-            <Filter size={14} className="mr-2 opacity-50" />
-            Filter
-          </Button>
-          
         </div>
       </header>
 
       <main className="flex-1 p-8 relative z-10 overflow-auto custom-scrollbar">
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} sensors={sensors}>
-          <div className="flex gap-4 min-w-max pb-4 h-full">
-            {columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                column={column}
-                cards={deals[column.id]}
-              />
-            ))}
+        {isLoading && deals['lead'].length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center gap-4">
+             <Loader2 className="animate-spin text-blue-500" size={32} />
+             <p className="text-sm text-white/20 uppercase tracking-widest font-black">Syncing Pipeline...</p>
           </div>
-          <DragOverlay dropAnimation={null}>
-            {activeCardData ? <KanbanCardUI card={activeCardData} isOverlay /> : null}
-          </DragOverlay>
-        </DndContext>
+        ) : (
+          <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} sensors={sensors}>
+            <div className="flex gap-4 min-w-max pb-4 h-full">
+              {COLUMNS.map((column) => (
+                <KanbanColumn
+                  key={column.id}
+                  column={column}
+                  cards={deals[column.id]}
+                />
+              ))}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeCardData ? <KanbanCardUI card={activeCardData} isOverlay /> : null}
+            </DragOverlay>
+          </DndContext>
+        )}
       </main>
     </div>
   );

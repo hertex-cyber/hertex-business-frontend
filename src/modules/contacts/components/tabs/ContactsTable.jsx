@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { Users, Mail, Phone, Eye, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Users, Mail, Phone, Eye, Trash2, ChevronLeft, ChevronRight, Loader2, CheckSquare, Square, Rocket, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ContactDetailModal from '../ContactDetailModal';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
-const ContactsTable = ({ batchId = null, batchName = null, onBack = null, searchQuery = '' }) => {
+const ContactsTable = ({ 
+    batchId = null, 
+    batchName = null, 
+    onBack = null, 
+    searchQuery = '',
+    selectedIds = [],
+    onSelectionChange = () => {}
+}) => {
     const [contacts, setContacts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -13,6 +20,7 @@ const ContactsTable = ({ batchId = null, batchName = null, onBack = null, search
     const [selectedContact, setSelectedContact] = useState(null);
     const [contactToDelete, setContactToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    
     const pageSize = 100;
     const listRef = useRef(null);
 
@@ -36,14 +44,33 @@ const ContactsTable = ({ batchId = null, batchName = null, onBack = null, search
         const handler = setTimeout(() => {
             setCurrentPage(1);
             fetchContacts(1, searchQuery);
+            onSelectionChange([]); // Clear selection on search/filter
         }, 400);
         return () => clearTimeout(handler);
-    }, [searchQuery, fetchContacts]);
+    }, [searchQuery, fetchContacts, onSelectionChange]);
 
     const handlePageChange = (newPage) => {
         setCurrentPage(newPage);
         fetchContacts(newPage, searchQuery);
+        onSelectionChange([]); // Clear selection on page change
         listRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === contacts.length) {
+            onSelectionChange([]);
+        } else {
+            onSelectionChange(contacts.map(c => c.id));
+        }
+    };
+
+    const toggleSelect = (id, e) => {
+        e.stopPropagation();
+        onSelectionChange(
+            selectedIds.includes(id) 
+                ? selectedIds.filter(item => item !== id) 
+                : [...selectedIds, id]
+        );
     };
 
     const handleDelete = async () => {
@@ -82,9 +109,14 @@ const ContactsTable = ({ batchId = null, batchName = null, onBack = null, search
                     </div>
                 )}
 
-                <div className="px-8 py-3 bg-zinc-900/20 border-b border-zinc-800 shrink-0">
-                    <div className="grid grid-cols-12 gap-4 text-xs font-medium text-white/30">
-                        <div className="col-span-1">#</div>
+                <div className="px-8 py-3 bg-zinc-900/20 border-b border-zinc-800 shrink-0 select-none">
+                    <div className="grid grid-cols-12 gap-4 text-xs font-medium text-white/30 items-center">
+                        <div className="col-span-1 flex items-center gap-3">
+                            <button onClick={toggleSelectAll} className="hover:text-blue-400 transition-colors">
+                                {selectedIds.length > 0 && selectedIds.length === contacts.length ? <CheckSquare size={14} className="text-blue-500" /> : <Square size={14} />}
+                            </button>
+                            <span>#</span>
+                        </div>
                         <div className="col-span-3">Name</div>
                         <div className="col-span-4">Email</div>
                         <div className="col-span-2">Phone</div>
@@ -101,43 +133,58 @@ const ContactsTable = ({ batchId = null, batchName = null, onBack = null, search
                     </div>
                 ) : (
                     <div ref={listRef} className="divide-y divide-zinc-800 overflow-y-auto custom-scrollbar flex-1">
-                        {contacts.map((contact, index) => (
-                            <div key={contact.id} className="grid grid-cols-12 gap-4 px-8 py-3.5 hover:bg-white/[0.02] transition-colors items-center group cursor-pointer">
-                                <div className="col-span-1 text-xs text-white/25">
-                                    {(currentPage - 1) * pageSize + index + 1}
-                                </div>
-                                <div className="col-span-3 flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover:border-blue-500/20 group-hover:bg-blue-500/5 group-hover:text-blue-400 transition-all text-xs font-medium shrink-0">
-                                        {contact.name?.charAt(0).toUpperCase()}
+                        {contacts.map((contact, index) => {
+                            const isSelected = selectedIds.includes(contact.id);
+                            return (
+                                <div 
+                                    key={contact.id} 
+                                    onClick={() => setSelectedContact(contact)}
+                                    className="grid grid-cols-12 gap-4 px-8 py-3.5 transition-all items-center group cursor-pointer border-l-2 border-transparent hover:bg-white/[0.02]"
+                                >
+                                    <div className="col-span-1 flex items-center gap-3">
+                                        <button 
+                                            onClick={(e) => toggleSelect(contact.id, e)}
+                                            className={cn("transition-colors", isSelected ? "text-blue-500" : "text-white/10 group-hover:text-white/30")}
+                                        >
+                                            {isSelected ? <CheckSquare size={14} /> : <Square size={14} />}
+                                        </button>
+                                        <span className="text-xs text-white/25">{(currentPage - 1) * pageSize + index + 1}</span>
                                     </div>
-                                    <span className="text-sm text-white group-hover:text-blue-400 transition-colors truncate">{contact.name}</span>
+                                    <div className="col-span-3 flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full border bg-white/5 border-white/10 text-white/40 group-hover:border-blue-500/20 group-hover:bg-blue-500/5 group-hover:text-blue-400 flex items-center justify-center text-xs font-medium shrink-0 transition-all">
+                                            {contact.name?.charAt(0).toUpperCase()}
+                                        </div>
+                                        <span className="text-sm transition-colors truncate text-white group-hover:text-blue-400">
+                                            {contact.name}
+                                        </span>
+                                    </div>
+                                    <div className="col-span-4 flex items-center gap-2 text-white/40">
+                                        <Mail size={11} className="shrink-0" />
+                                        <span className="text-xs truncate">{contact.email || '—'}</span>
+                                    </div>
+                                    <div className="col-span-2 flex items-center gap-2 text-white/40">
+                                        <Phone size={11} className="shrink-0" />
+                                        <span className="text-xs truncate">{contact.phone || '—'}</span>
+                                    </div>
+                                    <div className="col-span-2 flex items-center justify-end gap-1">
+                                        <button
+                                            className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors"
+                                            title="View"
+                                            onClick={(e) => { e.stopPropagation(); setSelectedContact(contact); }}
+                                        >
+                                            <Eye size={14} />
+                                        </button>
+                                        <button
+                                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500/50 hover:text-red-400 transition-colors"
+                                            title="Delete"
+                                            onClick={(e) => { e.stopPropagation(); setContactToDelete(contact); }}
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="col-span-4 flex items-center gap-2 text-white/40">
-                                    <Mail size={11} className="shrink-0" />
-                                    <span className="text-xs truncate">{contact.email || '—'}</span>
-                                </div>
-                                <div className="col-span-2 flex items-center gap-2 text-white/40">
-                                    <Phone size={11} className="shrink-0" />
-                                    <span className="text-xs truncate">{contact.phone || '—'}</span>
-                                </div>
-                                <div className="col-span-2 flex items-center justify-end gap-1">
-                                    <button
-                                        className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors"
-                                        title="View"
-                                        onClick={() => setSelectedContact(contact)}
-                                    >
-                                        <Eye size={14} />
-                                    </button>
-                                    <button
-                                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500/50 hover:text-red-400 transition-colors"
-                                        title="Delete"
-                                        onClick={() => setContactToDelete(contact)}
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Upload, Search } from 'lucide-react';
+import axios from 'axios';
+import { Upload, Search, Rocket, Loader2 } from 'lucide-react';
 import Button from '@/components/Button';
 import ImportModal from '../components/ImportModal';
 import ContactsTable from '../components/tabs/ContactsTable';
@@ -15,10 +16,32 @@ const Contacts = () => {
     const [refreshKey, setRefreshKey] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Selection state lifted from table
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isAddingToCRM, setIsAddingToCRM] = useState(false);
+
     const handleImportSuccess = () => {
         setIsImportModalOpen(false);
         setActiveTab(TABS.IMPORTS);
         setRefreshKey(k => k + 1);
+    };
+
+    const handleAddToCRM = async () => {
+        if (selectedIds.length === 0) return;
+        setIsAddingToCRM(true);
+        try {
+            const promises = selectedIds.map(id => 
+                axios.post('/api/crm/pipeline/', { contact: id, stage: 'lead' })
+            );
+            await Promise.all(promises);
+            setSelectedIds([]);
+            alert(`Successfully added ${selectedIds.length} contacts to CRM pipeline.`);
+        } catch (err) {
+            console.error('Failed to add to CRM:', err);
+            alert('Failed to add some contacts to CRM.');
+        } finally {
+            setIsAddingToCRM(false);
+        }
     };
 
     return (
@@ -28,14 +51,30 @@ const Contacts = () => {
                     <h1 className="text-2xl font-semibold text-white">Contacts</h1>
                     <p className="text-sm text-white/40">Your customer repository</p>
                 </div>
-                <Button
-                    variant="secondary"
-                    className="!w-auto h-9 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-xs font-medium"
-                    onClick={() => setIsImportModalOpen(true)}
-                >
-                    <Upload size={14} className="mr-2 opacity-50" />
-                    Import
-                </Button>
+                
+                <div className="flex items-center gap-2">
+                    {/* Multi-action bar */}
+                    {selectedIds.length > 0 && activeTab === TABS.CONTACTS && (
+                        <Button
+                            variant="secondary"
+                            className="!w-auto h-9 px-4 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold"
+                            onClick={handleAddToCRM}
+                            disabled={isAddingToCRM}
+                        >
+                            {isAddingToCRM ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Rocket size={14} className="mr-2" />}
+                            Add to CRM ({selectedIds.length})
+                        </Button>
+                    )}
+
+                    <Button
+                        variant="secondary"
+                        className="!w-auto h-9 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-xs font-medium"
+                        onClick={() => setIsImportModalOpen(true)}
+                    >
+                        <Upload size={14} className="mr-2 opacity-50" />
+                        Import
+                    </Button>
+                </div>
             </header>
 
             <main className="flex-1 px-10 pt-5 pb-10 relative z-10 overflow-hidden flex flex-col gap-4 min-h-0">
@@ -45,7 +84,12 @@ const Contacts = () => {
                         {[TABS.CONTACTS, TABS.IMPORTS].map(tab => (
                             <button
                                 key={tab}
-                                onClick={() => { setActiveTab(tab); setSelectedBatch(null); setSearchQuery(''); }}
+                                onClick={() => { 
+                                    setActiveTab(tab); 
+                                    setSelectedBatch(null); 
+                                    setSearchQuery(''); 
+                                    setSelectedIds([]); // Clear selection on tab change
+                                }}
                                 className={cn(
                                     "px-4 py-2.5 text-sm capitalize transition-all border-b-2 -mb-px",
                                     activeTab === tab
@@ -72,7 +116,12 @@ const Contacts = () => {
                 </div>
 
                 {activeTab === TABS.CONTACTS && (
-                    <ContactsTable key={refreshKey} searchQuery={searchQuery} />
+                    <ContactsTable 
+                        key={refreshKey} 
+                        searchQuery={searchQuery} 
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
+                    />
                 )}
                 {activeTab === TABS.IMPORTS && !selectedBatch && (
                     <ImportsTab key={refreshKey} onViewBatch={(batch) => setSelectedBatch(batch)} />
@@ -83,6 +132,8 @@ const Contacts = () => {
                         batchName={selectedBatch.name}
                         onBack={() => setSelectedBatch(null)}
                         searchQuery={searchQuery}
+                        selectedIds={selectedIds}
+                        onSelectionChange={setSelectedIds}
                     />
                 )}
             </main>
