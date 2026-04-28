@@ -7,17 +7,18 @@ import ContactsTable from '../components/tabs/ContactsTable';
 import ImportsTab from '../components/tabs/ImportsTab';
 import { cn } from '@/lib/utils';
 import RingLoader from '@/components/ui/RingLoader';
+import AddToCRMModal from '../components/AddToCRMModal';
 
 const TABS = { CONTACTS: 'contacts', IMPORTS: 'imports' };
 
 const Contacts = () => {
     const [activeTab, setActiveTab] = useState(TABS.CONTACTS);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isAddToCRMModalOpen, setIsAddToCRMModalOpen] = useState(false);
     const [selectedBatch, setSelectedBatch] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Selection state lifted from table
     const [selectedIds, setSelectedIds] = useState([]);
     const [isAddingToCRM, setIsAddingToCRM] = useState(false);
 
@@ -27,16 +28,20 @@ const Contacts = () => {
         setRefreshKey(k => k + 1);
     };
 
-    const handleAddToCRM = async () => {
+    const handleAddToCRM = async (pipelineId) => {
         if (selectedIds.length === 0) return;
         setIsAddingToCRM(true);
         try {
             const promises = selectedIds.map(id => 
-                axios.post('/api/crm/pipeline/', { contact: id, stage: 'lead' })
+                axios.post('/api/crm/pipeline/', { 
+                    contact: id, 
+                    stage: 'lead',
+                    pipeline: pipelineId
+                })
             );
             await Promise.all(promises);
             setSelectedIds([]);
-            alert(`Successfully added ${selectedIds.length} contacts to CRM pipeline.`);
+            // alert(`Successfully added ${selectedIds.length} contacts to CRM pipeline.`);
         } catch (err) {
             console.error('Failed to add to CRM:', err);
             alert('Failed to add some contacts to CRM.');
@@ -54,12 +59,11 @@ const Contacts = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    {/* Multi-action bar */}
                     {selectedIds.length > 0 && activeTab === TABS.CONTACTS && (
                         <Button
                             variant="secondary"
                             className="!w-auto h-9 px-4 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold"
-                            onClick={handleAddToCRM}
+                            onClick={() => setIsAddToCRMModalOpen(true)}
                             disabled={isAddingToCRM}
                         >
                             {isAddingToCRM ? <RingLoader size="1.2em" className="mr-2" /> : <Rocket size={14} className="mr-2" />}
@@ -79,7 +83,6 @@ const Contacts = () => {
             </header>
 
             <main className="flex-1 px-10 pt-5 pb-10 relative z-10 overflow-hidden flex flex-col gap-4 min-h-0">
-                {/* Tabs + Search */}
                 <div className="flex items-center border-b border-white/5 shrink-0">
                     <div className="flex items-center gap-1">
                         {[TABS.CONTACTS, TABS.IMPORTS].map(tab => (
@@ -89,7 +92,7 @@ const Contacts = () => {
                                     setActiveTab(tab); 
                                     setSelectedBatch(null); 
                                     setSearchQuery(''); 
-                                    setSelectedIds([]); // Clear selection on tab change
+                                    setSelectedIds([]);
                                 }}
                                 className={cn(
                                     "px-4 py-2.5 text-sm capitalize transition-all border-b-2 -mb-px",
@@ -143,6 +146,13 @@ const Contacts = () => {
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 onSuccess={handleImportSuccess}
+            />
+
+            <AddToCRMModal
+                isOpen={isAddToCRMModalOpen}
+                onClose={() => setIsAddToCRMModalOpen(false)}
+                contactCount={selectedIds.length}
+                onConfirm={handleAddToCRM}
             />
         </div>
     );
