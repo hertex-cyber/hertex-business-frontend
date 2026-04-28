@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Upload, Search, Rocket, Loader2 } from 'lucide-react';
+import { Upload, Search, Rocket } from 'lucide-react';
 import Button from '@/components/Button';
 import ImportModal from '../components/ImportModal';
 import ContactsTable from '../components/tabs/ContactsTable';
 import ImportsTab from '../components/tabs/ImportsTab';
 import { cn } from '@/lib/utils';
+import RingLoader from '@/components/ui/RingLoader';
 
 const TABS = { CONTACTS: 'contacts', IMPORTS: 'imports' };
 
@@ -61,7 +62,7 @@ const Contacts = () => {
                             onClick={handleAddToCRM}
                             disabled={isAddingToCRM}
                         >
-                            {isAddingToCRM ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Rocket size={14} className="mr-2" />}
+                            {isAddingToCRM ? <RingLoader size="1.2em" className="mr-2" /> : <Rocket size={14} className="mr-2" />}
                             Add to CRM ({selectedIds.length})
                         </Button>
                     )}

@@ -85,7 +85,7 @@ const Dashboard = () => {
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-sm font-bold text-white group-hover:translate-x-1 transition-transform">Customer Deal #{i*234}</p>
-                      <p className="text-xs text-white/20 font-medium">Status: Negotiation // Probability: 85%</p>
+                      <p className="text-xs text-white/20 font-medium">Status: Negotiation</p>
                     </div>
                   </div>
                   <ChevronRight size={16} className="text-white/10 group-hover:text-white group-hover:translate-x-1 transition-all" />

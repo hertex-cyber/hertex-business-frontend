@@ -19,6 +19,7 @@ import UploadStep from './import/UploadStep';
 import ColumnSelectStep from './import/ColumnSelectStep';
 import MappingStep from './import/MappingStep';
 import PreviewStep from './import/PreviewStep';
+import RingLoader from '@/components/ui/RingLoader';
 
 const STEPS = {
     UPLOAD: 'UPLOAD',
@@ -283,7 +284,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                             }}
                         >
                             {isImporting ? (
-                                <div className="flex items-center gap-2"><Loader2 size={12} className="animate-spin" /><span>Importing...</span></div>
+                                <div className="flex items-center gap-2"><RingLoader size="1.2em" /><span>Importing...</span></div>
                             ) : (
                                 <span>{step === STEPS.PREVIEW ? 'Import Now' : 'Next'}</span>
                             )}

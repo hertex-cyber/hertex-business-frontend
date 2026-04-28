@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FileInput, Calendar, Loader2, MoreVertical, Download, GitMerge, Trash2 } from 'lucide-react';
+import { FileInput, Calendar, MoreVertical, Download, GitMerge, Trash2 } from 'lucide-react';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import RingLoader from '@/components/ui/RingLoader';
 
 const ImportsTab = ({ onViewBatch }) => {
     const [batches, setBatches] = useState([]);
@@ -39,7 +40,7 @@ const ImportsTab = ({ onViewBatch }) => {
 
     if (isLoading) return (
         <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="animate-spin text-blue-500" size={28} />
+            <RingLoader />
         </div>
     );
 

@@ -4,6 +4,7 @@ import { Users, Mail, Phone, Eye, Trash2, ChevronLeft, ChevronRight, Loader2, Ch
 import { cn } from '@/lib/utils';
 import ContactDetailModal from '../ContactDetailModal';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
+import RingLoader from '@/components/ui/RingLoader';
 
 const ContactsTable = ({ 
     batchId = null, 
@@ -102,10 +103,7 @@ const ContactsTable = ({
             <div className="bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-800 shadow-xl relative flex flex-col min-h-0 flex-1">
                 {isLoading && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-[4px] z-50 flex items-center justify-center">
-                        <div className="flex flex-col items-center gap-3">
-                            <Loader2 className="animate-spin text-blue-500" size={28} />
-                            <span className="text-xs text-white/40">Syncing...</span>
-                        </div>
+                        <RingLoader />
                     </div>
                 )}
 
