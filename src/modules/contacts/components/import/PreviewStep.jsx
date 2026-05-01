@@ -2,16 +2,30 @@ import React from 'react';
 import { Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const PreviewStep = ({ previewData, selectedHeaders, mapping }) => {
+const PreviewStep = ({ previewData, selectedHeaders, mapping, isImporting, importProgress }) => {
     // Reorder headers to ensure mapped columns come first in a logical order if desired, 
     // but here we'll just follow the user's request to have Status after Email conceptually.
     // We'll just render exactly what they mapped/selected in the grid.
 
     return (
         <div className="space-y-6 outline-none h-full flex flex-col">
-            <div className="flex items-center gap-2">
-                <Eye size={14} className="text-blue-500/50" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Data Verification</span>
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                    <Eye size={14} className="text-blue-500/50" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40 whitespace-nowrap">Data Verification</span>
+                </div>
+
+                {isImporting && (
+                    <div className="flex-1 max-w-[300px] flex items-center gap-3 animate-in fade-in slide-in-from-right-4 duration-500">
+                        <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-blue-500 transition-all duration-500 ease-out" 
+                                style={{ width: `${importProgress}%` }} 
+                            />
+                        </div>
+                        <span className="text-[10px] font-black tabular-nums text-blue-400 w-8">{importProgress}%</span>
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 min-h-0 rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden flex flex-col">

@@ -46,6 +46,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
     const [importStatus, setImportStatus] = useState('Lead');
     const [previewData, setPreviewData] = useState([]);
     const [isImporting, setIsImporting] = useState(false);
+    const [importProgress, setImportProgress] = useState(0);
     const [error, setError] = useState(null);
     const fileInputRef = useRef(null);
 
@@ -134,6 +135,8 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
 
     const handleFinalImport = async () => {
         setIsImporting(true);
+        setImportProgress(0);
+        setError(null);
         try {
             const fullData = await parseFileFull(file);
             const transformedData = fullData.map(row => {
@@ -146,10 +149,37 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                 });
                 return { ...contact, additional_data: additional };
             }).filter(c => c.name);
-            await axios.post(`/api/contacts/bulk-create/?batch_name=${encodeURIComponent(importName || 'Unnamed Import')}`, transformedData);
+
+            const CHUNK_SIZE = 1500;
+            const total = transformedData.length;
+            let currentBatchId = null;
+
+            for (let i = 0; i < total; i += CHUNK_SIZE) {
+                const chunk = transformedData.slice(i, i + CHUNK_SIZE);
+                
+                let url = `/api/contacts/bulk-create/?batch_name=${encodeURIComponent(importName || 'Unnamed Import')}`;
+                if (currentBatchId) {
+                    url += `&batch_id=${currentBatchId}`;
+                }
+
+                const response = await axios.post(url, chunk);
+                
+                if (response.data.success) {
+                    currentBatchId = response.data.batch_id;
+                    const progress = Math.min(Math.round(((i + chunk.length) / total) * 100), 100);
+                    setImportProgress(progress);
+                } else {
+                    throw new Error(response.data.message || 'Import failed at a chunk.');
+                }
+            }
+
             onSuccess();
-        } catch (err) { setError('Import failed.'); }
-        finally { setIsImporting(false); }
+        } catch (err) { 
+            console.error('Import error:', err);
+            setError(err.response?.data?.message || err.message || 'Import failed.'); 
+        } finally { 
+            setIsImporting(false); 
+        }
     };
 
     const parseFileFull = (file, limit = null) => {
@@ -248,7 +278,8 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                             </div>
                         </div>
                     )}
-                    {step === STEPS.PREVIEW && <PreviewStep previewData={previewData} selectedHeaders={selectedHeaders} mapping={mapping} />}
+                    {step === STEPS.PREVIEW && <PreviewStep previewData={previewData} selectedHeaders={selectedHeaders} mapping={mapping} isImporting={isImporting} importProgress={importProgress} />}
+
 
                     {error && (
                         <div className="mt-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-3 text-red-500 outline-none">
@@ -284,7 +315,10 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                             }}
                         >
                             {isImporting ? (
-                                <div className="flex items-center gap-2"><RingLoader size="1.2em" /><span>Importing...</span></div>
+                                <div className="flex items-center gap-2">
+                                    <RingLoader size="1.2em" />
+                                    <span>Importing...</span>
+                                </div>
                             ) : (
                                 <span>{step === STEPS.PREVIEW ? 'Import Now' : 'Next'}</span>
                             )}

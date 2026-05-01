@@ -54,7 +54,7 @@ const ConfirmDeleteDialog = ({ isOpen, onClose, onCancel, onConfirm, isLoading =
                 </div>
             </div>
         </div>
-    , document.body);
+        , document.body);
 };
 
 export default ConfirmDeleteDialog;
