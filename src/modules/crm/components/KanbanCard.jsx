@@ -8,49 +8,71 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
   const getStatusColor = (status) => {
     const colors = {
       'Lead': 'from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-400',
-      'Qualified': 'from-purple-500/10 to-purple-500/5 border-purple-500/20 text-purple-400',
-      'Proposal': 'from-amber-500/10 to-amber-500/5 border-amber-500/20 text-amber-400',
-      'Negotiation': 'from-orange-500/10 to-orange-500/5 border-orange-500/20 text-orange-400',
-      'Won': 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-400',
-      'Lost': 'from-red-500/10 to-red-500/5 border-red-500/20 text-red-400',
+      'Prospect': 'from-purple-500/10 to-purple-500/5 border-purple-500/20 text-purple-400',
+      'Customer': 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-400',
+      'Inactive': 'from-zinc-500/10 to-zinc-500/5 border-zinc-500/20 text-zinc-400',
     };
     return colors[status] || colors['Lead'];
+  };
+
+  const getPriorityColor = (priority) => {
+    const colors = {
+      'High': 'text-red-400 bg-red-400/10 border-red-500/20',
+      'Medium': 'text-amber-400 bg-amber-400/10 border-amber-500/20',
+      'Low': 'text-emerald-400 bg-emerald-400/10 border-emerald-500/20',
+    };
+    return colors[priority] || 'text-white/40 bg-white/5 border-white/10';
   };
 
   return (
     <div
       className={cn(
-        'p-3 rounded-lg bg-white/5 border border-white/10 cursor-grab active:cursor-grabbing transition-colors duration-200 touch-none relative min-w-72',
-        !isOverlay && 'hover:border-white/20',
-        isOverlay && 'bg-white/10 border-blue-500/50 shadow-[0_0_40px_rgba(59,130,246,0.3)] scale-105 z-50 cursor-grabbing'
+        'p-4 rounded-xl bg-zinc-900/40 border border-white/5 cursor-grab active:cursor-grabbing transition-all duration-300 touch-none relative w-full group',
+        !isOverlay && 'hover:border-blue-500/30 hover:bg-zinc-900/60',
+        isOverlay && 'w-[288px] bg-zinc-900 border-blue-500/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] scale-[1.02] z-50 cursor-grabbing'
       )}
     >
-      <div className="space-y-2">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 pointer-events-none">
-            <h3 className="font-bold text-white text-xs">{card.name}</h3>
-            <p className="text-[9px] text-white/40">{card.email}</p>
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 pointer-events-none min-w-0">
+            <h3 className="font-bold text-white text-[13px] leading-tight mb-1.5 truncate group-hover:text-blue-400 transition-colors">
+              {card.name}
+            </h3>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-[10px] text-white/40 truncate">
+                <span className="w-3.5 h-3.5 rounded-full bg-white/5 flex items-center justify-center text-[8px]">📧</span>
+                {card.email}
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-white/40 truncate">
+                <span className="w-3.5 h-3.5 rounded-full bg-white/5 flex items-center justify-center text-[8px]">📞</span>
+                {card.phone}
+              </div>
+            </div>
           </div>
-          <button className="p-1 rounded hover:bg-white/5 transition-colors opacity-0 hover:opacity-100">
-            <MoreVertical size={12} className="text-white/40" />
+          <button className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 transition-all opacity-0 group-hover:opacity-100">
+            <MoreVertical size={14} />
           </button>
         </div>
 
-        <div className="pointer-events-none">
-          <p className="text-[9px] text-white/40 mb-0.5">Value</p>
-          <p className="font-bold text-white text-xs">{card.value}</p>
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5 pointer-events-none">
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              'px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border bg-gradient-to-b',
+              getStatusColor(card.status)
+            )}>
+              {card.status}
+            </span>
+            <span className={cn(
+              'px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border',
+              getPriorityColor(card.priority)
+            )}>
+              {card.priority}
+            </span>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] font-black text-white">{card.value}</p>
+          </div>
         </div>
-
-        <div className="flex gap-1.5 pointer-events-none">
-          <span className={cn(
-            'px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border',
-            getStatusColor(card.priority)
-          )}>
-            {card.priority}
-          </span>
-        </div>
-
-        <p className="text-[8px] text-white/30 font-medium pointer-events-none">📅 {card.lastContact}</p>
       </div>
     </div>
   );

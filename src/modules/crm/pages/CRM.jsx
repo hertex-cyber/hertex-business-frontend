@@ -38,18 +38,30 @@ const CRM = () => {
   const [selectedPipeline, setSelectedPipeline] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deals, setDeals] = useState({
-    lead: [],
-    qualified: [],
-    proposal: [],
-    negotiation: [],
-    won: [],
-    lost: [],
+    lead: { items: [], nextPage: null, hasMore: false, count: 0 },
+    qualified: { items: [], nextPage: null, hasMore: false, count: 0 },
+    proposal: { items: [], nextPage: null, hasMore: false, count: 0 },
+    negotiation: { items: [], nextPage: null, hasMore: false, count: 0 },
+    won: { items: [], nextPage: null, hasMore: false, count: 0 },
+    lost: { items: [], nextPage: null, hasMore: false, count: 0 },
   });
   const [activeCardData, setActiveCardData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPipelinesLoading, setIsPipelinesLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
+
+  const transformDeal = (deal) => ({
+    id: deal.id,
+    name: deal.contact_details?.name || "Unknown",
+    email: deal.contact_details?.email || "No Email",
+    phone: deal.contact_details?.phone || "No Phone",
+    status: deal.contact_details?.status || "Lead",
+    value: `₹ ${deal.value}`,
+    priority: deal.priority,
+    lastContact: new Date(deal.updated_at).toLocaleDateString(),
+    raw: deal,
+  });
 
   const fetchPipelines = useCallback(async () => {
     try {
@@ -72,41 +84,70 @@ const CRM = () => {
     if (!selectedPipeline) return;
     try {
       setIsLoading(true);
-      const response = await axios.get("/api/crm/pipeline/", {
-        params: { pipeline: selectedPipeline.id }
+      const stages = COLUMNS.map(c => c.id);
+      
+      const promises = stages.map(stage => 
+        axios.get("/api/crm/pipeline/", {
+          params: { pipeline: selectedPipeline.id, stage, page: 1 }
+        })
+      );
+
+      const results = await Promise.all(promises);
+      const newDeals = {};
+
+      results.forEach((res, idx) => {
+        const stage = stages[idx];
+        newDeals[stage] = {
+          items: (res.data.results || []).map(transformDeal),
+          nextPage: res.data.next ? 2 : null,
+          hasMore: !!res.data.next,
+          count: res.data.count || 0,
+          isLoadingMore: false
+        };
       });
 
-      const grouped = {
-        lead: [],
-        qualified: [],
-        proposal: [],
-        negotiation: [],
-        won: [],
-        lost: [],
-      };
-
-      response.data.results.forEach((deal) => {
-        const stage = deal.stage.toLowerCase();
-        if (grouped[stage]) {
-          grouped[stage].push({
-            id: deal.id,
-            name: deal.contact_details?.name || "Unknown",
-            email: deal.contact_details?.email || "No Email",
-            value: `₹ ${deal.value}`,
-            priority: deal.priority,
-            lastContact: new Date(deal.updated_at).toLocaleDateString(),
-            raw: deal,
-          });
-        }
-      });
-
-      setDeals(grouped);
+      setDeals(newDeals);
     } catch (error) {
       console.error("Error fetching deals:", error);
     } finally {
       setIsLoading(false);
     }
   }, [selectedPipeline]);
+
+  const fetchMoreDeals = async (stage) => {
+    const stageData = deals[stage];
+    if (!stageData.nextPage || stageData.isLoadingMore) return;
+
+    try {
+      setDeals(prev => ({
+        ...prev,
+        [stage]: { ...prev[stage], isLoadingMore: true }
+      }));
+
+      const response = await axios.get("/api/crm/pipeline/", {
+        params: { pipeline: selectedPipeline.id, stage, page: stageData.nextPage }
+      });
+
+      const newItems = (response.data.results || []).map(transformDeal);
+      
+      setDeals(prev => ({
+        ...prev,
+        [stage]: {
+          items: [...prev[stage].items, ...newItems],
+          nextPage: response.data.next ? stageData.nextPage + 1 : null,
+          hasMore: !!response.data.next,
+          isLoadingMore: false,
+          count: response.data.count || 0
+        }
+      }));
+    } catch (err) {
+      console.error("Load more failed:", err);
+      setDeals(prev => ({
+        ...prev,
+        [stage]: { ...prev[stage], isLoadingMore: false }
+      }));
+    }
+  };
 
   useEffect(() => {
     fetchPipelines();
@@ -120,8 +161,8 @@ const CRM = () => {
 
   const handleDragStart = (event) => {
     const { active } = event;
-    for (const cardList of Object.values(deals)) {
-      const card = cardList.find((c) => c.id === active.id);
+    for (const colData of Object.values(deals)) {
+      const card = colData.items.find((c) => c.id === active.id);
       if (card) {
         setActiveCardData(card);
         break;
@@ -141,8 +182,8 @@ const CRM = () => {
     let sourceColumn = null;
     let sourceIndex = -1;
 
-    for (const [colId, cardList] of Object.entries(deals)) {
-      const idx = cardList.findIndex((card) => card.id === activeId);
+    for (const [colId, colData] of Object.entries(deals)) {
+      const idx = colData.items.findIndex((card) => card.id === activeId);
       if (idx !== -1) {
         sourceColumn = colId;
         sourceIndex = idx;
@@ -157,7 +198,7 @@ const CRM = () => {
       destColumn = overId;
     } else {
       for (const col of COLUMNS) {
-        if (deals[col.id].some((card) => card.id === overId)) {
+        if (deals[col.id].items.some((card) => card.id === overId)) {
           destColumn = col.id;
           break;
         }
@@ -168,18 +209,18 @@ const CRM = () => {
       return;
 
     const newDeals = { ...deals };
-    const draggedCard = newDeals[sourceColumn][sourceIndex];
-    newDeals[sourceColumn].splice(sourceIndex, 1);
+    const draggedCard = newDeals[sourceColumn].items[sourceIndex];
+    newDeals[sourceColumn].items.splice(sourceIndex, 1);
 
     if (sourceColumn === destColumn) {
-      const destIndex = newDeals[destColumn].findIndex((c) => c.id === overId);
-      newDeals[destColumn].splice(
+      const destIndex = newDeals[destColumn].items.findIndex((c) => c.id === overId);
+      newDeals[destColumn].items.splice(
         destIndex === -1 ? 0 : destIndex,
         0,
         draggedCard,
       );
     } else {
-      newDeals[destColumn].push(draggedCard);
+      newDeals[destColumn].items.push(draggedCard);
     }
 
     setDeals(newDeals);
@@ -209,7 +250,7 @@ const CRM = () => {
       </header>
 
       <main className="flex-1 p-8 relative z-10 flex flex-col overflow-hidden">
-        {isPipelinesLoading || (isLoading && (!deals["lead"] || deals["lead"].length === 0)) ? (
+        {isPipelinesLoading || (isLoading && (!deals["lead"] || deals["lead"].items.length === 0)) ? (
           <div className="h-full flex items-center justify-center">
             <RingLoader />
           </div>
@@ -266,7 +307,8 @@ const CRM = () => {
               >
                 <div className="flex gap-4 min-w-max pb-4 h-full">
                   {COLUMNS.map((column) => {
-                    const filteredCards = (deals[column.id] || []).filter(card => 
+                    const stageData = deals[column.id];
+                    const filteredCards = (stageData.items || []).filter(card => 
                       card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       card.email.toLowerCase().includes(searchQuery.toLowerCase())
                     );
@@ -276,6 +318,10 @@ const CRM = () => {
                         key={column.id}
                         column={column}
                         cards={filteredCards}
+                        totalCount={stageData.count}
+                        hasMore={stageData.hasMore}
+                        isLoadingMore={stageData.isLoadingMore}
+                        onLoadMore={() => fetchMoreDeals(column.id)}
                       />
                     );
                   })}

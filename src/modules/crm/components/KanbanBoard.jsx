@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import KanbanCard from './KanbanCard';
 import { Plus } from 'lucide-react';
 
-const KanbanColumn = ({ column, cards }) => {
+const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoadMore }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -47,7 +47,7 @@ const KanbanColumn = ({ column, cards }) => {
       <div
         ref={setNodeRef}
         className={cn(
-          'space-y-2 flex-1 rounded-lg p-3 min-h-[400px] max-h-[calc(100vh-280px)] transition-colors bg-white/5 overflow-y-auto custom-scrollbar'
+          'space-y-2 flex-1 rounded-lg p-3 min-h-[400px] max-h-[calc(100vh-280px)] transition-colors bg-white/5 overflow-y-auto custom-scrollbar flex flex-col'
         )}
       >
         <SortableContext
@@ -56,19 +56,31 @@ const KanbanColumn = ({ column, cards }) => {
         >
           {cards.length === 0 ? (
             <div className={cn(
-              'h-full flex items-center justify-center border-2 border-dashed border-white/10 rounded-lg transition-colors'
+              'flex-1 flex items-center justify-center border-2 border-dashed border-white/10 rounded-lg transition-colors min-h-[100px]'
             )}>
               <p className="text-[9px] text-white/20 font-medium uppercase tracking-widest">
                 Drop deals here
               </p>
             </div>
           ) : (
-            cards.map((card) => (
-              <KanbanCard
-                key={card.id}
-                card={card}
-              />
-            ))
+            <div className="space-y-2 flex-1">
+              {cards.map((card) => (
+                <KanbanCard
+                  key={card.id}
+                  card={card}
+                />
+              ))}
+              
+              {hasMore && (
+                <button
+                  onClick={onLoadMore}
+                  disabled={isLoadingMore}
+                  className="w-full py-3 mt-2 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 text-xs text-white/20 hover:text-white/40 transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isLoadingMore ? 'Loading...' : `Load More (${cards.length}/${totalCount})`}
+                </button>
+              )}
+            </div>
           )}
         </SortableContext>
       </div>
