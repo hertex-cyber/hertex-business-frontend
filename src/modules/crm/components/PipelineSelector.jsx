@@ -31,19 +31,6 @@ const PipelineSelector = ({ pipelines, selectedPipeline, onSelect, onCreateNew }
               {p.name}
             </DropdownMenuItem>
           ))}
-          
-          <DropdownMenuSeparator className="bg-white/5 my-1.5" />
-          
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              onCreateNew();
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-[9px] font-normal uppercase tracking-widest text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all text-left"
-          >
-            <Plus size={12} />
-            Create New Pipeline
-          </button>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

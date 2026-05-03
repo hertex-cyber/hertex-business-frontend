@@ -27,7 +27,7 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
   return (
     <div
       className={cn(
-        'p-4 rounded-xl bg-zinc-900/40 border border-white/5 cursor-grab active:cursor-grabbing transition-all duration-300 touch-none relative w-full group',
+        'p-4 rounded-lg bg-zinc-900/40 border border-white/5 cursor-grab active:cursor-grabbing transition-all duration-300 touch-none relative w-full group',
         !isOverlay && 'hover:border-blue-500/30 hover:bg-zinc-900/60',
         isOverlay && 'w-[288px] bg-zinc-900 border-blue-500/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] scale-[1.02] z-50 cursor-grabbing'
       )}
@@ -54,24 +54,24 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
           </button>
         </div>
 
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5 pointer-events-none">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5">
+          <div className="flex items-center gap-2 pointer-events-none">
             <span className={cn(
-              'px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border bg-gradient-to-b',
+              'px-2 py-0.5 rounded-sm text-[9px] font-black uppercase tracking-wider border bg-gradient-to-b',
               getStatusColor(card.status)
             )}>
               {card.status}
             </span>
             <span className={cn(
-              'px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border',
+              'px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase tracking-wider border',
               getPriorityColor(card.priority)
             )}>
               {card.priority}
             </span>
           </div>
-          <div className="text-right">
-            <p className="text-[11px] font-black text-white">{card.value}</p>
-          </div>
+          <button className="px-3 py-1 rounded-sm bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/60 hover:text-white transition-all border border-white/5 active:scale-95">
+            View
+          </button>
         </div>
       </div>
     </div>

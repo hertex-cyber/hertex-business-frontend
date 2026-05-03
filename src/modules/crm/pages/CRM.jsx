@@ -274,12 +274,22 @@ const CRM = () => {
           <div className="h-full flex flex-col overflow-hidden">
             <div className="flex justify-end items-center gap-4 mb-6 shrink-0">
               {!isPipelinesLoading && pipelines.length > 0 && (
-                <PipelineSelector 
-                  pipelines={pipelines}
-                  selectedPipeline={selectedPipeline}
-                  onSelect={setSelectedPipeline}
-                  onCreateNew={() => setIsCreateModalOpen(true)}
-                />
+                <>
+                  <Button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    variant="secondary"
+                    size="icon"
+                    className="h-10 w-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white/60 transition-all"
+                  >
+                    <Plus size={16} />
+                  </Button>
+                  <PipelineSelector 
+                    pipelines={pipelines}
+                    selectedPipeline={selectedPipeline}
+                    onSelect={setSelectedPipeline}
+                    onCreateNew={() => setIsCreateModalOpen(true)}
+                  />
+                </>
               )}
               <Button
                 onClick={() => setIsSearchDialogOpen(true)}
