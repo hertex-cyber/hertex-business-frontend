@@ -3,6 +3,7 @@ import axios from 'axios';
 import { FileInput, Calendar, MoreVertical, Download, GitMerge, Trash2 } from 'lucide-react';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import RingLoader from '@/components/ui/RingLoader';
+import AddToCRMModal from '../AddToCRMModal';
 
 const ImportsTab = ({ onViewBatch }) => {
     const [batches, setBatches] = useState([]);
@@ -10,6 +11,7 @@ const ImportsTab = ({ onViewBatch }) => {
     const [openMenu, setOpenMenu] = useState(null);
     const [batchToDelete, setBatchToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [batchForCRM, setBatchForCRM] = useState(null);
 
     useEffect(() => {
         axios.get('/api/contacts/batches/')
@@ -29,6 +31,20 @@ const ImportsTab = ({ onViewBatch }) => {
             console.error('Delete failed:', err);
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleAddToCRM = async (pipelineId) => {
+        if (!batchForCRM) return;
+        try {
+            await axios.post('/api/crm/pipeline/bulk-add-from-batch/', {
+                batch_id: batchForCRM.id,
+                pipeline_id: pipelineId
+            });
+            // Success feedback could be added here
+        } catch (err) {
+            console.error('Failed to add to CRM:', err);
+            alert('Failed to add contacts to CRM. Please try again.');
         }
     };
 
@@ -70,24 +86,30 @@ const ImportsTab = ({ onViewBatch }) => {
                             </div>
                             <div className="relative" onClick={e => e.stopPropagation()}>
                                 <button
-                                    onClick={() => setOpenMenu(openMenu === batch.id ? null : batch.id)}
+                                    onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === batch.id ? null : batch.id); }}
                                     className="p-1.5 rounded-lg text-white/20 hover:text-white hover:bg-white/10 transition-colors"
                                 >
                                     <MoreVertical size={15} />
                                 </button>
                                 {openMenu === batch.id && (
                                     <div className="absolute right-0 top-8 w-44 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden py-1">
-                                        <button className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); setBatchForCRM(batch); setOpenMenu(null); }}
+                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                                        >
                                             <GitMerge size={13} className="text-blue-400" />
                                             Add to CRM
                                         </button>
-                                        <button className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); }}
+                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                                        >
                                             <Download size={13} className="text-green-400" />
                                             Export
                                         </button>
                                         <div className="my-1 border-t border-zinc-800" />
                                         <button
-                                            onClick={() => { setBatchToDelete(batch); setOpenMenu(null); }}
+                                            onClick={(e) => { e.stopPropagation(); setBatchToDelete(batch); setOpenMenu(null); }}
                                             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
                                             <Trash2 size={13} />
                                             Delete
@@ -120,6 +142,13 @@ const ImportsTab = ({ onViewBatch }) => {
             isDeleting={isDeleting}
             onConfirm={handleDeleteBatch}
             onCancel={() => setBatchToDelete(null)}
+        />
+
+        <AddToCRMModal
+            isOpen={!!batchForCRM}
+            onClose={() => setBatchForCRM(null)}
+            onConfirm={handleAddToCRM}
+            contactCount={batchForCRM?.contact_count || 0}
         />
         </>
     );
