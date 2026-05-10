@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Mail, Phone, Tag, Calendar, Database, ExternalLink, Copy, Check, Trash2 } from 'lucide-react';
+import { X, Mail, Phone, Tag, Calendar, Database, ExternalLink, Copy, Check, Trash2, User } from 'lucide-react';
+import { TbEdit } from "react-icons/tb";
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -65,82 +66,127 @@ const ContactDetailModal = ({ contact, onClose, onDeleted }) => {
         ([, v]) => v !== null && v !== undefined && v !== ''
     );
 
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        try {
+            return new Date(dateStr).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        } catch (e) {
+            return 'N/A';
+        }
+    };
+
     return (
         <>
             {createPortal(
-                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-                    <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                    <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
 
                         {/* Header */}
-                        <div className="px-6 pt-6 pb-5 border-b border-white/5 shrink-0">
+                        <div className="px-8 pt-8 pb-6 border-b border-white/5 shrink-0">
                             <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-lg font-semibold shrink-0">
+                                <div className="flex items-center gap-6">
+                                    <div className="w-16 h-16 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-2xl font-bold shrink-0">
                                         {contact.name?.charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <h2 className="text-base font-semibold text-white">{contact.name}</h2>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-xs text-white/30">{contact.contact_id}</span>
-                                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full border", STATUS_STYLES[contact.status] || STATUS_STYLES.Lead)}>
+                                        <h2 className="text-xl font-semibold text-white">{contact.name || 'Unknown Contact'}</h2>
+                                        <div className="flex items-center gap-3 mt-2">
+                                            <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{contact.contact_id}</span>
+                                            <span className={cn("text-[11px] px-3 py-1 rounded-md border font-semibold uppercase tracking-wider", STATUS_STYLES[contact.status] || STATUS_STYLES.Lead)}>
                                                 {contact.status}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
-                                    <button
-                                        onClick={() => setShowDeleteDialog(true)}
-                                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500/50 hover:text-red-400 transition-colors"
-                                        title="Delete contact"
-                                    >
-                                        <Trash2 size={15} />
+                                    <button className="p-2 rounded-md hover:bg-blue-500/10 text-blue-500/50 hover:text-blue-400 transition-colors">
+                                        <TbEdit size={21} />
                                     </button>
-                                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white transition-colors">
-                                        <X size={16} />
+                                    <button 
+                                        onClick={() => setShowDeleteDialog(true)}
+                                        className="p-2 rounded-md hover:bg-red-500/10 text-red-500/50 hover:text-red-400 transition-colors"
+                                        title="Delete Record"
+                                    >
+                                        <Trash2 size={19} />
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-4 space-y-5">
-                            <div>
-                                <Field
-                                    icon={Mail} label="Email" value={contact.email}
-                                    actions={contact.email && (
-                                        <a href={`https://mail.google.com/mail/?view=cm&to=${contact.email}`} target="_blank" rel="noreferrer"
-                                            className="p-1.5 rounded-md hover:bg-blue-500/10 text-blue-500/60 hover:text-blue-400 transition-colors" title="Open in Gmail">
-                                            <ExternalLink size={12} />
-                                        </a>
-                                    )}
-                                />
-                                <Field
-                                    icon={Phone} label="Phone" value={contact.phone}
-                                    actions={contact.phone && <CopyButton text={contact.phone} />}
-                                />
-                                <Field icon={Tag}      label="Source" value={contact.source} />
-                                <Field icon={Calendar} label="Added"  value={contact.created_at ? new Date(contact.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null} />
-                            </div>
-
-                            {additionalEntries.length > 0 && (
-                                <div>
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <Database size={12} className="text-white/20" />
-                                        <p className="text-xs text-white/30">Additional Details</p>
-                                        <div className="flex-1 h-px bg-white/5" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {additionalEntries.map(([key, value]) => (
-                                            <div key={key} className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
-                                                <p className="text-[10px] text-white/30 mb-1 truncate capitalize">{key.replace(/_/g, ' ')}</p>
-                                                <p className="text-xs text-white truncate">{String(value)}</p>
-                                            </div>
-                                        ))}
+                        {/* Body - Two Column Layout */}
+                        <div className="flex-1 overflow-hidden p-8">
+                            <div className="grid grid-cols-2 gap-16 h-full relative">
+                                {/* Vertical Separator - Connected to Header/Footer */}
+                                <div className="absolute top-[-32px] bottom-[-32px] left-1/2 -ml-8 w-px bg-white/5" />
+                                
+                                {/* Left Column: Primary Data (Fixed) */}
+                                <div className="space-y-8 overflow-y-auto custom-scrollbar pr-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <User size={14} className="text-blue-400" />
+                                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">Primary Identity</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Field 
+                                                icon={Mail} label="Email Address" value={contact.email} 
+                                                actions={contact.email && (
+                                                    <a href={`https://mail.google.com/mail/?view=cm&to=${contact.email}`} target="_blank" rel="noreferrer"
+                                                        className="p-1.5 rounded-md hover:bg-blue-500/10 text-blue-500/60 hover:text-blue-400 transition-colors">
+                                                        <ExternalLink size={12} />
+                                                    </a>
+                                                )}
+                                            />
+                                            <Field 
+                                                icon={Phone} label="Phone Number" value={contact.phone} 
+                                                actions={contact.phone && <CopyButton text={contact.phone} />}
+                                            />
+                                            <Field icon={Tag} label="Lead Source" value={contact.source} />
+                                            <Field icon={Calendar} label="Date Onboarded" value={formatDate(contact.created_at)} />
+                                        </div>
                                     </div>
                                 </div>
-                            )}
+
+                                {/* Right Column: Registry & Metadata (Scrollable) */}
+                                <div className="space-y-8 overflow-y-auto custom-scrollbar pr-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <Database size={14} className="text-purple-400" />
+                                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/30">Additional Registry</p>
+                                        </div>
+                                        {additionalEntries.length > 0 ? (
+                                            <div className="grid grid-cols-1 gap-3 pb-4">
+                                                {additionalEntries.map(([key, value]) => (
+                                                    <div key={key} className="px-4 py-3 rounded-md bg-white/[0.02] border border-white/5 flex items-center justify-between group hover:bg-white/[0.04] transition-colors">
+                                                        <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{key.replace(/_/g, ' ')}</span>
+                                                        <span className="text-xs text-white/80 font-medium">{String(value)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="h-full min-h-[300px] rounded-md border border-dashed border-white/5 flex flex-col items-center justify-center gap-3 bg-white/[0.01]">
+                                                <Database size={20} className="text-white/5" />
+                                                <p className="text-[10px] font-bold text-white/10 uppercase tracking-widest">No Extended Data</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-8 py-6 border-t border-white/5 bg-zinc-900/30 flex items-center justify-end shrink-0">
+                            <button 
+                                onClick={onClose}
+                                className="px-8 py-2.5 rounded-md bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white transition-all active:scale-95"
+                            >
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>,
