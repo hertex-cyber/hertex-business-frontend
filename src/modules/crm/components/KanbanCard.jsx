@@ -26,14 +26,8 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
 
   return (
     <div
-      onClick={(e) => {
-        // Only trigger if not clicking another interactive element (like the "More" button)
-        if (e.target.closest('button')) return;
-        console.log('Card clicked for:', card.name);
-        onView?.(card);
-      }}
       className={cn(
-        'p-4 rounded-lg bg-zinc-900/40 border border-white/5 cursor-pointer transition-all duration-300 touch-none relative w-full group',
+        'p-4 rounded-lg bg-zinc-900/40 border border-white/5 cursor-grab active:cursor-grabbing transition-all duration-300 touch-none relative w-full group',
         !isOverlay && 'hover:border-blue-500/30 hover:bg-zinc-900/60',
         isOverlay && 'w-[288px] bg-zinc-900 border-blue-500/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] scale-[1.02] z-50 cursor-grabbing'
       )}
@@ -56,9 +50,9 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
             </div>
           </div>
           <button 
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              // Add logic for More menu if needed
             }}
             className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 transition-all opacity-0 group-hover:opacity-100 cursor-pointer relative z-10"
           >
@@ -82,6 +76,7 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
             </span>
           </div>
           <button 
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               onView?.(card);
@@ -96,6 +91,7 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
     </div>
   );
 };
+
 
 
 const KanbanCard = ({ card, onView }) => {

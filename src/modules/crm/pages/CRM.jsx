@@ -17,6 +17,7 @@ import PipelineSelector from "../components/PipelineSelector";
 import CreatePipelineModal from "../components/CreatePipelineModal";
 import SearchDialog from "../components/SearchDialog";
 import DealDetailsDialog from "../components/DealDetailsDialog";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 const COLUMNS = [
   { id: "lead", title: "Lead" },
@@ -53,6 +54,9 @@ const CRM = () => {
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const [viewingDeal, setViewingDeal] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dealToDelete, setDealToDelete] = useState(null);
 
   const transformDeal = (deal) => ({
     id: deal.id,
@@ -245,6 +249,34 @@ const CRM = () => {
     setIsDetailsOpen(true);
   };
 
+  const handleDeleteDeal = async () => {
+    if (!dealToDelete) return;
+    try {
+      setIsDeleting(true);
+      await axios.delete(`/api/crm/pipeline/${dealToDelete.id}/`);
+      
+      // Update local state
+      const stage = dealToDelete.status.toLowerCase();
+      setDeals(prev => ({
+        ...prev,
+        [stage]: {
+          ...prev[stage],
+          items: prev[stage].items.filter(item => item.id !== dealToDelete.id),
+          count: prev[stage].count - 1
+        }
+      }));
+      
+      setIsDetailsOpen(false);
+      setShowDeleteConfirm(false);
+      setDealToDelete(null);
+      setViewingDeal(null);
+    } catch (err) {
+      console.error("Failed to delete deal:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
@@ -376,6 +408,19 @@ const CRM = () => {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         deal={viewingDeal}
+        onDelete={(deal) => {
+          setDealToDelete(deal);
+          setShowDeleteConfirm(true);
+        }}
+      />
+
+      <ConfirmDeleteDialog 
+        isOpen={showDeleteConfirm}
+        title="Delete Deal"
+        description={`Are you sure you want to delete the deal for ${dealToDelete?.name}? This action cannot be undone.`}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteDeal}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );
