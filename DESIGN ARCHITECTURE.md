@@ -42,6 +42,8 @@ ByteHive is designed to feel like a high-end, precision technical instrument rat
 | Card grid gap | `gap-6` |
 | Card internal padding | `p-6` |
 | Button groups | `gap-4` |
+| Modal width (Wide) | `max-w-3xl` |
+| Modal width (Slim) | `max-w-md` |
 
 ### The Unified Header (Standard Pattern)
 ```jsx
@@ -93,8 +95,39 @@ Repositories must be house in a visible, minimum-height container to anchor the 
 - **Animation**: Subtle scale up (`hover:scale-[1.02]`) and color shift for icon containers.
 
 ### High-Capacity Buttons
-- **Primary Action**: Blue background, text-[10px], rounded-lg, tracking-widest, font-black.
+- **Primary Action**: Blue background, text-[10px], rounded-lg, tracking-widest, font-medium.
 - **Secondary Tool**: `bg-zinc-900/30` with subtle zinc borders, strictly `!w-auto`.
+
+### The Industrial Registry (Detail Modals)
+Used for deep data exploration (Contacts, Deal Details).
+- **Layout**: Two-column split-screen (`max-w-3xl`) with a connected vertical divider.
+- **Divider**: A subtle `w-px bg-white/5` line that spans exactly from header border to footer border.
+- **Scroll Architecture**: Independent scrolling for the registry section while maintaining a fixed header and footer.
+- **Corner Radius**: Standardized to `rounded-lg` for the main container and avatar; `rounded-md` for internal data badges.
+- **Action Toolbar**: Top-right placement for record management (Edit/Delete).
+  - **Edit**: `TbEdit` (size 21, blue accent)
+  - **Delete**: `Trash2` (size 19, red accent)
+
+### Standard Global Loader (`RingLoader`)
+Used for all async states and pipeline transitions.
+- **Design**: A 12-bar technical spinner (`54px` x `54px`).
+- **Interaction**: Uses a non-linear fade animation (`fade458`) to simulate a rotating "powered-on" mechanical sensor.
+- **Materiality**: Subtle `rgb(128, 128, 128)` bars with micro-shadows for tactile definition against the void.
+
+### Module Configuration Cards (The Actions Grid)
+Used for high-level operational modules.
+- **Visuals**: `bg-zinc-900/30` with color-coded ambient glows (`blur-3xl`, `opacity-20`) in the top-right corner on hover.
+- **Micro-Animations**: 
+  - Card: Subtle `scale-[1.02]` on hover.
+  - Icons: `scale-110` with zero rotation (maintain level horizon).
+- **Typography**: Industrial Medium (Upper case + Tracking). Footer utilizes a "Configure" CTE with a directional arrow.
+
+### Sliding Navigation Tabs
+Primary mode switcher for dashboard views.
+- **Structure**: A fixed-width container with a prominent `border-white/20`.
+- **Highlighter**: A sliding `bg-blue-500/20` div that glides between active states.
+- **Geometry**: Internal edges of the highlighter are **sharp** (e.g., `rounded-r-none` when left-aligned) to simulate a connected mechanical assembly.
+- **Hierarchy**: Inactive tabs use `text-white/50`, while active tabs use the primary `text-blue-400`.
 
 ---
 
@@ -104,7 +137,7 @@ Every new feature must satisfy:
 - [ ] Does it use the **Pitched Void** (#000000) as the base?
 - [ ] Are primary containers using the **`bg-zinc-900/30`** / **`border-zinc-800`** material combo?
 - [ ] Is the header using **`backdrop-blur-xl`** and anchored with a zinc-800 border?
-- [ ] Are badges and labels following the **Industrial Typography** (Upper case + Wide tracking)?
+- [ ] Are badges and labels following the **Industrial Typography** (Upper case + Wide tracking + Medium weight)?
 - [ ] Does the page feel like a specific **Technical Instrument** (high scannability, no fluff)?
 
 ---

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Users, Search, Filter, Plus, RefreshCw } from "lucide-react";
+import { Users, Search, Filter, Plus, RefreshCw, Layout } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DndContext,
   PointerSensor,
@@ -18,6 +17,8 @@ import CreatePipelineModal from "../components/CreatePipelineModal";
 import SearchDialog from "../components/SearchDialog";
 import DealDetailsDialog from "../components/DealDetailsDialog";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import Actions from "../components/Actions";
+import { cn } from "@/lib/utils";
 
 const COLUMNS = [
   { id: "lead", title: "Lead" },
@@ -39,6 +40,7 @@ const CRM = () => {
   const [pipelines, setPipelines] = useState([]);
   const [selectedPipeline, setSelectedPipeline] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline' or 'actions'
   const [deals, setDeals] = useState({
     lead: { items: [], nextPage: null, hasMore: false, count: 0 },
     qualified: { items: [], nextPage: null, hasMore: false, count: 0 },
@@ -74,11 +76,10 @@ const CRM = () => {
     try {
       setIsPipelinesLoading(true);
       const response = await axios.get("/api/crm/pipelines/");
-      setPipelines(response.data.results || response.data);
-      if (response.data.results?.length > 0 && !selectedPipeline) {
-        setSelectedPipeline(response.data.results[0]);
-      } else if (Array.isArray(response.data) && response.data.length > 0 && !selectedPipeline) {
-        setSelectedPipeline(response.data[0]);
+      const data = response.data.results || response.data;
+      setPipelines(data);
+      if (data.length > 0 && !selectedPipeline) {
+        setSelectedPipeline(data[0]);
       }
     } catch (error) {
       console.error("Error fetching pipelines:", error);
@@ -162,7 +163,6 @@ const CRM = () => {
 
   useEffect(() => {
     if (selectedPipeline) {
-      // Clear current deals to trigger the loading state and show transition
       setDeals({
         lead: { items: [], nextPage: null, hasMore: false, count: 0 },
         qualified: { items: [], nextPage: null, hasMore: false, count: 0 },
@@ -264,7 +264,6 @@ const CRM = () => {
       setIsDeleting(true);
       await axios.delete(`/api/crm/pipeline/${dealToDelete.id}/`);
       
-      // Update local state
       const stage = dealToDelete.status.toLowerCase();
       setDeals(prev => ({
         ...prev,
@@ -295,106 +294,142 @@ const CRM = () => {
             Manage your customers and pipelines
           </p>
         </div>
-
       </header>
 
-      <main className="flex-1 p-8 relative z-10 flex flex-col overflow-hidden">
-        {isPipelinesLoading || (isLoading && (!deals["lead"] || deals["lead"].items.length === 0)) ? (
-          <div className="h-full flex items-center justify-center">
-            <RingLoader />
-          </div>
-        ) : pipelines.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-6">
-            <button 
-              onClick={() => setIsCreateModalOpen(true)}
-              className="group relative"
-            >
-              <div className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 group-hover:border-blue-500/40 group-hover:scale-110 transition-all duration-500 shadow-[0_0_40px_rgba(59,130,246,0.1)] group-hover:shadow-[0_0_60px_rgba(59,130,246,0.2)]">
-                <Plus size={40} className="group-hover:rotate-90 transition-transform duration-500" />
-              </div>
-              <div className="absolute -inset-4 bg-blue-500/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-            <div className="space-y-2 relative">
-              <h3 className="text-xl font-semibold text-white tracking-tight">No Pipelines Found</h3>
-              <p className="text-sm text-white/40 max-w-xs mx-auto font-medium">Click the icon above to create your first sales pipeline and start managing deals.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex justify-end items-center gap-4 mb-6 shrink-0">
-              {!isPipelinesLoading && pipelines.length > 0 && (
-                <>
-                  <Button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    variant="secondary"
-                    size="icon"
-                    className="h-10 w-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white/60 transition-all"
-                  >
-                    <Plus size={16} />
-                  </Button>
-                  <PipelineSelector 
-                    pipelines={pipelines}
-                    selectedPipeline={selectedPipeline}
-                    onSelect={setSelectedPipeline}
-                    onCreateNew={() => setIsCreateModalOpen(true)}
-                  />
-                </>
+      <main className="flex-1 flex flex-col p-10 pt-8 overflow-hidden relative z-10">
+        
+        {/* Top Control Bar with Tabs and Actions */}
+        <div className="flex justify-between items-center mb-8 shrink-0">
+          {/* Left: Tab Switcher with Sliding Highlighter */}
+          <div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-lg">
+            {/* Sliding Highlighter */}
+            <div 
+              className={cn(
+                "absolute inset-y-0 bg-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
+                activeTab === 'pipeline' 
+                  ? "left-0 w-1/2 rounded-l-md rounded-r-none" 
+                  : "left-1/2 w-1/2 rounded-r-md rounded-l-none"
               )}
-              <Button
+            />
+
+            <button 
+              onClick={() => setActiveTab('pipeline')}
+              className={cn(
+                "relative z-10 px-6 py-1.5 rounded-md text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                activeTab === 'pipeline' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+              )}
+            >
+              Pipeline
+            </button>
+            <button 
+              onClick={() => setActiveTab('actions')}
+              className={cn(
+                "relative z-10 px-6 py-1.5 rounded-md text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                activeTab === 'actions' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+              )}
+            >
+              Actions
+            </button>
+          </div>
+
+          {/* Right: Operational Tools */}
+          <div className="flex items-center gap-4">
+            <div className={cn("flex items-center gap-2 transition-all duration-500", activeTab !== 'pipeline' && "opacity-0 pointer-events-none")}>
+              <button 
                 onClick={() => setIsSearchDialogOpen(true)}
-                variant="secondary"
-                size="icon"
-                className="h-10 w-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white/60 transition-all"
+                className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Search Deals"
               >
-                <Search size={16} />
-              </Button>
-              <Button
+                <Search size={14} className="group-hover:scale-110 transition-transform" />
+              </button>
+
+              <button 
                 onClick={fetchDeals}
-                variant="secondary"
-                size="icon"
-                className="h-10 w-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all"
+                className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Sync Board"
               >
-                <RefreshCw size={16} className="text-white/60" />
-              </Button>
+                <RefreshCw size={14} className={cn("group-hover:rotate-180 transition-transform duration-500", isLoading && "animate-spin")} />
+              </button>
+              
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Create Pipeline"
+              >
+                <Plus size={16} />
+              </button>
             </div>
 
-            <div className="flex-1 overflow-auto custom-scrollbar">
-              <DndContext
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                sensors={sensors}
-              >
-                <div className="flex gap-4 min-w-max pb-4 h-full">
-                  {COLUMNS.map((column) => {
-                    const stageData = deals[column.id];
-                    const filteredCards = (stageData.items || []).filter(card => 
-                      card.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      card.email.toLowerCase().includes(searchQuery.toLowerCase())
-                    );
-                    
-                    return (
-                      <KanbanColumn
-                        key={column.id}
-                        column={column}
-                        cards={filteredCards}
-                        totalCount={stageData.count}
-                        hasMore={stageData.hasMore}
-                        isLoadingMore={stageData.isLoadingMore}
-                        onLoadMore={() => fetchMoreDeals(column.id)}
-                        onViewCard={handleViewDeal}
-                      />
-                    );
-                  })}
-                </div>
-                <DragOverlay dropAnimation={null}>
-                  {activeCardData ? (
-                    <KanbanCardUI card={activeCardData} isOverlay />
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
+            <div className="w-48 transition-all duration-500">
+              <PipelineSelector 
+                pipelines={pipelines}
+                selectedPipeline={selectedPipeline}
+                onSelect={setSelectedPipeline}
+                onCreateNew={() => setIsCreateModalOpen(true)}
+              />
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Dynamic Content Area */}
+        <div className="flex-1 overflow-hidden relative">
+          {activeTab === 'pipeline' ? (
+            isPipelinesLoading || (isLoading && (!deals["lead"] || deals["lead"].items.length === 0)) ? (
+              <div className="h-full flex items-center justify-center">
+                <RingLoader />
+              </div>
+            ) : pipelines.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center gap-6">
+                <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="group relative"
+                >
+                  <div className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 group-hover:border-blue-500/40 group-hover:scale-110 transition-all duration-500 shadow-[0_0_40px_rgba(59,130,246,0.1)] group-hover:shadow-[0_0_60px_rgba(59,130,246,0.2)]">
+                    <Plus size={40} className="group-hover:rotate-90 transition-transform duration-500" />
+                  </div>
+                  <div className="absolute -inset-4 bg-blue-500/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+                <div className="space-y-2 relative">
+                  <h3 className="text-xl font-semibold text-white tracking-tight">No Pipelines Found</h3>
+                  <p className="text-sm text-white/40 max-w-xs mx-auto font-medium">Click the icon above to create your first sales pipeline and start managing deals.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full overflow-auto custom-scrollbar">
+                <DndContext
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  sensors={sensors}
+                >
+                  <div className="flex gap-4 min-w-max pb-4 h-full">
+                    {COLUMNS.map((column) => {
+                      const stageData = deals[column.id];
+                      return (
+                        <KanbanColumn
+                          key={column.id}
+                          column={column}
+                          cards={stageData.items}
+                          totalCount={stageData.count}
+                          hasMore={stageData.hasMore}
+                          isLoadingMore={stageData.isLoadingMore}
+                          onLoadMore={() => fetchMoreDeals(column.id)}
+                          onViewCard={handleViewDeal}
+                        />
+                      );
+                    })}
+                  </div>
+                  <DragOverlay dropAnimation={null}>
+                    {activeCardData ? (
+                      <KanbanCardUI card={activeCardData} isOverlay />
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </div>
+            )
+          ) : (
+            <Actions selectedPipeline={selectedPipeline} />
+          )}
+        </div>
       </main>
 
       <SearchDialog 
@@ -402,6 +437,10 @@ const CRM = () => {
         onClose={() => setIsSearchDialogOpen(false)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        onSelect={(deal) => {
+          handleViewDeal(transformDeal(deal));
+          setIsSearchDialogOpen(false);
+        }}
       />
 
       <CreatePipelineModal 
