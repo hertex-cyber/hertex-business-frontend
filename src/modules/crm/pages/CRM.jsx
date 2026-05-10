@@ -162,6 +162,15 @@ const CRM = () => {
 
   useEffect(() => {
     if (selectedPipeline) {
+      // Clear current deals to trigger the loading state and show transition
+      setDeals({
+        lead: { items: [], nextPage: null, hasMore: false, count: 0 },
+        qualified: { items: [], nextPage: null, hasMore: false, count: 0 },
+        proposal: { items: [], nextPage: null, hasMore: false, count: 0 },
+        negotiation: { items: [], nextPage: null, hasMore: false, count: 0 },
+        won: { items: [], nextPage: null, hasMore: false, count: 0 },
+        lost: { items: [], nextPage: null, hasMore: false, count: 0 },
+      });
       fetchDeals();
     }
   }, [selectedPipeline, fetchDeals]);

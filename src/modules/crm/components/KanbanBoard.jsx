@@ -26,7 +26,7 @@ const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoa
   };
 
   return (
-    <div className="flex flex-col gap-3 min-w-72 flex-shrink-0">
+    <div className="flex flex-col gap-3 min-w-72 flex-shrink-0 animate-in fade-in duration-500">
       {/* Column Header */}
       <div className={cn(
         'rounded-lg border p-3 bg-gradient-to-b',
