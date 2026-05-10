@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import KanbanCard from './KanbanCard';
 import { Plus } from 'lucide-react';
 
-const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoadMore }) => {
+const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoadMore, onViewCard }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -68,6 +68,7 @@ const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoa
                 <KanbanCard
                   key={card.id}
                   card={card}
+                  onView={onViewCard}
                 />
               ))}
               

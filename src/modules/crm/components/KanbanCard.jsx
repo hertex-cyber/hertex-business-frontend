@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { MoreVertical } from 'lucide-react';
 
-export const KanbanCardUI = ({ card, isOverlay }) => {
+export const KanbanCardUI = ({ card, isOverlay, onView }) => {
   const getStatusColor = (status) => {
     const colors = {
       'Lead': 'from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-400',
@@ -26,8 +26,14 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
 
   return (
     <div
+      onClick={(e) => {
+        // Only trigger if not clicking another interactive element (like the "More" button)
+        if (e.target.closest('button')) return;
+        console.log('Card clicked for:', card.name);
+        onView?.(card);
+      }}
       className={cn(
-        'p-4 rounded-lg bg-zinc-900/40 border border-white/5 cursor-grab active:cursor-grabbing transition-all duration-300 touch-none relative w-full group',
+        'p-4 rounded-lg bg-zinc-900/40 border border-white/5 cursor-pointer transition-all duration-300 touch-none relative w-full group',
         !isOverlay && 'hover:border-blue-500/30 hover:bg-zinc-900/60',
         isOverlay && 'w-[288px] bg-zinc-900 border-blue-500/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] scale-[1.02] z-50 cursor-grabbing'
       )}
@@ -49,7 +55,13 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
               </div>
             </div>
           </div>
-          <button className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 transition-all opacity-0 group-hover:opacity-100">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              // Add logic for More menu if needed
+            }}
+            className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 transition-all opacity-0 group-hover:opacity-100 cursor-pointer relative z-10"
+          >
             <MoreVertical size={14} />
           </button>
         </div>
@@ -69,8 +81,15 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
               {card.priority}
             </span>
           </div>
-          <button className="px-3 py-1 rounded-sm bg-white/5 hover:bg-white/10 text-[10px] font-bold text-white/60 hover:text-white transition-all border border-white/5 active:scale-95">
-            View
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onView?.(card);
+            }}
+            style={{ pointerEvents: 'auto', cursor: 'pointer', zIndex: 100 }}
+            className="px-3 py-1 rounded-sm bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white transition-all border border-white/20 active:scale-95 cursor-pointer relative"
+          >
+            View Details
           </button>
         </div>
       </div>
@@ -78,7 +97,8 @@ export const KanbanCardUI = ({ card, isOverlay }) => {
   );
 };
 
-const KanbanCard = ({ card }) => {
+
+const KanbanCard = ({ card, onView }) => {
   const {
     attributes,
     listeners,
@@ -101,7 +121,7 @@ const KanbanCard = ({ card }) => {
       {...attributes}
       {...listeners}
     >
-      <KanbanCardUI card={card} />
+      <KanbanCardUI card={card} onView={onView} />
     </div>
   );
 };

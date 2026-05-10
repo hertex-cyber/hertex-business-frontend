@@ -16,6 +16,7 @@ import RingLoader from "@/components/ui/RingLoader";
 import PipelineSelector from "../components/PipelineSelector";
 import CreatePipelineModal from "../components/CreatePipelineModal";
 import SearchDialog from "../components/SearchDialog";
+import DealDetailsDialog from "../components/DealDetailsDialog";
 
 const COLUMNS = [
   { id: "lead", title: "Lead" },
@@ -50,6 +51,8 @@ const CRM = () => {
   const [isPipelinesLoading, setIsPipelinesLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
+  const [viewingDeal, setViewingDeal] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const transformDeal = (deal) => ({
     id: deal.id,
@@ -237,6 +240,11 @@ const CRM = () => {
     }
   };
 
+  const handleViewDeal = (card) => {
+    setViewingDeal(card);
+    setIsDetailsOpen(true);
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
@@ -332,6 +340,7 @@ const CRM = () => {
                         hasMore={stageData.hasMore}
                         isLoadingMore={stageData.isLoadingMore}
                         onLoadMore={() => fetchMoreDeals(column.id)}
+                        onViewCard={handleViewDeal}
                       />
                     );
                   })}
@@ -361,6 +370,12 @@ const CRM = () => {
           setPipelines([...pipelines, newPipeline]);
           setSelectedPipeline(newPipeline);
         }}
+      />
+
+      <DealDetailsDialog 
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        deal={viewingDeal}
       />
     </div>
   );
