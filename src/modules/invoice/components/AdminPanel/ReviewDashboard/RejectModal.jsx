@@ -20,7 +20,7 @@ const RejectModal = ({ invoice, onConfirm, onCancel, loading }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-md mx-4 bg-black border border-red-500/20 rounded-2xl p-6 shadow-2xl">
+      <div className="w-full max-w-md mx-4 bg-black border border-red-500/20 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200">
         <h2 className="text-lg font-bold text-white mb-2">Reject Invoice</h2>
         <p className="text-white/50 text-sm mb-4">
           Rejecting{' '}

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Layers, Loader2, Plus, Pencil, Trash2 } from 'lucide-react';
+import { X, Layers, Loader2, Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const COLOR_OPTIONS = [
     { value: 'blue',   bg: 'bg-blue-500',   ring: 'ring-blue-400' },
@@ -16,9 +19,61 @@ const COLOR_OPTIONS = [
     { value: 'cyan',   bg: 'bg-cyan-500',   ring: 'ring-cyan-400' },
 ];
 
-const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
+const SortableStageItem = ({ stage, onEdit, onDelete, isDeleting, colorDot }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: stage.id });
+    
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 999 : 'auto',
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={cn(
+                "group px-8 py-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-default",
+                isDragging && "bg-white/[0.05] border-t border-b border-zinc-700"
+            )}
+        >
+            <div className="flex items-center gap-3">
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-white/20 hover:text-white/40 transition-colors">
+                    <GripVertical size={16} />
+                </div>
+                <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", colorDot?.bg || 'bg-blue-500')} />
+                <div className="space-y-0.5">
+                    <h3 className="text-sm font-medium text-white uppercase tracking-wider">{stage.name}</h3>
+                    <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium">Order {stage.order}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={() => onEdit(stage)}
+                    className="p-2 rounded-md hover:bg-blue-500/10 text-zinc-600 hover:text-blue-400 transition-colors cursor-pointer"
+                    title="Edit"
+                >
+                    <Pencil size={18} />
+                </button>
+                <button
+                    onClick={() => onDelete(stage.id)}
+                    disabled={isDeleting === stage.id}
+                    className="p-2 rounded-md hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Delete"
+                >
+                    {isDeleting === stage.id
+                        ? <Loader2 size={18} className="animate-spin" />
+                        : <Trash2 size={18} />
+                    }
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const ManageStageModal = ({ isOpen, onClose, pipeline, stages: initialStages, onStagesChanged }) => {
     const [stages, setStages] = useState([]);
-    const [isLoadingList, setIsLoadingList] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingStage, setEditingStage] = useState(null);
     const [name, setName] = useState('');
@@ -26,27 +81,23 @@ const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(null);
     const [error, setError] = useState('');
+    const [activeId, setActiveId] = useState(null);
+    const [isReordering, setIsReordering] = useState(false);
 
-    const fetchStages = async () => {
-        if (!pipeline) return;
-        setIsLoadingList(true);
-        try {
-            const res = await axios.get(`/api/crm/pipelines/${pipeline.id}/stages/`);
-            setStages(res.data.results || res.data);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsLoadingList(false);
-        }
-    };
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
     useEffect(() => {
-        if (isOpen && pipeline) {
-            fetchStages();
+        if (isOpen && pipeline && initialStages) {
+            setStages(initialStages);
             setShowForm(false);
             setError('');
         }
-    }, [isOpen, pipeline]);
+    }, [isOpen, pipeline, initialStages]);
 
     useEffect(() => {
         if (!showForm) {
@@ -81,7 +132,8 @@ const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
             onStagesChanged?.();
             setShowForm(false);
         } catch (err) {
-            setError(`Failed to ${editingStage ? 'update' : 'create'} stage. Please try again.`);
+            console.error('Stage creation error:', err.response?.data || err.message);
+            setError(`Failed to ${editingStage ? 'update' : 'create'} stage. ${err.response?.data?.detail || err.response?.data || 'Please try again.'}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -107,11 +159,58 @@ const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
         setShowForm(true);
     };
 
+    const handleDragStart = (event) => {
+        setActiveId(event.active.id);
+    };
+
+    const handleDragEnd = async (event) => {
+        const { active, over } = event;
+        setActiveId(null);
+
+        console.log('Drag end:', { active, over });
+
+        if (over && active.id !== over.id) {
+            setStages((prevItems) => {
+                const oldIndex = prevItems.findIndex((item) => item.id === active.id);
+                const newIndex = prevItems.findIndex((item) => item.id === over.id);
+                const newItems = arrayMove(prevItems, oldIndex, newIndex);
+
+                const updatedItems = newItems.map((stage, index) => ({
+                    ...stage,
+                    order: index
+                }));
+
+                const updatedStages = updatedItems.map((stage) => ({
+                    id: stage.id,
+                    order: stage.order
+                }));
+
+                console.log('Saving reorder:', updatedStages);
+
+                setIsReordering(true);
+                axios.post(`/api/crm/pipelines/${pipeline.id}/stages/reorder/`, updatedStages)
+                    .then((response) => {
+                        console.log('Reorder saved successfully:', response);
+                        onStagesChanged?.();
+                    })
+                    .catch((err) => {
+                        console.error('Reorder failed:', err.response?.data || err);
+                        setError('Failed to reorder stages.');
+                    })
+                    .finally(() => {
+                        setIsReordering(false);
+                    });
+
+                return updatedItems;
+            });
+        }
+    };
+
     return createPortal(
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="relative w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
 
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-zinc-800 bg-white/[0.02] flex items-center justify-between shrink-0">
@@ -124,6 +223,12 @@ const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
                             <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium">{pipeline?.name}</p>
                         </div>
                     </div>
+                    {isReordering && (
+                        <div className="flex items-center gap-2 text-blue-400">
+                            <Loader2 size={14} className="animate-spin" />
+                            <span className="text-[10px] uppercase tracking-widest">Saving...</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sub-Header: Add button */}
@@ -134,7 +239,7 @@ const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
                             className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 rounded-md text-[10px] font-medium uppercase tracking-widest transition-all cursor-pointer whitespace-nowrap"
                         >
                             <Plus size={14} />
-                            Add Stage
+                            Add 
                         </button>
                     </div>
                 )}
@@ -170,7 +275,6 @@ const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Stage Color</label>
                                 <div className="flex items-center gap-3">
                                     {COLOR_OPTIONS.map(c => (
                                         <button
@@ -206,49 +310,52 @@ const ManageStageModal = ({ isOpen, onClose, pipeline, onStagesChanged }) => {
                         </form>
                     ) : (
                         <div className="max-h-[320px] overflow-y-auto custom-scrollbar divide-y divide-zinc-800/50">
-                            {isLoadingList ? (
-                                <div className="p-12 flex items-center justify-center">
-                                    <Loader2 size={20} className="animate-spin text-blue-500" />
-                                </div>
-                            ) : stages.length === 0 ? (
+                            {stages.length === 0 ? (
                                 <div className="p-12 text-center">
                                     <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-medium">No stages configured</p>
                                 </div>
                             ) : (
-                                stages.map((stage) => {
-                                    const colorDot = COLOR_OPTIONS.find(c => c.value === stage.color);
-                                    return (
-                                        <div key={stage.id} className="group px-8 py-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-default">
-                                            <div className="flex items-center gap-3">
-                                                <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", colorDot?.bg || 'bg-blue-500')} />
-                                                <div className="space-y-0.5">
-                                                    <h3 className="text-sm font-medium text-white uppercase tracking-wider">{stage.name}</h3>
-                                                    <p className="text-[10px] text-white/30 uppercase tracking-widest font-medium">Order {stage.order}</p>
-                                                </div>
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragStart={handleDragStart}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <SortableContext
+                                        items={stages.map(s => s.id)}
+                                        strategy={verticalListSortingStrategy}
+                                    >
+                                        {stages.map((stage) => {
+                                            const colorDot = COLOR_OPTIONS.find(c => c.value === stage.color);
+                                            return (
+                                                <SortableStageItem
+                                                    key={stage.id}
+                                                    stage={stage}
+                                                    onEdit={startEdit}
+                                                    onDelete={handleDelete}
+                                                    isDeleting={isDeleting}
+                                                    colorDot={colorDot}
+                                                />
+                                            );
+                                        })}
+                                    </SortableContext>
+                                    <DragOverlay>
+                                        {activeId ? (
+                                            <div className="bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl p-4 opacity-90">
+                                                {(() => {
+                                                    const stage = stages.find(s => s.id === activeId);
+                                                    const colorDot = COLOR_OPTIONS.find(c => c.value === stage?.color);
+                                                    return stage ? (
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn("w-2.5 h-2.5 rounded-full", colorDot?.bg || 'bg-blue-500')} />
+                                                            <span className="text-sm font-medium text-white uppercase tracking-wider">{stage.name}</span>
+                                                        </div>
+                                                    ) : null;
+                                                })()}
                                             </div>
-                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => startEdit(stage)}
-                                                    className="p-2 rounded-md hover:bg-blue-500/10 text-zinc-600 hover:text-blue-400 transition-colors cursor-pointer"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(stage.id)}
-                                                    disabled={isDeleting === stage.id}
-                                                    className="p-2 rounded-md hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
-                                                    title="Delete"
-                                                >
-                                                    {isDeleting === stage.id
-                                                        ? <Loader2 size={18} className="animate-spin" />
-                                                        : <Trash2 size={18} />
-                                                    }
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })
+                                        ) : null}
+                                    </DragOverlay>
+                                </DndContext>
                             )}
                         </div>
                     )}

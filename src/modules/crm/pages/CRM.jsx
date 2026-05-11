@@ -432,6 +432,7 @@ const CRM = () => {
             <Actions 
               selectedPipeline={selectedPipeline} 
               pipelines={pipelines}
+              stages={stages}
               onPipelineCreated={(newPipeline) => {
                 setPipelines([...pipelines, newPipeline]);
                 setSelectedPipeline(newPipeline);

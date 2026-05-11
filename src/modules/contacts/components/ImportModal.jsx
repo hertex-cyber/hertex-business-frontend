@@ -211,7 +211,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col h-[580px] overflow-hidden outline-none ring-0">
+            <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,1)] flex flex-col h-[580px] overflow-hidden outline-none ring-0 animate-in zoom-in-95 duration-200">
 
                 {/* Stepper Header */}
                 <div className="px-10 py-6 bg-zinc-950 border-b border-zinc-800 shrink-0 outline-none">

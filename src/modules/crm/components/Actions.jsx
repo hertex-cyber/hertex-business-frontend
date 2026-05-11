@@ -55,7 +55,7 @@ const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, 
     );
 };
 
-const Actions = ({ selectedPipeline, pipelines, onPipelineCreated, onPipelineDeleted, onPipelineUpdated, onStagesChanged }) => {
+const Actions = ({ selectedPipeline, pipelines, stages, onPipelineCreated, onPipelineDeleted, onPipelineUpdated, onStagesChanged }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isManageStageOpen, setIsManageStageOpen] = useState(false);
 
@@ -139,6 +139,7 @@ const Actions = ({ selectedPipeline, pipelines, onPipelineCreated, onPipelineDel
                 isOpen={isManageStageOpen}
                 onClose={() => setIsManageStageOpen(false)}
                 pipeline={selectedPipeline}
+                stages={stages}
                 onStagesChanged={onStagesChanged}
             />
         </div>
