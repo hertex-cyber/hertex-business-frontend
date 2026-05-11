@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Users, Search, Filter, Plus, RefreshCw, Layout } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search, Plus } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -20,15 +19,6 @@ import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import Actions from "../components/Actions";
 import { cn } from "@/lib/utils";
 
-const COLUMNS = [
-  { id: "lead", title: "Lead" },
-  { id: "qualified", title: "Qualified" },
-  { id: "proposal", title: "Proposal" },
-  { id: "negotiation", title: "Negotiation" },
-  { id: "won", title: "Won" },
-  { id: "lost", title: "Lost" },
-];
-
 const CRM = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -39,6 +29,7 @@ const CRM = () => {
 
   const [pipelines, setPipelines] = useState([]);
   const [selectedPipeline, setSelectedPipeline] = useState(null);
+  const [stages, setStages] = useState([]); // dynamic stages for selected pipeline
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline' or 'actions'
   const [deals, setDeals] = useState({
@@ -88,15 +79,24 @@ const CRM = () => {
     }
   }, [selectedPipeline]);
 
-  const fetchDeals = useCallback(async () => {
+  const fetchStages = useCallback(async () => {
     if (!selectedPipeline) return;
     try {
+      const res = await axios.get(`/api/crm/pipelines/${selectedPipeline.id}/stages/`);
+      setStages(res.data.results || res.data);
+    } catch (e) {
+      console.error("Error fetching stages:", e);
+    }
+  }, [selectedPipeline]);
+
+  const fetchDeals = useCallback(async () => {
+    if (!selectedPipeline || stages.length === 0) return;
+    try {
       setIsLoading(true);
-      const stages = COLUMNS.map(c => c.id);
-      
-      const promises = stages.map(stage => 
+
+      const promises = stages.map(stage =>
         axios.get("/api/crm/pipeline/", {
-          params: { pipeline: selectedPipeline.id, stage, page: 1 }
+          params: { pipeline: selectedPipeline.id, stage: stage.id, page: 1 }
         })
       );
 
@@ -104,8 +104,8 @@ const CRM = () => {
       const newDeals = {};
 
       results.forEach((res, idx) => {
-        const stage = stages[idx];
-        newDeals[stage] = {
+        const stageId = stages[idx].id;
+        newDeals[stageId] = {
           items: (res.data.results || []).map(transformDeal),
           nextPage: res.data.next ? 2 : null,
           hasMore: !!res.data.next,
@@ -120,28 +120,21 @@ const CRM = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedPipeline]);
+  }, [selectedPipeline, stages]);
 
-  const fetchMoreDeals = async (stage) => {
-    const stageData = deals[stage];
-    if (!stageData.nextPage || stageData.isLoadingMore) return;
-
+  const fetchMoreDeals = async (stageId) => {
+    const stageData = deals[stageId];
+    if (!stageData?.nextPage || stageData.isLoadingMore) return;
     try {
-      setDeals(prev => ({
-        ...prev,
-        [stage]: { ...prev[stage], isLoadingMore: true }
-      }));
-
+      setDeals(prev => ({ ...prev, [stageId]: { ...prev[stageId], isLoadingMore: true } }));
       const response = await axios.get("/api/crm/pipeline/", {
-        params: { pipeline: selectedPipeline.id, stage, page: stageData.nextPage }
+        params: { pipeline: selectedPipeline.id, stage: stageId, page: stageData.nextPage }
       });
-
       const newItems = (response.data.results || []).map(transformDeal);
-      
       setDeals(prev => ({
         ...prev,
-        [stage]: {
-          items: [...prev[stage].items, ...newItems],
+        [stageId]: {
+          items: [...prev[stageId].items, ...newItems],
           nextPage: response.data.next ? stageData.nextPage + 1 : null,
           hasMore: !!response.data.next,
           isLoadingMore: false,
@@ -150,10 +143,7 @@ const CRM = () => {
       }));
     } catch (err) {
       console.error("Load more failed:", err);
-      setDeals(prev => ({
-        ...prev,
-        [stage]: { ...prev[stage], isLoadingMore: false }
-      }));
+      setDeals(prev => ({ ...prev, [stageId]: { ...prev[stageId], isLoadingMore: false } }));
     }
   };
 
@@ -163,17 +153,22 @@ const CRM = () => {
 
   useEffect(() => {
     if (selectedPipeline) {
-      setDeals({
-        lead: { items: [], nextPage: null, hasMore: false, count: 0 },
-        qualified: { items: [], nextPage: null, hasMore: false, count: 0 },
-        proposal: { items: [], nextPage: null, hasMore: false, count: 0 },
-        negotiation: { items: [], nextPage: null, hasMore: false, count: 0 },
-        won: { items: [], nextPage: null, hasMore: false, count: 0 },
-        lost: { items: [], nextPage: null, hasMore: false, count: 0 },
+      setStages([]);
+      setDeals({});
+      fetchStages();
+    }
+  }, [selectedPipeline]);
+
+  useEffect(() => {
+    if (stages.length > 0) {
+      const emptyDeals = {};
+      stages.forEach(s => {
+        emptyDeals[s.id] = { items: [], nextPage: null, hasMore: false, count: 0 };
       });
+      setDeals(emptyDeals);
       fetchDeals();
     }
-  }, [selectedPipeline, fetchDeals]);
+  }, [stages]);
 
   const handleDragStart = (event) => {
     const { active } = event;
@@ -210,12 +205,12 @@ const CRM = () => {
     if (sourceColumn === null) return;
 
     let destColumn = null;
-    if (COLUMNS.some((col) => col.id === overId)) {
+    if (stages.some((s) => s.id === overId)) {
       destColumn = overId;
     } else {
-      for (const col of COLUMNS) {
-        if (deals[col.id].items.some((card) => card.id === overId)) {
-          destColumn = col.id;
+      for (const s of stages) {
+        if (deals[s.id]?.items.some((card) => card.id === overId)) {
+          destColumn = s.id;
           break;
         }
       }
@@ -409,17 +404,17 @@ const CRM = () => {
                   sensors={sensors}
                 >
                   <div className="flex gap-4 min-w-max pb-4 h-full">
-                    {COLUMNS.map((column) => {
-                      const stageData = deals[column.id];
+                    {stages.map((stage) => {
+                      const stageData = deals[stage.id] || { items: [], count: 0, hasMore: false, isLoadingMore: false };
                       return (
                         <KanbanColumn
-                          key={column.id}
-                          column={column}
+                          key={stage.id}
+                          column={{ id: stage.id, title: stage.name, color: stage.color }}
                           cards={stageData.items}
                           totalCount={stageData.count}
                           hasMore={stageData.hasMore}
                           isLoadingMore={stageData.isLoadingMore}
-                          onLoadMore={() => fetchMoreDeals(column.id)}
+                          onLoadMore={() => fetchMoreDeals(stage.id)}
                           onViewCard={handleViewDeal}
                         />
                       );
@@ -444,6 +439,7 @@ const CRM = () => {
               }}
               onPipelineDeleted={handleDeletePipeline}
               onPipelineUpdated={handleUpdatePipeline}
+              onStagesChanged={() => { fetchStages(); }}
             />
           )}
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Layout, Loader2, Plus, ChevronRight, Pencil, Trash2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import axios from 'axios';
@@ -111,8 +112,8 @@ const CreatePipelineModal = ({ isOpen, onClose, onSuccess, onDelete, onUpdate, p
     setShowForm(true);
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       
       <div className="relative w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
@@ -279,7 +280,7 @@ const CreatePipelineModal = ({ isOpen, onClose, onSuccess, onDelete, onUpdate, p
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 export default CreatePipelineModal;

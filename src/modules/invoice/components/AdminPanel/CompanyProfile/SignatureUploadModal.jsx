@@ -1,5 +1,6 @@
 import React from 'react';
 import ImageUploadField from './ImageUploadField';
+import RingLoader from '@/components/ui/RingLoader';
 import { useCompanyProfile } from '../../../hooks/useCompanyProfile';
 
 const SignatureUploadModal = ({ onClose }) => {
@@ -27,9 +28,7 @@ const SignatureUploadModal = ({ onClose }) => {
         {/* Body */}
         <div className="p-6 space-y-4">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            </div>
+            <RingLoader className="py-8" />
           ) : !profile ? (
             <div className="text-center py-6 space-y-2">
               <p className="text-sm text-white/40">No company profile configured.</p>

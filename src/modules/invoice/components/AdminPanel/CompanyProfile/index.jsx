@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
+import RingLoader from '@/components/ui/RingLoader';
 import BrandingUpload from './BrandingUpload';
 import { useCompanyProfile } from '../../../hooks/useCompanyProfile';
 
@@ -46,11 +47,7 @@ const CompanyProfileAdmin = () => {
   const brandingMissing = profile && !(profile.signature_url);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
-    );
+    return <RingLoader className="py-20" />;
   }
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../../InvoiceList/StatusBadge';
+import RingLoader from '@/components/ui/RingLoader';
 import ApproveModal from './ApproveModal';
 import RejectModal from './RejectModal';
 import { useAdminInvoiceList } from '../../../hooks/useInvoice';
@@ -75,11 +76,7 @@ const ReviewDashboard = () => {
       )}
 
       {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-        </div>
-      )}
+      {loading && <RingLoader className="py-20" />}
 
       {/* Empty */}
       {!loading && invoices.length === 0 && (

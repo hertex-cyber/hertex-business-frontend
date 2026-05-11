@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import CreatePipelineModal from './CreatePipelineModal';
+import ManageStageModal from './ManageStageModal';
 
 const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, onClick }) => {
     return (
@@ -54,8 +55,9 @@ const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, 
     );
 };
 
-const Actions = ({ selectedPipeline, pipelines, onPipelineCreated, onPipelineDeleted, onPipelineUpdated }) => {
+const Actions = ({ selectedPipeline, pipelines, onPipelineCreated, onPipelineDeleted, onPipelineUpdated, onStagesChanged }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isManageStageOpen, setIsManageStageOpen] = useState(false);
 
     const actionItems = [
         {
@@ -73,7 +75,8 @@ const Actions = ({ selectedPipeline, pipelines, onPipelineCreated, onPipelineDel
             title: "Manage Stage",
             description: "Define Kanban columns, probability weights, and stage-gate requirements.",
             colorClass: "bg-white",
-            showBadge: true
+            showBadge: true,
+            onClick: () => setIsManageStageOpen(true)
         },
         {
             id: 'manage-status',
@@ -130,6 +133,13 @@ const Actions = ({ selectedPipeline, pipelines, onPipelineCreated, onPipelineDel
                 }}
                 onDelete={onPipelineDeleted}
                 onUpdate={onPipelineUpdated}
+            />
+
+            <ManageStageModal
+                isOpen={isManageStageOpen}
+                onClose={() => setIsManageStageOpen(false)}
+                pipeline={selectedPipeline}
+                onStagesChanged={onStagesChanged}
             />
         </div>
     );

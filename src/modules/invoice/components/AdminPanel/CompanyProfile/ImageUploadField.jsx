@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
+import RingLoader from '@/components/ui/RingLoader';
 
 const ImageUploadField = ({ label, hint, currentUrl, onUpload, onRemove, showWarning }) => {
   const inputRef = useRef(null);
@@ -103,7 +104,7 @@ const ImageUploadField = ({ label, hint, currentUrl, onUpload, onRemove, showWar
       >
         {uploading ? (
           <div className="flex flex-col items-center gap-2">
-            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            <RingLoader />
             <span className="text-xs text-white/40">Uploading…</span>
           </div>
         ) : displayUrl ? (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import StatusBadge from '../InvoiceList/StatusBadge';
+import RingLoader from '@/components/ui/RingLoader';
 import Button from '@/components/Button';
 import { useAuth } from '@/context/AuthContext';
 import { useInvoiceDetail } from '../../hooks/useInvoice';
@@ -18,11 +19,7 @@ const InvoiceDetail = () => {
   const { profile } = useCompanyProfile();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
-    );
+    return <RingLoader className="py-20" />;
   }
 
   if (error || !invoice) {

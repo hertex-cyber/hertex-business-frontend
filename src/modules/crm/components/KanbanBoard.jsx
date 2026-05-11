@@ -13,16 +13,18 @@ const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoa
     id: column.id,
   });
 
-  const getColumnColor = (columnId) => {
+  const getColumnColor = (color) => {
     const colors = {
-      'lead': 'from-blue-500/15 to-transparent border-blue-500/20',
-      'qualified': 'from-purple-500/15 to-transparent border-purple-500/20',
-      'proposal': 'from-amber-500/15 to-transparent border-amber-500/20',
-      'negotiation': 'from-orange-500/15 to-transparent border-orange-500/20',
-      'won': 'from-green-500/15 to-transparent border-green-500/20',
-      'lost': 'from-red-500/15 to-transparent border-red-500/20',
+      'blue':   'from-blue-500/15 to-transparent border-blue-500/20',
+      'purple': 'from-purple-500/15 to-transparent border-purple-500/20',
+      'amber':  'from-amber-500/15 to-transparent border-amber-500/20',
+      'orange': 'from-orange-500/15 to-transparent border-orange-500/20',
+      'green':  'from-green-500/15 to-transparent border-green-500/20',
+      'red':    'from-red-500/15 to-transparent border-red-500/20',
+      'pink':   'from-pink-500/15 to-transparent border-pink-500/20',
+      'cyan':   'from-cyan-500/15 to-transparent border-cyan-500/20',
     };
-    return colors[columnId] || colors['lead'];
+    return colors[color] || colors['blue'];
   };
 
   return (
@@ -30,7 +32,7 @@ const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoa
       {/* Column Header */}
       <div className={cn(
         'rounded-lg border p-3 bg-gradient-to-b',
-        getColumnColor(column.id)
+        getColumnColor(column.color)
       )}>
         <div className="flex items-center justify-between">
           <div>

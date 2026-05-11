@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '@/components/Input';
-import { Button } from '@/components/ui/button';
+import RingLoader from '@/components/ui/RingLoader';
 import { useAuth } from '@/context/AuthContext';
 import { useInvoiceSchemas } from '../../hooks/useInvoiceSchema';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
@@ -35,7 +35,7 @@ const DEFAULT_FORM = {
 const fmt = (n) =>
   n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const InvoiceForm = ({ invoice = null, onSuccess }) => {
+const InvoiceForm = ({ invoice = null, onSuccess, onLoadingChange }) => {
   const navigate = useNavigate();
   const isEdit = !!invoice;
   const { user } = useAuth();
@@ -43,6 +43,9 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
 
   const { schemas, loading: schemasLoading } = useInvoiceSchemas();
   const { createInvoice, updateInvoice, loading } = useInvoiceActions();
+
+  // Notify parent of loading state changes
+  useEffect(() => { onLoadingChange?.(loading); }, [loading]);
 
   const [form, setForm] = useState(() => {
     if (invoice) {
@@ -173,15 +176,11 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
   };
 
   if (schemasLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
-    );
+    return <RingLoader className="py-20" />;
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form id="invoice-form" onSubmit={handleSubmit} className="space-y-8">
 
       {submitError && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
@@ -521,21 +520,6 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
           value={form.notes}
           onChange={(e) => set('notes', e.target.value)}
         />
-      </div>
-
-      {/* ---- Actions ---- */}
-      <div className="flex gap-3 justify-end">
-        <Button variant="primary-action" type="submit" disabled={loading} className="!w-auto">
-          {loading ? 'Saving…' : isEdit ? 'Update Invoice' : isAdmin ? 'Save' : 'Save as Draft'}
-        </Button>
-        <Button
-          variant="secondary-tool"
-          type="button"
-          className="!w-auto"
-          onClick={() => navigate('/invoices')}
-        >
-          Cancel
-        </Button>
       </div>
 
     </form>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
+import RingLoader from '@/components/ui/RingLoader';
 import { useInvoiceList, useInvoiceStatusCounts } from '../../hooks/useInvoice';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
 import { formatINR } from '../../utils/gstUtils';
@@ -110,11 +111,7 @@ const InvoiceList = () => {
       )}
 
       {/* Loading */}
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-        </div>
-      )}
+      {loading && <RingLoader className="py-20" />}
 
       {/* Empty state */}
       {!loading && invoices.length === 0 && (
@@ -130,8 +127,11 @@ const InvoiceList = () => {
           {invoices.map((invoice) => (
             <div
               key={invoice.id}
-              className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 hover:bg-white/[0.06] hover:border-white/20 transition-all duration-200 flex flex-col gap-4"
+              className="group relative bg-zinc-900/30 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 hover:bg-zinc-900/50 transition-all duration-300 flex flex-col gap-4 overflow-hidden"
             >
+              {/* Ambient glow */}
+              <div className="absolute -right-8 -top-8 w-24 h-24 bg-blue-500 blur-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" />
+
               {/* Top row */}
               <div className="flex items-start justify-between gap-2">
                 <div
@@ -181,7 +181,7 @@ const InvoiceList = () => {
                     <button
                       onClick={() => handleSubmit(invoice)}
                       disabled={actionLoading}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-white text-black font-semibold hover:bg-gray-100 transition-all disabled:opacity-50"
+                      className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50"
                     >
                       Submit
                     </button>
@@ -218,7 +218,7 @@ const InvoiceList = () => {
                   <button
                     onClick={() => handleDownload(invoice)}
                     disabled={actionLoading}
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 hover:border-blue-500/50 transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-all disabled:opacity-50"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
