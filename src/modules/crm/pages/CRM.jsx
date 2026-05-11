@@ -285,6 +285,21 @@ const CRM = () => {
     }
   };
 
+  const handleDeletePipeline = (id) => {
+    const updatedPipelines = pipelines.filter(p => p.id !== id);
+    setPipelines(updatedPipelines);
+    if (selectedPipeline?.id === id) {
+      setSelectedPipeline(updatedPipelines[0] || null);
+    }
+  };
+
+  const handleUpdatePipeline = (updated) => {
+    setPipelines(prev => prev.map(p => p.id === updated.id ? updated : p));
+    if (selectedPipeline?.id === updated.id) {
+      setSelectedPipeline(updated);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
@@ -419,7 +434,17 @@ const CRM = () => {
               </div>
             )
           ) : (
-            <Actions selectedPipeline={selectedPipeline} />
+            <Actions 
+              selectedPipeline={selectedPipeline} 
+              pipelines={pipelines}
+              onPipelineCreated={(newPipeline) => {
+                setPipelines([...pipelines, newPipeline]);
+                setSelectedPipeline(newPipeline);
+                setActiveTab('pipeline');
+              }}
+              onPipelineDeleted={handleDeletePipeline}
+              onPipelineUpdated={handleUpdatePipeline}
+            />
           )}
         </div>
       </main>
@@ -438,10 +463,13 @@ const CRM = () => {
       <CreatePipelineModal 
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        pipelines={pipelines}
         onSuccess={(newPipeline) => {
           setPipelines([...pipelines, newPipeline]);
           setSelectedPipeline(newPipeline);
         }}
+        onDelete={handleDeletePipeline}
+        onUpdate={handleUpdatePipeline}
       />
 
       <DealDetailsDialog 

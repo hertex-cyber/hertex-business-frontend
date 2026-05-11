@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
     Layout, 
     Layers, 
@@ -9,10 +9,14 @@ import {
     ChevronRight 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import CreatePipelineModal from './CreatePipelineModal';
 
-const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName }) => {
+const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, onClick }) => {
     return (
-        <button className="group relative flex flex-col items-start p-6 bg-zinc-900/30 border border-zinc-800 rounded-xl hover:border-zinc-700 hover:bg-zinc-900/50 transition-all duration-300 text-left overflow-hidden active:scale-[0.98]">
+        <button 
+            onClick={onClick}
+            className="group relative flex flex-col items-start p-6 bg-zinc-900/30 border border-zinc-800 rounded-xl hover:border-zinc-700 hover:bg-zinc-900/50 transition-all duration-300 text-left overflow-hidden active:scale-[0.98] cursor-pointer"
+        >
             {/* Ambient Background Glow */}
             <div className={cn(
                 "absolute -right-8 -top-8 w-24 h-24 blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500",
@@ -50,16 +54,21 @@ const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName }
     );
 };
 
-const Actions = ({ selectedPipeline }) => {
+const Actions = ({ selectedPipeline, pipelines, onPipelineCreated, onPipelineDeleted, onPipelineUpdated }) => {
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
     const actionItems = [
         {
+            id: 'manage-pipeline',
             icon: Layout,
             title: "Manage Pipeline",
             description: "Configure sales funnels, conversion stages, and global pipeline logic.",
             colorClass: "bg-white",
-            showBadge: false
+            showBadge: false,
+            onClick: () => setIsCreateModalOpen(true)
         },
         {
+            id: 'manage-stage',
             icon: Layers,
             title: "Manage Stage",
             description: "Define Kanban columns, probability weights, and stage-gate requirements.",
@@ -67,6 +76,7 @@ const Actions = ({ selectedPipeline }) => {
             showBadge: true
         },
         {
+            id: 'manage-status',
             icon: Activity,
             title: "Manage Status",
             description: "Customize deal outcome labels, lost reasons, and win state parameters.",
@@ -74,6 +84,7 @@ const Actions = ({ selectedPipeline }) => {
             showBadge: true
         },
         {
+            id: 'manage-users',
             icon: Users,
             title: "Manage Users",
             description: "Assign territory permissions, role-based access, and seat management.",
@@ -81,6 +92,7 @@ const Actions = ({ selectedPipeline }) => {
             showBadge: true
         },
         {
+            id: 'manage-payment',
             icon: CreditCard,
             title: "Payment Actions",
             description: "Integrate billing gateways, automated invoicing, and collection triggers.",
@@ -88,6 +100,7 @@ const Actions = ({ selectedPipeline }) => {
             showBadge: true
         },
         {
+            id: 'lead-nurture',
             icon: HeartPulse,
             title: "Lead Nurture",
             description: "Set up drip sequences, automated follow-ups, and engagement scoring.",
@@ -101,14 +114,26 @@ const Actions = ({ selectedPipeline }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 {actionItems.map((item, idx) => (
                     <ActionCard 
-                        key={idx} 
+                        key={item.id} 
                         {...item} 
                         pipelineName={item.showBadge ? selectedPipeline?.name : null}
                     />
                 ))}
             </div>
+
+            <CreatePipelineModal 
+                isOpen={isCreateModalOpen} 
+                onClose={() => setIsCreateModalOpen(false)}
+                pipelines={pipelines}
+                onSuccess={(newPipeline) => {
+                    if (onPipelineCreated) onPipelineCreated(newPipeline);
+                }}
+                onDelete={onPipelineDeleted}
+                onUpdate={onPipelineUpdated}
+            />
         </div>
     );
 };
 
 export default Actions;
+
