@@ -301,21 +301,21 @@ const CRM = () => {
         {/* Top Control Bar with Tabs and Actions */}
         <div className="flex justify-between items-center mb-8 shrink-0">
           {/* Left: Tab Switcher with Sliding Highlighter */}
-          <div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-lg">
+          <div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
             {/* Sliding Highlighter */}
             <div 
               className={cn(
-                "absolute inset-y-0 bg-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
+                "absolute inset-y-0 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
                 activeTab === 'pipeline' 
-                  ? "left-0 w-1/2 rounded-l-md rounded-r-none" 
-                  : "left-1/2 w-1/2 rounded-r-md rounded-l-none"
+                  ? "left-0 w-1/2 rounded-l rounded-r-none bg-blue-500/20" 
+                  : "left-1/2 w-1/2 rounded-r rounded-l-none bg-blue-500/20"
               )}
             />
 
             <button 
               onClick={() => setActiveTab('pipeline')}
               className={cn(
-                "relative z-10 px-6 py-1.5 rounded-md text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
                 activeTab === 'pipeline' ? "text-blue-400" : "text-white/50 hover:text-white/80"
               )}
             >
@@ -324,7 +324,7 @@ const CRM = () => {
             <button 
               onClick={() => setActiveTab('actions')}
               className={cn(
-                "relative z-10 px-6 py-1.5 rounded-md text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
                 activeTab === 'actions' ? "text-blue-400" : "text-white/50 hover:text-white/80"
               )}
             >
@@ -343,14 +343,6 @@ const CRM = () => {
                 <Search size={14} className="group-hover:scale-110 transition-transform" />
               </button>
 
-              <button 
-                onClick={fetchDeals}
-                className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
-                title="Sync Board"
-              >
-                <RefreshCw size={14} className={cn("group-hover:rotate-180 transition-transform duration-500", isLoading && "animate-spin")} />
-              </button>
-              
               <button 
                 onClick={() => setIsCreateModalOpen(true)}
                 className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"

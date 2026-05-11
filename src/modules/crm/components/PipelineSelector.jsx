@@ -13,7 +13,7 @@ const PipelineSelector = ({ pipelines, selectedPipeline, onSelect, onCreateNew }
   return (
     <div className="flex items-center gap-3">
       <DropdownMenu>
-        <DropdownMenuTrigger className="w-64 bg-white/5 border border-white/10 !h-10 px-4 rounded-lg flex items-center justify-between text-[10px] font-normal uppercase tracking-widest text-white hover:bg-white/10 transition-all outline-none focus:ring-0 focus:border-white/20">
+        <DropdownMenuTrigger className="w-64 bg-white/5 border border-white/10 !h-10 px-4 rounded-md flex items-center justify-between text-[10px] font-normal uppercase tracking-widest text-white hover:bg-white/10 transition-all outline-none focus:ring-0 focus:border-white/20">
           <span className="truncate">{selectedPipeline ? selectedPipeline.name : "Select Pipeline"}</span>
           <ChevronDown size={14} className="opacity-40" />
         </DropdownMenuTrigger>
