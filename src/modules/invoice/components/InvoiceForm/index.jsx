@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Input from '@/components/Input';
-import Button from '@/components/Button';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useInvoiceSchemas } from '../../hooks/useInvoiceSchema';
 import { useInvoiceActions } from '../../hooks/useInvoiceActions';
@@ -320,7 +320,7 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
       <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-4">
         <h2 className="text-sm font-semibold text-white/80">Cost Breakdown</h2>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10 text-xs text-white/40 uppercase tracking-wider">
@@ -525,11 +525,11 @@ const InvoiceForm = ({ invoice = null, onSuccess }) => {
 
       {/* ---- Actions ---- */}
       <div className="flex gap-3 justify-end">
-        <Button variant="primary" type="submit" disabled={loading} className="!w-auto">
+        <Button variant="primary-action" type="submit" disabled={loading} className="!w-auto">
           {loading ? 'Saving…' : isEdit ? 'Update Invoice' : isAdmin ? 'Save' : 'Save as Draft'}
         </Button>
         <Button
-          variant="secondary"
+          variant="secondary-tool"
           type="button"
           className="!w-auto"
           onClick={() => navigate('/invoices')}

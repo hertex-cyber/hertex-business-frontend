@@ -7,7 +7,7 @@ const InvoiceCreatePage = () => (
       <h1 className="text-2xl font-bold text-white">Create Invoice</h1>
       <p className="text-white/40 text-sm mt-1">Fill in the details to create a new draft invoice</p>
     </div>
-    <div className="flex-1 overflow-y-auto min-h-0">
+    <div className="flex-1 overflow-y-auto min-h-0 scroll-smooth no-scrollbar">
       <InvoiceForm />
     </div>
   </div>

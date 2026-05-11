@@ -45,25 +45,27 @@ const InvoiceEditPage = () => {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">
-            {invoice.status === 'rejected' ? 'Revise Invoice' : 'Edit Invoice'}
-          </h1>
-          <p className="text-white/40 text-sm mt-1">
-            {invoice.status === 'rejected'
-              ? 'Update the invoice and resubmit for admin review'
-              : `Editing draft — ${invoice.invoice_number}`}
-          </p>
-        </div>
+    <div className="h-full overflow-hidden flex flex-col p-8">
+      <div className="mb-8 flex-shrink-0">
+        <h1 className="text-2xl font-bold text-white">
+          {invoice.status === 'rejected' ? 'Revise Invoice' : 'Edit Invoice'}
+        </h1>
+        <p className="text-white/40 text-sm mt-1">
+          {invoice.status === 'rejected'
+            ? 'Update the invoice and resubmit for admin review'
+            : `Editing draft — ${invoice.invoice_number}`}
+        </p>
         {invoice.status === 'rejected' && invoice.admin_remarks && (
-          <div className="mb-6 p-4 bg-red-500/[0.08] border border-red-500/20 rounded-xl text-sm text-red-400">
+          <div className="mt-6 p-4 bg-red-500/[0.08] border border-red-500/20 rounded-xl text-sm text-red-400">
             <span className="font-semibold">Rejection reason: </span>
             {invoice.admin_remarks}
           </div>
         )}
-        <InvoiceForm invoice={invoice} />
+      </div>
+      <div className="flex-1 overflow-y-auto min-h-0 scroll-smooth no-scrollbar">
+        <div className="max-w-4xl mx-auto">
+          <InvoiceForm invoice={invoice} />
+        </div>
       </div>
     </div>
   );
