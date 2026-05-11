@@ -5,9 +5,11 @@
 
 import React, { useState } from "react";
 import { Search, Filter, X } from "lucide-react";
+import { useDepartments } from "../../hooks/useUsers";
 
 const UserFilters = ({ filters, onFilterChange }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { departments } = useDepartments();
 
   const handleChange = (field, value) => {
     const newFilters = { ...filters, [field]: value };
@@ -109,17 +111,24 @@ const UserFilters = ({ filters, onFilterChange }) => {
             </div>
           </div>
 
-          {/* Department Filter (if needed) */}
-          {/* <div>
-            <label className="block text-sm font-semibold text-white mb-2">Department</label>
+          {/* Department Filter */}
+          <div>
+            <label className="block text-sm font-semibold text-white mb-2">
+              Group / Department
+            </label>
             <select
               value={filters.department}
-              onChange={(e) => handleChange('department', e.target.value)}
+              onChange={(e) => handleChange("department", e.target.value)}
               className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
             >
-              <option value="">All Departments</option>
+              <option value="">All Groups</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.name}>
+                  {dept.name}
+                </option>
+              ))}
             </select>
-          </div> */}
+          </div>
         </div>
       )}
 
@@ -143,6 +152,17 @@ const UserFilters = ({ filters, onFilterChange }) => {
               <button
                 onClick={() => handleChange("status", "")}
                 className="hover:text-blue-200"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          {filters.department && (
+            <div className="px-3 py-1 bg-emerald-900/30 border border-emerald-500 rounded-full text-white text-sm flex items-center gap-2">
+              Group: {filters.department}
+              <button
+                onClick={() => handleChange("department", "")}
+                className="hover:text-emerald-200"
               >
                 <X className="w-3 h-3" />
               </button>

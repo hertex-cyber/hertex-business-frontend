@@ -245,3 +245,36 @@ export const useUserDetail = (userId) => {
     refetch: fetchUser,
   };
 };
+/**
+ * useDepartments hook - Manages department list
+ */
+export const useDepartments = () => {
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchDepartments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await UserService.getDepartments({ page_size: 100 });
+      setDepartments(result.results || result.data || result || []);
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching departments:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, [fetchDepartments]);
+
+  return {
+    departments,
+    loading,
+    error,
+    refetch: fetchDepartments,
+  };
+};

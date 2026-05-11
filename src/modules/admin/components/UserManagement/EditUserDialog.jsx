@@ -4,16 +4,19 @@
  */
 
 import React, { useState } from "react";
-import { Save, X, User, Phone, Shield } from "lucide-react";
+import { Save, X, User, Phone, Shield, Building2 } from "lucide-react";
 import Input from "../../../../components/Input";
+import { useDepartments } from "../../hooks/useUsers";
 
 const EditUserDialog = ({ user, onSubmit, onCancel }) => {
+  const { departments } = useDepartments();
   const [formData, setFormData] = useState({
     first_name: user.first_name || "",
     last_name: user.last_name || "",
     mobile: user.mobile || "",
     gender: user.gender || "",
     role: user.role || "User",
+    department_id: user.department?.id || "",
     is_active: user.is_active ?? true,
   });
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,10 @@ const EditUserDialog = ({ user, onSubmit, onCancel }) => {
 
     setLoading(true);
     try {
-      await onSubmit(user.id, formData);
+      const submissionData = { ...formData };
+      if (!submissionData.department_id) submissionData.department_id = null;
+
+      await onSubmit(user.id, submissionData);
     } catch (err) {
       setError(err.message || "Error updating user");
     } finally {
@@ -72,22 +78,22 @@ const EditUserDialog = ({ user, onSubmit, onCancel }) => {
           )}
 
           {/* User ID (Read-only) */}
-          <div>
-            <label className="block text-sm font-semibold text-white/60 mb-2">
-              Account ID
-            </label>
-            <div className="px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white/40">
-              {user.account_id}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-white/60 mb-2">
+                Account ID
+              </label>
+              <div className="px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white/40">
+                {user.account_id}
+              </div>
             </div>
-          </div>
-
-          {/* Email (Read-only) */}
-          <div>
-            <label className="block text-sm font-semibold text-white/60 mb-2">
-              Email
-            </label>
-            <div className="px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white/40">
-              {user.email}
+            <div>
+              <label className="block text-sm font-semibold text-white/60 mb-2">
+                Email
+              </label>
+              <div className="px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-white/40">
+                {user.email}
+              </div>
             </div>
           </div>
 
@@ -143,26 +149,49 @@ const EditUserDialog = ({ user, onSubmit, onCancel }) => {
             </div>
           </div>
 
-          {/* Role */}
-          <div>
-            <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-blue-400" />
-              User Role
-            </label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 transition-colors"
-              required
-            >
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+          {/* Role & Department Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-400" />
+                User Role
+              </label>
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 transition-colors"
+                required
+              >
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+                Group / Department
+              </label>
+              <select
+                name="department_id"
+                value={formData.department_id}
+                onChange={handleChange}
+                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 transition-colors"
+              >
+                <option value="">No Group</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
 
           {/* Status */}
           <div>

@@ -4,10 +4,12 @@
  */
 
 import React, { useState } from "react";
-import { Mail, Lock, User, Phone, Shield } from "lucide-react";
+import { Mail, Lock, User, Phone, Shield, Building2 } from "lucide-react";
 import Input from "../../../../components/Input";
+import { useDepartments } from "../../hooks/useUsers";
 
 const CreateUserForm = ({ onSubmit, onCancel }) => {
+  const { departments, loading: loadingDeps } = useDepartments();
   const [formData, setFormData] = useState({
     email: "",
     first_name: "",
@@ -17,6 +19,7 @@ const CreateUserForm = ({ onSubmit, onCancel }) => {
     password_confirm: "",
     role: "User",
     gender: "",
+    department_id: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -54,7 +57,12 @@ const CreateUserForm = ({ onSubmit, onCancel }) => {
 
     setLoading(true);
     try {
-      await onSubmit(formData);
+      // Clean up empty strings for optional IDs
+      const submissionData = { ...formData };
+      if (!submissionData.department_id) delete submissionData.department_id;
+      if (!submissionData.gender) delete submissionData.gender;
+
+      await onSubmit(submissionData);
     } catch (err) {
       setError(err.message || "Error creating user");
     } finally {
@@ -134,26 +142,49 @@ const CreateUserForm = ({ onSubmit, onCancel }) => {
         </div>
       </div>
 
-      {/* Role */}
-      <div>
-        <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-blue-400" />
-          User Role
-        </label>
-        <select
-          name="role"
-          value={formData.role}
-          onChange={handleChange}
-          className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 transition-colors"
-          required
-        >
-          {roles.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
+      {/* Role & Department Row */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-blue-400" />
+            User Role
+          </label>
+          <select
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 transition-colors"
+            required
+          >
+            {roles.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-emerald-400" />
+            Group / Department
+          </label>
+          <select
+            name="department_id"
+            value={formData.department_id}
+            onChange={handleChange}
+            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-blue-500 transition-colors"
+          >
+            <option value="">No Group</option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.id}>
+                {dept.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
 
       {/* Password Row */}
       <div className="grid grid-cols-2 gap-4">
