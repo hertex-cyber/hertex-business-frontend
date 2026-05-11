@@ -153,6 +153,7 @@ const CRM = () => {
 
   useEffect(() => {
     if (selectedPipeline) {
+      setIsLoading(true);
       setStages([]);
       setDeals({});
       fetchStages();
