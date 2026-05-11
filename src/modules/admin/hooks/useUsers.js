@@ -258,7 +258,8 @@ export const useDepartments = () => {
     setError(null);
     try {
       const result = await UserService.getDepartments({ page_size: 100 });
-      setDepartments(result.results || result.data || result || []);
+      const data = result.results || result.data || (Array.isArray(result) ? result : []);
+      setDepartments(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err.message);
       console.error("Error fetching departments:", err);

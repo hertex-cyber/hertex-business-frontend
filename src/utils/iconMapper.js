@@ -51,6 +51,7 @@ import {
   X,
   Loader,
   AlertTriangle,
+  Contact,
 } from "lucide-react";
 
 /**
@@ -120,6 +121,7 @@ const ICON_MAP = {
   // Contact
   Mail,
   Phone,
+  Contact,
 
   // Navigation
   ChevronRight,
