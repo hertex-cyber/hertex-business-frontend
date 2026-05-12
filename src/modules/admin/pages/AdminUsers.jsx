@@ -7,11 +7,7 @@ import React from "react";
 import { UserList } from "../components/UserManagement";
 
 const AdminUsers = () => {
-  return (
-    <div className="min-h-screen bg-black">
-      <UserList />
-    </div>
-  );
+  return <UserList />;
 };
 
 export default AdminUsers;

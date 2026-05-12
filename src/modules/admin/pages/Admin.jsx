@@ -1,202 +1,113 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ShieldCheck,
-  Settings,
-  Server,
-  Database,
-  Lock,
-  Key,
-  LayoutGrid,
-  Building2,
-  Package,
-  Users,
-  Briefcase,
-} from "lucide-react";
-import Button from "@/components/Button";
+import { 
+  Layout, 
+  Layers, 
+  ShieldCheck, 
+  Lock, 
+  Users, 
+  Briefcase, 
+  ChevronRight 
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const ActionCard = ({ icon: Icon, title, description, colorClass, onClick }) => {
+    return (
+        <button 
+            onClick={onClick}
+            className="group relative flex flex-col items-start p-6 bg-zinc-900/30 border border-zinc-800 rounded-xl hover:border-zinc-700 hover:bg-zinc-900/50 transition-all duration-300 text-left overflow-hidden active:scale-[0.98] cursor-pointer"
+        >
+            <div className={cn(
+                "absolute -right-8 -top-8 w-24 h-24 blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500",
+                colorClass
+            )} />
+
+            <div className="w-full flex items-start justify-between mb-6">
+                <div className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center transition-transform duration-500 group-hover:scale-110",
+                    "bg-zinc-950 border border-zinc-800",
+                    colorClass.replace('bg-', 'text-')
+                )}>
+                    <Icon size={24} />
+                </div>
+            </div>
+
+            <div className="space-y-2 flex-1">
+                <h3 className="text-sm font-medium text-white uppercase tracking-wider">{title}</h3>
+                <p className="text-xs text-white/40 leading-relaxed font-medium">
+                    {description}
+                </p>
+            </div>
+
+            <div className="mt-6 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.2em] text-white/20 group-hover:text-white/60 transition-colors">
+                Configure
+                <ChevronRight size={10} className="group-hover:translate-x-1 transition-transform" />
+            </div>
+        </button>
+    );
+};
 
 const Admin = () => {
   const navigate = useNavigate();
 
+  const actionItems = [
+    {
+      id: 'system-infrastructure',
+      icon: Layers,
+      title: "SYSTEM INFRASTRUCTURE",
+      description: "Manage servers and cloud resources",
+      colorClass: "bg-blue-500",
+    },
+    {
+      id: 'security-access',
+      icon: ShieldCheck,
+      title: "SECURITY & ACCESS",
+      description: "Audit logs and permission control",
+      colorClass: "bg-purple-500",
+    },
+    {
+      id: 'company-profile',
+      icon: Briefcase,
+      title: "COMPANY PROFILE",
+      description: "Logo, name, address and seal for invoices",
+      colorClass: "bg-amber-500",
+      onClick: () => navigate("/admin/company-profile"),
+    },
+    {
+      id: 'user-management',
+      icon: Users,
+      title: "USER MANAGEMENT",
+      description: "Manage users, roles, and permissions",
+      colorClass: "bg-blue-500",
+      onClick: () => navigate("/admin/users"),
+    },
+    {
+      id: 'platform-management',
+      icon: Layout,
+      title: "PLATFORM MANAGEMENT",
+      description: "Manage menus, orgs, and products",
+      colorClass: "bg-emerald-500",
+      onClick: () => navigate("/admin/menus"),
+    },
+  ];
+
   return (
-    <div className="flex flex-col min-h-full">
-      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 relative z-20">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
-            <ShieldCheck size={10} />
-            System Administration
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight text-white">
-            Admin
-          </h1>
-          <p className="text-sm text-white/40 font-medium">
-            Control system settings and infrastructure
-          </p>
+    <div className="flex flex-col bg-black h-full">
+      <header className="px-10 py-8 flex justify-between items-center border-b border-white/5 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
+        <div className="space-y-0.5">
+          <h1 className="text-2xl font-semibold text-white">Admin</h1>
+          <p className="text-sm text-white/40">Control system settings and infrastructure</p>
         </div>
       </header>
 
-      <main className="flex-1 p-10 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40">
-              <Server size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                System Infrastructure
-              </h3>
-              <p className="text-xs text-white/20">
-                Manage servers and cloud resources
-              </p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-white/[0.01] border border-white/5 rounded-xl">
-              <span className="text-sm font-medium text-white/60">
-                Server Cluster 01
-              </span>
-              <span className="px-2 py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest">
-                Healthy
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-4 bg-white/[0.01] border border-white/5 rounded-xl">
-              <span className="text-sm font-medium text-white/60">
-                Database Replica
-              </span>
-              <span className="px-2 py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] font-black uppercase tracking-widest">
-                Synced
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40">
-              <Lock size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                Security & Access
-              </h3>
-              <p className="text-xs text-white/20">
-                Audit logs and permission control
-              </p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <Button
-              variant="secondary"
-              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10"
-            >
-              <Key size={14} className="mr-3" />
-              Manage API Keys
-            </Button>
-            <Button
-              variant="secondary"
-              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full"
-            >
-              <ShieldCheck size={14} className="mr-3" />
-              View Audit Logs
-            </Button>
-          </div>
-        </div>
-
-        {/* Company Profile Card */}
-        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl space-y-6 md:col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40">
-              <Briefcase size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                Company Profile
-              </h3>
-              <p className="text-xs text-white/20">
-                Logo, name, address and seal for invoices
-              </p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <Button
-              variant="secondary"
-              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full"
-              onClick={() => navigate("/admin/company-profile")}
-            >
-              <Briefcase size={14} className="mr-3" />
-              Manage Company Profile
-            </Button>
-          </div>
-        </div>
-
-        {/* New Platform Management Card */}
-        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl space-y-6 md:col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40">
-              <Users size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                User Management
-              </h3>
-              <p className="text-xs text-white/20">
-                Manage users, roles, and permissions
-              </p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <Button
-              variant="secondary"
-              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full"
-              onClick={() => navigate("/admin/users")}
-            >
-              <Users size={14} className="mr-3" />
-              Manage Users
-            </Button>
-          </div>
-        </div>
-
-        {/* Platform Management Card */}
-        <div className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl space-y-6 md:col-span-2 lg:col-span-1">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-white/40">
-              <LayoutGrid size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">
-                Platform Management
-              </h3>
-              <p className="text-xs text-white/20">
-                Manage menus, orgs, and products
-              </p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <Button
-              variant="secondary"
-              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full"
-              onClick={() => navigate("/admin/menus")}
-            >
-              <LayoutGrid size={14} className="mr-3" />
-              Manage Menus
-            </Button>
-            <Button
-              variant="secondary"
-              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full"
-              onClick={() => navigate("/admin/organizations")}
-            >
-              <Building2 size={14} className="mr-3" />
-              Manage Organizations
-            </Button>
-            <Button
-              variant="secondary"
-              className="justify-start px-4 bg-white/5 border-none hover:bg-white/10 w-full"
-              onClick={() => navigate("/admin/products")}
-            >
-              <Package size={14} className="mr-3" />
-              Manage Products
-            </Button>
-          </div>
+      <main className="flex-1 px-10 pt-5 pb-10 relative z-10 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {actionItems.map((item, idx) => (
+            <ActionCard 
+              key={item.id} 
+              {...item} 
+            />
+          ))}
         </div>
       </main>
     </div>

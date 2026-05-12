@@ -57,10 +57,10 @@ const EditUserDialog = ({ user, onSubmit, onCancel }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="sticky top-0 px-8 py-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50 backdrop-blur">
-          <h2 className="text-2xl font-bold text-white">Edit User</h2>
+          <h2 className="text-2xl font-black text-white tracking-tight">Edit User</h2>
           <button
             onClick={onCancel}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200"

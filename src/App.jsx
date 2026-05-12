@@ -295,9 +295,7 @@ function App() {
               path="/admin/company-profile"
               element={
                 <AdminRoute>
-                  <div className="p-8">
-                    <CompanyProfileAdmin />
-                  </div>
+                  <CompanyProfileAdmin />
                 </AdminRoute>
               }
             />

@@ -3,7 +3,9 @@
  * Handles all API calls for user management operations
  */
 
-import API from "../../../lib/api";
+import axios from "axios";
+
+const BASE = "/api/auth";
 
 class UserService {
   /**
@@ -11,7 +13,7 @@ class UserService {
    */
   static async getUsers(params = {}) {
     try {
-      const response = await API.get("/users/", { params });
+      const response = await axios.get(`${BASE}/users`, { params });
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -23,7 +25,7 @@ class UserService {
    */
   static async getUserById(userId) {
     try {
-      const response = await API.get(`/users/${userId}/`);
+      const response = await axios.get(`${BASE}/users/${userId}`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -35,7 +37,7 @@ class UserService {
    */
   static async createUser(userData) {
     try {
-      const response = await API.post("/users/", userData);
+      const response = await axios.post(`${BASE}/users`, userData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -47,7 +49,7 @@ class UserService {
    */
   static async updateUser(userId, userData) {
     try {
-      const response = await API.patch(`/users/${userId}/`, userData);
+      const response = await axios.patch(`${BASE}/users/${userId}`, userData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -59,7 +61,7 @@ class UserService {
    */
   static async deleteUser(userId) {
     try {
-      const response = await API.delete(`/users/${userId}/`);
+      const response = await axios.delete(`${BASE}/users/${userId}`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -71,7 +73,7 @@ class UserService {
    */
   static async getUserActivities(userId, params = {}) {
     try {
-      const response = await API.get(`/users/${userId}/activities/`, {
+      const response = await axios.get(`${BASE}/users/${userId}/activities`, {
         params,
       });
       return response.data;
@@ -85,7 +87,7 @@ class UserService {
    */
   static async bulkUpdateUsers(userIds, updates) {
     try {
-      const response = await API.patch("/users/bulk-update/", {
+      const response = await axios.patch(`${BASE}/users/bulk-update`, {
         user_ids: userIds,
         updates,
       });
@@ -100,7 +102,7 @@ class UserService {
    */
   static async getAllActivities(params = {}) {
     try {
-      const response = await API.get("/activities/", { params });
+      const response = await axios.get(`${BASE}/activities`, { params });
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -112,7 +114,7 @@ class UserService {
    */
   static async getActivityById(activityId) {
     try {
-      const response = await API.get(`/activities/${activityId}/`);
+      const response = await axios.get(`${BASE}/activities/${activityId}`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -124,7 +126,7 @@ class UserService {
    */
   static async getDepartments(params = {}) {
     try {
-      const response = await API.get("/departments/", { params });
+      const response = await axios.get(`${BASE}/departments`, { params });
       return response.data;
     } catch (error) {
       throw this.handleError(error);
