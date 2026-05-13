@@ -163,6 +163,8 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
       userToSave.department_id = userToSave.department.id;
     }
     
+    console.log("UserDetail.handleSave: userToSave =", userToSave);
+    
     await onSave(userToSave);
     setIsEditing(false);
   };
@@ -175,13 +177,16 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
 
 
   const handleGroupSelect = async (department) => {
+    console.log("UserDetail.handleGroupSelect: department =", department, "isEditing =", isEditing);
     if (isEditing) {
-      setEditedUser(prev => ({ ...prev, department }));
+      setEditedUser(prev => ({ ...prev, department, department_id: department.id }));
     } else {
       setIsAssigningGroup(true);
       setEditedUser(prev => ({ ...prev, department }));
       const userToSave = { ...user, department, department_id: department.id };
+      console.log("UserDetail.handleGroupSelect: userToSave (non-edit) =", userToSave);
       const serverResponse = await onSave(userToSave);
+      console.log("UserDetail.handleGroupSelect: serverResponse =", serverResponse);
       setIsAssigningGroup(false);
     }
     setShowGroupDropdown(false);
@@ -425,7 +430,7 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
                         <button
                           key={dept.id}
                           onClick={() => {
-                            setEditedUser(prev => ({ ...prev, department: dept }));
+                            setEditedUser(prev => ({ ...prev, department: dept, department_id: dept.id }));
                             setShowGroupDropdown(false);
                           }}
                           className={`w-full px-4 py-2.5 text-left text-xs transition-all duration-150 ${

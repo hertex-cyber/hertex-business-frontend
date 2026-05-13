@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Users, Plus, Search, Users as UsersIcon } from "lucide-react";
+import { Users, Plus, Search, Users as UsersIcon, Trash2 } from "lucide-react";
 import { useUsers, useAuditLog, useDepartments } from "../../hooks/useUsers";
 import UserTable from "./UserTable";
 import CreateUserForm from "./CreateUserForm";
@@ -9,6 +9,7 @@ import DepartmentList from "./DepartmentList";
 import UserFilters from "./UserFilters";
 import BulkActions from "./BulkActions";
 import ConfirmDeleteDialog from "../../../../components/ConfirmDeleteDialog";
+import SearchDialog from "./SearchDialog";
 import RingLoader from "@/components/ui/RingLoader";
 
 const UserList = () => {
@@ -23,6 +24,7 @@ const UserList = () => {
     updateUser,
     deleteUser,
     bulkUpdateUsers,
+    bulkDeleteUsers,
   } = useUsers();
   const { departments, loading: deptsLoading, error: deptsError, refetch: refetchDepts } = useDepartments();
   const [selectedUsers, setSelectedUsers] = useState(new Set());
@@ -36,14 +38,17 @@ const UserList = () => {
     status: "",
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [isBulkDelete, setIsBulkDelete] = useState(false);
   const [isTogglingActive, setIsTogglingActive] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
+  const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchUsers(filters);
-  }, [pagination.page]);
+  }, [pagination.page, filters, fetchUsers]);
 
   useEffect(() => {
     if (selectedUser && users.length > 0) {
@@ -61,7 +66,7 @@ const UserList = () => {
 
   const handleCreateUser = async (userData) => {
     try {
-      await createUser(userData);
+      await createUser(userData, filters);
       setShowCreateForm(false);
     } catch (err) {
       console.error("Error creating user:", err);
@@ -94,9 +99,11 @@ const UserList = () => {
   };
 
   const handleSaveUser = async (updatedUser) => {
+    console.log("UserList.handleSaveUser: updatedUser =", updatedUser);
     setIsSavingEdit(true);
     try {
-      const serverResponse = await updateUser(updatedUser.id, updatedUser);
+      const serverResponse = await updateUser(updatedUser.id, updatedUser, filters);
+      console.log("UserList.handleSaveUser: serverResponse =", serverResponse);
       setSelectedUser(serverResponse.data || serverResponse);
     } catch (err) {
       console.error("Error updating user:", err);
@@ -110,7 +117,7 @@ const UserList = () => {
     console.log('handleDeleteUser called with userId:', userId);
     setIsDeleting(true);
     try {
-      await deleteUser(userId);
+      await deleteUser(userId, filters);
       setShowDeleteConfirm(null);
     } catch (err) {
       console.error("Error deleting user:", err);
@@ -128,16 +135,13 @@ const UserList = () => {
     console.log('handleToggleActive called for user:', selectedUser.id, 'current status:', selectedUser.is_active);
     setIsTogglingActive(true);
     try {
-      // Update local state immediately for UI feedback
-      setSelectedUser(prev => prev ? { ...prev, is_active: !prev.is_active } : null);
-      
-      await updateUser(selectedUser.id, {
+      const serverResponse = await updateUser(selectedUser.id, {
         is_active: !selectedUser.is_active,
-      });
+      }, filters);
+      console.log('handleToggleActive: serverResponse =', serverResponse);
+      setSelectedUser(serverResponse.data || serverResponse);
       console.log('Toggle active successful!');
     } catch (err) {
-      // Revert on error
-      setSelectedUser(prev => prev ? { ...prev, is_active: selectedUser.is_active } : null);
       console.error("Error toggling user active status:", err);
     } finally {
       setIsTogglingActive(false);
@@ -146,10 +150,25 @@ const UserList = () => {
 
   const handleBulkUpdate = async (updates) => {
     try {
-      await bulkUpdateUsers(Array.from(selectedUsers), updates);
+      await bulkUpdateUsers(Array.from(selectedUsers), updates, filters);
       setSelectedUsers(new Set());
     } catch (err) {
       console.error("Error bulk updating users:", err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    console.log('handleBulkDelete called with user IDs:', Array.from(selectedUsers));
+    setIsDeleting(true);
+    try {
+      await bulkDeleteUsers(Array.from(selectedUsers), filters);
+      setSelectedUsers(new Set());
+      setShowDeleteConfirm(null);
+      setIsBulkDelete(false);
+    } catch (err) {
+      console.error("Error bulk deleting users:", err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -180,15 +199,7 @@ const UserList = () => {
             </>
           )}
         </div>
-        {activeTab === 'users' && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="!w-auto h-9 px-4 bg-white text-black rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"
-          >
-            <Plus size={14} />
-            Create User
-          </button>
-        )}
+
         {activeTab === 'groups' && (
           <button
             className="!w-auto h-9 px-4 bg-white text-black rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"
@@ -240,104 +251,85 @@ const UserList = () => {
             </button>
           </div>
           {activeTab === 'users' && (
-            <div className="ml-auto relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={13} />
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="pl-8 pr-3 h-8 w-52 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder:text-white/20 outline-none focus:border-white/20 transition-all"
-              />
+            <div className="ml-auto flex items-center gap-3">
+              {selectedUsers.size > 0 && (
+                <button
+                  onClick={() => {
+                    setIsBulkDelete(true);
+                    setShowDeleteConfirm({});
+                  }}
+                  disabled={isDeleting}
+                  className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all flex items-center justify-center group disabled:opacity-50"
+                  title="Delete Selected Users"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+              <button
+                onClick={() => setIsSearchDialogOpen(true)}
+                className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Search Users"
+              >
+                <Search size={16} />
+              </button>
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Create User"
+              >
+                <Plus size={16} />
+              </button>
             </div>
           )}
         </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar pt-4">
-            {activeTab === 'users' && (
-              <div className="space-y-4">
-                {loading ? (
-                  <div className="p-8 text-center">
-                    <RingLoader className="mx-auto" />
-                  </div>
-                ) : (
-                  <UserTable
-                    users={users}
-                    selectedUsers={selectedUsers}
-                    onSelectUser={handleSelectUser}
-                    onSelectAll={handleSelectAll}
-                    onDelete={(user) => setShowDeleteConfirm(user)}
-                    onViewDetails={(user) => {
-                      setStartInEditMode(false);
-                      setSelectedUser(user);
-                    }}
-                    onEditUser={handleEditUser}
-                  />
-                )}
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0 pt-4">
+          {activeTab === 'users' && (
+            loading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <RingLoader className="mx-auto" />
               </div>
-            )}
-
-            {activeTab === 'groups' && (
-              <DepartmentList
-                departments={departments}
-                loading={deptsLoading}
-                error={deptsError}
+            ) : (
+              <UserTable
+                users={users}
+                selectedUsers={selectedUsers}
+                onSelectUser={handleSelectUser}
+                onSelectAll={handleSelectAll}
+                onDelete={(user) => setShowDeleteConfirm(user)}
+                onViewDetails={(user) => {
+                  setStartInEditMode(false);
+                  setSelectedUser(user);
+                }}
+                onEditUser={handleEditUser}
+                currentPage={pagination.page}
+                totalPages={Math.ceil(pagination.count / pagination.pageSize)}
+                onPageChange={handlePageChange}
+                pagination={pagination}
               />
-            )}
+            )
+          )}
 
-            {activeTab === 'audit' && (
-              <AuditLog />
-            )}
-          </div>
+          {activeTab === 'groups' && (
+            <DepartmentList
+              departments={departments}
+              loading={deptsLoading}
+              error={deptsError}
+            />
+          )}
 
-          {/* Fixed footer with pagination */}
-          {activeTab === 'users' && !loading && (
-            <div className="shrink-0 pt-4 border-t border-white/5 mt-4 flex justify-between items-center">
-              <p className="text-white/40 text-sm">
-                Showing {(pagination.page - 1) * pagination.pageSize + 1} to{" "}
-                {Math.min(
-                  pagination.page * pagination.pageSize,
-                  pagination.count,
-                )}{" "}
-                of {pagination.count} users
-              </p>
-              <div className="flex gap-2">
-                <button
-                  disabled={!pagination.previous || loading}
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white/60 rounded-lg text-sm transition-all"
-                >
-                  Previous
-                </button>
-                <span className="px-4 py-2 text-white/40 text-sm">
-                  Page {pagination.page}
-                </span>
-                <button
-                  disabled={!pagination.next || loading}
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  className="px-4 py-2 bg-white/5 hover:bg-white/10 disabled:opacity-50 text-white/60 rounded-lg text-sm transition-all"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+          {activeTab === 'audit' && (
+            <AuditLog />
           )}
         </div>
       </main>
 
       {showCreateForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
-            <h2 className="text-2xl font-semibold text-white mb-6">
-              Create New User
-            </h2>
-            <CreateUserForm
-              onSubmit={handleCreateUser}
-              onCancel={() => setShowCreateForm(false)}
-            />
-          </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCreateForm(false)} />
+          <CreateUserForm
+            onSubmit={handleCreateUser}
+            onCancel={() => setShowCreateForm(false)}
+          />
         </div>
       )}
 
@@ -368,18 +360,36 @@ const UserList = () => {
         </div>
       )}
 
+      <SearchDialog
+        isOpen={isSearchDialogOpen}
+        onClose={() => setIsSearchDialogOpen(false)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onSelect={(user) => {
+          setSelectedUser(user);
+          setIsSearchDialogOpen(false);
+        }}
+      />
       <ConfirmDeleteDialog
         isOpen={!!showDeleteConfirm}
-        title="Delete User"
-        description={`Are you sure you want to delete ${showDeleteConfirm?.first_name || 'this user'} ${showDeleteConfirm?.last_name || ''}? This action cannot be undone.`}
+        title={isBulkDelete ? "Delete Selected Users" : "Delete User"}
+        description={
+          isBulkDelete 
+            ? `Are you sure you want to delete ${selectedUsers.size} selected user${selectedUsers.size !== 1 ? 's' : ''}? This action cannot be undone.`
+            : `Are you sure you want to delete ${showDeleteConfirm?.first_name || 'this user'} ${showDeleteConfirm?.last_name || ''}? This action cannot be undone.`
+        }
         onConfirm={() => {
           console.log('ConfirmDeleteDialog onConfirm called!');
-          console.log('showDeleteConfirm:', showDeleteConfirm);
-          if (showDeleteConfirm) {
+          if (isBulkDelete) {
+            handleBulkDelete();
+          } else if (showDeleteConfirm) {
             handleDeleteUser(showDeleteConfirm.id);
           }
         }}
-        onClose={() => setShowDeleteConfirm(null)}
+        onClose={() => {
+          setShowDeleteConfirm(null);
+          setIsBulkDelete(false);
+        }}
         isDeleting={isDeleting}
       />
     </div>

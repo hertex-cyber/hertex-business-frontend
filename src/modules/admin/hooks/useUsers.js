@@ -49,12 +49,12 @@ export const useUsers = () => {
   );
 
   const createUser = useCallback(
-    async (userData) => {
+    async (userData, fetchParams = {}) => {
       setError(null);
       try {
         const result = await UserService.createUser(userData);
         // Refresh list
-        await fetchUsers();
+        await fetchUsers(fetchParams);
         return result;
       } catch (err) {
         setError(err.message);
@@ -65,12 +65,14 @@ export const useUsers = () => {
   );
 
   const updateUser = useCallback(
-    async (userId, userData) => {
+    async (userId, userData, fetchParams = {}) => {
+      console.log("useUsers.updateUser: userId =", userId, "userData =", userData, "fetchParams =", fetchParams);
       setError(null);
       try {
         const result = await UserService.updateUser(userId, userData);
+        console.log("useUsers.updateUser: API result =", result);
         // Refresh list
-        await fetchUsers();
+        await fetchUsers(fetchParams);
         return result;
       } catch (err) {
         setError(err.message);
@@ -81,12 +83,12 @@ export const useUsers = () => {
   );
 
   const deleteUser = useCallback(
-    async (userId) => {
+    async (userId, fetchParams = {}) => {
       setError(null);
       try {
         const result = await UserService.deleteUser(userId);
         // Refresh list
-        await fetchUsers();
+        await fetchUsers(fetchParams);
         return result;
       } catch (err) {
         setError(err.message);
@@ -97,12 +99,28 @@ export const useUsers = () => {
   );
 
   const bulkUpdateUsers = useCallback(
-    async (userIds, updates) => {
+    async (userIds, updates, fetchParams = {}) => {
       setError(null);
       try {
         const result = await UserService.bulkUpdateUsers(userIds, updates);
         // Refresh list
-        await fetchUsers();
+        await fetchUsers(fetchParams);
+        return result;
+      } catch (err) {
+        setError(err.message);
+        throw err;
+      }
+    },
+    [fetchUsers],
+  );
+
+  const bulkDeleteUsers = useCallback(
+    async (userIds, fetchParams = {}) => {
+      setError(null);
+      try {
+        const result = await UserService.bulkDeleteUsers(userIds);
+        // Refresh list
+        await fetchUsers(fetchParams);
         return result;
       } catch (err) {
         setError(err.message);
@@ -123,6 +141,7 @@ export const useUsers = () => {
     updateUser,
     deleteUser,
     bulkUpdateUsers,
+    bulkDeleteUsers,
   };
 };
 

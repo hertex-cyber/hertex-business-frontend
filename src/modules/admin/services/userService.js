@@ -98,6 +98,20 @@ class UserService {
   }
 
   /**
+   * Bulk delete users
+   */
+  static async bulkDeleteUsers(userIds) {
+    try {
+      const response = await axios.post(`${BASE}/users/bulk-delete`, {
+        user_ids: userIds,
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Get all activities (global audit log)
    */
   static async getAllActivities(params = {}) {

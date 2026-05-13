@@ -1,5 +1,5 @@
 import React from "react";
-import { Trash2, Eye, Mail, Phone, User, CheckSquare, Square } from "lucide-react";
+import { Trash2, Eye, Mail, Phone, User, CheckSquare, Square, ChevronLeft, ChevronRight } from "lucide-react";
 import { TbEdit } from "react-icons/tb";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,10 @@ const UserTable = ({
   onDelete,
   onViewDetails,
   onEditUser,
+  currentPage,
+  totalPages,
+  onPageChange,
+  pagination,
 }) => {
   const toggleSelectAll = () => {
     if (selectedUsers.size > 0 && selectedUsers.size === users.length) {
@@ -68,7 +72,7 @@ const UserTable = ({
                   >
                     {isSelected ? <CheckSquare size={14} /> : <Square size={14} />}
                   </button>
-                  <span className="text-xs text-white/25">{index + 1}</span>
+                  <span className="text-xs text-white/25">{(currentPage - 1) * 20 + index + 1}</span>
                 </div>
 
                 <div className="col-span-3 flex items-center gap-3">
@@ -123,6 +127,51 @@ const UserTable = ({
           })}
         </div>
       )}
+
+      <div className="px-6 py-3 bg-white/[0.02] flex items-center justify-between shrink-0">
+        <p className="text-xs text-white/30">
+          Page {currentPage} of {Math.max(1, totalPages)}
+        </p>
+        <div className="flex items-center gap-1.5">
+          <button 
+            disabled={currentPage === 1 || !pagination.previous} 
+            onClick={() => onPageChange(currentPage - 1)}
+            className="p-2 rounded-xs bg-white/5 border border-white/5 text-white disabled:opacity-20 hover:bg-white/10 transition-all"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <div className="flex items-center gap-1 px-1">
+            {(() => {
+              const start = Math.max(1, currentPage - 2);
+              const end = Math.min(totalPages, currentPage + 2);
+              return [...Array(end - start + 1)].map((_, i) => {
+                const pageNum = start + i;
+                return (
+                  <button 
+                    key={pageNum} 
+                    onClick={() => onPageChange(pageNum)}
+                    className={cn(
+                      "w-8 h-8 rounded-xs text-xs transition-all",
+                      currentPage === pageNum 
+                        ? "bg-white text-black font-semibold" 
+                        : "text-white/40 hover:bg-white/5"
+                    )}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              });
+            })()}
+          </div>
+          <button 
+            disabled={currentPage === totalPages || totalPages === 0 || !pagination.next} 
+            onClick={() => onPageChange(currentPage + 1)}
+            className="p-2 rounded-xs bg-white/5 border border-white/5 text-white disabled:opacity-20 hover:bg-white/10 transition-all"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
