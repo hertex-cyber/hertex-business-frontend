@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Users, Plus, Search } from "lucide-react";
-import { useUsers, useAuditLog } from "../../hooks/useUsers";
+import { Users, Plus, Search, Users as UsersIcon } from "lucide-react";
+import { useUsers, useAuditLog, useDepartments } from "../../hooks/useUsers";
 import UserTable from "./UserTable";
 import CreateUserForm from "./CreateUserForm";
-import EditUserDialog from "./EditUserDialog";
 import UserDetail from "./UserDetail";
 import AuditLog from "./AuditLog";
+import DepartmentList from "./DepartmentList";
 import UserFilters from "./UserFilters";
 import BulkActions from "./BulkActions";
 import ConfirmDeleteDialog from "../../../../components/ConfirmDeleteDialog";
@@ -24,10 +24,11 @@ const UserList = () => {
     deleteUser,
     bulkUpdateUsers,
   } = useUsers();
+  const { departments, loading: deptsLoading, error: deptsError, refetch: refetchDepts } = useDepartments();
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [startInEditMode, setStartInEditMode] = useState(false);
   const [filters, setFilters] = useState({
     search: "",
     role: "",
@@ -35,34 +36,27 @@ const UserList = () => {
     status: "",
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [isTogglingActive, setIsTogglingActive] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
 
   useEffect(() => {
     fetchUsers(filters);
   }, [pagination.page]);
 
+  useEffect(() => {
+    if (selectedUser && users.length > 0) {
+      const updatedUserFromList = users.find(u => u.id === selectedUser.id);
+      if (updatedUserFromList) {
+        setSelectedUser(updatedUserFromList);
+      }
+    }
+  }, [users, selectedUser?.id]);
+
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
     setPagination((prev) => ({ ...prev, page: 1 }));
-    fetchUsers(newFilters);
-  };
-
-  const handleSelectUser = (userId, selected) => {
-    const newSelected = new Set(selectedUsers);
-    if (selected) {
-      newSelected.add(userId);
-    } else {
-      newSelected.delete(userId);
-    }
-    setSelectedUsers(newSelected);
-  };
-
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedUsers(new Set(users.map((u) => u.id)));
-    } else {
-      setSelectedUsers(new Set());
-    }
   };
 
   const handleCreateUser = async (userData) => {
@@ -74,21 +68,79 @@ const UserList = () => {
     }
   };
 
-  const handleUpdateUser = async (userId, userData) => {
+  const handleSelectUser = (userId) => {
+    setSelectedUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleEditUser = (user) => {
+    setStartInEditMode(true);
+    setSelectedUser(user);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUsers.size === users.length) {
+      setSelectedUsers(new Set());
+    } else {
+      setSelectedUsers(new Set(users.map(u => u.id)));
+    }
+  };
+
+  const handleSaveUser = async (updatedUser) => {
+    setIsSavingEdit(true);
     try {
-      await updateUser(userId, userData);
-      setEditingUser(null);
+      const serverResponse = await updateUser(updatedUser.id, updatedUser);
+      setSelectedUser(serverResponse.data || serverResponse);
     } catch (err) {
       console.error("Error updating user:", err);
+      throw err;
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
   const handleDeleteUser = async (userId) => {
+    console.log('handleDeleteUser called with userId:', userId);
+    setIsDeleting(true);
     try {
       await deleteUser(userId);
       setShowDeleteConfirm(null);
     } catch (err) {
       console.error("Error deleting user:", err);
+      // Special handling for "User is already inactive" error
+      if (err.message && err.message.includes("User is already inactive")) {
+        setShowDeleteConfirm(null);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleToggleActive = async () => {
+    if (!selectedUser) return;
+    console.log('handleToggleActive called for user:', selectedUser.id, 'current status:', selectedUser.is_active);
+    setIsTogglingActive(true);
+    try {
+      // Update local state immediately for UI feedback
+      setSelectedUser(prev => prev ? { ...prev, is_active: !prev.is_active } : null);
+      
+      await updateUser(selectedUser.id, {
+        is_active: !selectedUser.is_active,
+      });
+      console.log('Toggle active successful!');
+    } catch (err) {
+      // Revert on error
+      setSelectedUser(prev => prev ? { ...prev, is_active: selectedUser.is_active } : null);
+      console.error("Error toggling user active status:", err);
+    } finally {
+      setIsTogglingActive(false);
     }
   };
 
@@ -109,16 +161,42 @@ const UserList = () => {
     <div className="flex flex-col bg-black h-full">
       <header className="px-10 py-8 flex justify-between items-center border-b border-white/5 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
         <div className="space-y-0.5">
-          <h1 className="text-2xl font-semibold text-white">Users</h1>
-          <p className="text-sm text-white/40">Create, manage, and monitor user accounts</p>
+          {activeTab === 'users' && (
+            <>
+              <h1 className="text-2xl font-semibold text-white">Users</h1>
+              <p className="text-sm text-white/40">Create, manage, and monitor user accounts</p>
+            </>
+          )}
+          {activeTab === 'groups' && (
+            <>
+              <h1 className="text-2xl font-semibold text-white">Groups</h1>
+              <p className="text-sm text-white/40">Organize users into departments and teams</p>
+            </>
+          )}
+          {activeTab === 'audit' && (
+            <>
+              <h1 className="text-2xl font-semibold text-white">Audit Log</h1>
+              <p className="text-sm text-white/40">Track all user activities and system changes</p>
+            </>
+          )}
         </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="!w-auto h-9 px-4 bg-white text-black rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"
-        >
-          <Plus size={14} />
-          Create User
-        </button>
+        {activeTab === 'users' && (
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="!w-auto h-9 px-4 bg-white text-black rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"
+          >
+            <Plus size={14} />
+            Create User
+          </button>
+        )}
+        {activeTab === 'groups' && (
+          <button
+            className="!w-auto h-9 px-4 bg-white text-black rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"
+          >
+            <Plus size={14} />
+            Create Group
+          </button>
+        )}
       </header>
 
       <main className="flex-1 px-10 pt-5 pb-5 relative z-10 overflow-hidden flex flex-col gap-0 min-h-0">
@@ -139,6 +217,16 @@ const UserList = () => {
               }`}
             >
               Users
+            </button>
+            <button
+              onClick={() => setActiveTab('groups')}
+              className={`px-4 py-2.5 text-sm capitalize transition-all border-b-2 -mb-px ${
+                activeTab === 'groups'
+                  ? 'text-white border-blue-500 font-medium'
+                  : 'text-white/30 border-transparent hover:text-white/60'
+              }`}
+            >
+              Groups
             </button>
             <button
               onClick={() => setActiveTab('audit')}
@@ -180,12 +268,23 @@ const UserList = () => {
                     selectedUsers={selectedUsers}
                     onSelectUser={handleSelectUser}
                     onSelectAll={handleSelectAll}
-                    onEdit={setEditingUser}
                     onDelete={(user) => setShowDeleteConfirm(user)}
-                    onViewDetails={setSelectedUser}
+                    onViewDetails={(user) => {
+                      setStartInEditMode(false);
+                      setSelectedUser(user);
+                    }}
+                    onEditUser={handleEditUser}
                   />
                 )}
               </div>
+            )}
+
+            {activeTab === 'groups' && (
+              <DepartmentList
+                departments={departments}
+                loading={deptsLoading}
+                error={deptsError}
+              />
             )}
 
             {activeTab === 'audit' && (
@@ -242,36 +341,47 @@ const UserList = () => {
         </div>
       )}
 
-      {editingUser && (
-        <EditUserDialog
-          user={editingUser}
-          onSubmit={handleUpdateUser}
-          onCancel={() => setEditingUser(null)}
-        />
-      )}
-
       {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setSelectedUser(null)}
-              className="text-white/40 hover:text-white mb-4 text-sm"
-            >
-              ← Back
-            </button>
-            <UserDetail user={selectedUser} />
-          </div>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => {
+            setSelectedUser(null);
+            setStartInEditMode(false);
+          }} />
+          <UserDetail
+            user={selectedUser}
+            departments={departments}
+            initialEditMode={startInEditMode}
+            onClose={() => {
+              setSelectedUser(null);
+              setStartInEditMode(false);
+            }}
+            onDelete={() => { 
+              setShowDeleteConfirm(selectedUser); 
+              setSelectedUser(null);
+              setStartInEditMode(false);
+            }}
+            onToggleActive={handleToggleActive}
+            onSave={handleSaveUser}
+            isToggling={isTogglingActive}
+            isSaving={isSavingEdit}
+          />
         </div>
       )}
 
-      {showDeleteConfirm && (
-        <ConfirmDeleteDialog
-          title="Delete User"
-          message={`Are you sure you want to deactivate ${showDeleteConfirm.first_name} ${showDeleteConfirm.last_name}? This action cannot be undone.`}
-          onConfirm={() => handleDeleteUser(showDeleteConfirm.id)}
-          onCancel={() => setShowDeleteConfirm(null)}
-        />
-      )}
+      <ConfirmDeleteDialog
+        isOpen={!!showDeleteConfirm}
+        title="Delete User"
+        description={`Are you sure you want to delete ${showDeleteConfirm?.first_name || 'this user'} ${showDeleteConfirm?.last_name || ''}? This action cannot be undone.`}
+        onConfirm={() => {
+          console.log('ConfirmDeleteDialog onConfirm called!');
+          console.log('showDeleteConfirm:', showDeleteConfirm);
+          if (showDeleteConfirm) {
+            handleDeleteUser(showDeleteConfirm.id);
+          }
+        }}
+        onClose={() => setShowDeleteConfirm(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 };

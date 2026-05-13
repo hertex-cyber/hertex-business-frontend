@@ -1,5 +1,6 @@
 import React from "react";
-import { Edit2, Trash2, Eye, Mail, Phone, User, CheckSquare, Square } from "lucide-react";
+import { Trash2, Eye, Mail, Phone, User, CheckSquare, Square } from "lucide-react";
+import { TbEdit } from "react-icons/tb";
 import { cn } from "@/lib/utils";
 
 const UserTable = ({
@@ -7,9 +8,9 @@ const UserTable = ({
   selectedUsers,
   onSelectUser,
   onSelectAll,
-  onEdit,
   onDelete,
   onViewDetails,
+  onEditUser,
 }) => {
   const toggleSelectAll = () => {
     if (selectedUsers.size > 0 && selectedUsers.size === users.length) {
@@ -105,9 +106,9 @@ const UserTable = ({
                   <button
                     className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors"
                     title="Edit"
-                    onClick={(e) => { e.stopPropagation(); onEdit(user); }}
+                    onClick={(e) => { e.stopPropagation(); onEditUser && onEditUser(user); }}
                   >
-                    <Edit2 size={14} />
+                    <TbEdit size={14} />
                   </button>
                   <button
                     className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500/50 hover:text-red-400 transition-colors"

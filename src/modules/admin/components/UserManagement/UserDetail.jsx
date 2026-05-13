@@ -1,215 +1,560 @@
-/**
- * User Detail Component
- * Shows full user information
- */
-
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Mail,
   Phone,
-  Badge,
-  Calendar,
-  CheckCircle,
   User,
   Building2,
   Users,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Shield,
+  Copy,
+  Check,
+  Badge as BadgeIcon,
+  Power,
+  Loader2,
+  Plus,
+  ChevronDown,
 } from "lucide-react";
 import { formatISO, parseISO, format } from "date-fns";
+import { TbEdit } from "react-icons/tb";
+import { Trash2 } from "lucide-react";
 
-const UserDetail = ({ user }) => {
-  const [showActivities, setShowActivities] = useState(false);
+const ROLE_STYLES = {
+  Superadmin: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  Admin: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  Manager: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  Staff: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  Vendor: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  User: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+};
+
+const Field = ({ icon: Icon, label, value, actions }) => {
+  return (
+    <div className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
+      <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0 mt-0.5">
+        <Icon size={13} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-white/30 mb-0.5 uppercase tracking-widest">{label}</p>
+        {typeof value === 'string' ? (
+          <p className="text-sm text-white truncate">{value || "nil"}</p>
+        ) : (
+          value || "nil"
+        )}
+      </div>
+      {actions && <div className="flex items-center gap-1 shrink-0">{actions}</div>}
+    </div>
+  );
+};
+
+const InputField = ({ icon: Icon, label, value, onChange, type = "text", options = [] }) => {
+  const [showSelectDropdown, setShowSelectDropdown] = useState(false);
+  const selectRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (selectRef.current && !selectRef.current.contains(event.target)) {
+        setShowSelectDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (type === "select") {
+    return (
+      <div ref={selectRef} className="relative flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
+        <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0 mt-0.5">
+          <Icon size={13} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-white/30 mb-0.5 uppercase tracking-widest">{label}</p>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSelectDropdown(!showSelectDropdown);
+            }}
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-white/20 transition-all text-left flex items-center justify-between"
+          >
+            <span>{value || "Select"}</span>
+            <ChevronDown size={14} className="text-white/40" />
+          </button>
+          {showSelectDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 border border-white/5 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto backdrop-blur-sm">
+              {options.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => {
+                    onChange(opt);
+                    setShowSelectDropdown(false);
+                  }}
+                  className={`w-full px-4 py-2.5 text-left text-xs transition-all duration-150 ${
+                    value === opt 
+                      ? 'text-blue-400 bg-blue-500/10 border-l-2 border-blue-500' 
+                      : 'text-white/70 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+                  }`}
+                >
+                  {opt || "None"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
+      <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0 mt-0.5">
+        <Icon size={13} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] text-white/30 mb-0.5 uppercase tracking-widest">{label}</p>
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-white/20 transition-all"
+        />
+      </div>
+    </div>
+  );
+};
+
+const CopyButton = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <button onClick={handleCopy} className="p-1.5 rounded-md hover:bg-blue-500/10 text-blue-500/60 hover:text-blue-400 transition-colors" title="Copy">
+      {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+    </button>
+  );
+};
+
+const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, onDelete, onToggleActive, onSave, isToggling = false, isSaving = false }) => {
+  const [isEditing, setIsEditing] = useState(initialEditMode);
+  const [editedUser, setEditedUser] = useState(user);
+  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
+  const [isAssigningGroup, setIsAssigningGroup] = useState(false);
+  const dropdownRef = useRef(null);
 
   const formatDate = (dateString) => {
-    if (!dateString) return "Not set";
+    if (!dateString) return "N/A";
     try {
       const date =
         typeof dateString === "string" ? parseISO(dateString) : dateString;
-      return format(date, "PPpp");
+      return format(date, "MMMM d, yyyy h:mm a");
     } catch {
       return dateString;
     }
   };
 
-  const getRoleBadgeColor = (role) => {
-    const colors = {
-      Superadmin: "bg-purple-900/30 text-purple-300 border-purple-500",
-      Admin: "bg-blue-900/30 text-blue-300 border-blue-500",
-      Manager: "bg-orange-900/30 text-orange-300 border-orange-500",
-      Staff: "bg-yellow-900/30 text-yellow-300 border-yellow-500",
-      Vendor: "bg-pink-900/30 text-pink-300 border-pink-500",
-      User: "bg-gray-900/30 text-gray-300 border-gray-500",
-    };
-    return colors[role] || "bg-gray-900/30 text-gray-300 border-gray-500";
+  const handleSave = async () => {
+    const userToSave = { ...user, ...editedUser };
+    
+    if (userToSave.department && userToSave.department.id) {
+      userToSave.department_id = userToSave.department.id;
+    }
+    
+    await onSave(userToSave);
+    setIsEditing(false);
   };
 
+  const handleCancel = () => {
+    setEditedUser(user);
+    setIsEditing(false);
+  };
+
+
+
+  const handleGroupSelect = async (department) => {
+    if (isEditing) {
+      setEditedUser(prev => ({ ...prev, department }));
+    } else {
+      setIsAssigningGroup(true);
+      setEditedUser(prev => ({ ...prev, department }));
+      const userToSave = { ...user, department, department_id: department.id };
+      const serverResponse = await onSave(userToSave);
+      setIsAssigningGroup(false);
+    }
+    setShowGroupDropdown(false);
+  };
+
+  useEffect(() => {
+    if (initialEditMode) {
+      setEditedUser(JSON.parse(JSON.stringify(user)));
+    }
+    setIsEditing(initialEditMode);
+  }, [initialEditMode]);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedUser(user);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowGroupDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="space-y-8">
-      {/* Header with Avatar */}
-      <div className="flex items-start gap-6 pb-6 border-b border-zinc-800">
-        {user.avatar ? (
-          <img
-            src={user.avatar}
-            alt={user.first_name}
-            className="w-20 h-20 rounded-full object-cover border border-zinc-700"
-          />
-        ) : (
-          <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center border border-zinc-700">
-            <span className="text-2xl font-bold text-blue-300">
-              {user.first_name?.[0]}
-              {user.last_name?.[0]}
-            </span>
+    <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+      {/* Header */}
+      <div className="px-8 pt-8 pb-6 border-b border-white/5 shrink-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-2xl font-bold shrink-0">
+              {(isEditing ? editedUser : user).first_name?.charAt(0).toUpperCase()}
+              {(isEditing ? editedUser : user).last_name?.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">
+                {(isEditing ? editedUser : user).first_name} {(isEditing ? editedUser : user).last_name}
+              </h2>
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{user.account_id}</span>
+                {!isEditing && (
+                  <>
+                    <span className="text-[11px] px-3 py-1 rounded-md border font-semibold uppercase tracking-wider border-zinc-700/50 bg-zinc-900/30 text-zinc-400">
+                      {user.role}
+                    </span>
+                    {user.is_active ? (
+                      <span className="text-[11px] px-3 py-1 rounded-md border font-semibold uppercase tracking-wider border-green-500/20 bg-green-500/10 text-green-400">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] px-3 py-1 rounded-md border font-semibold uppercase tracking-wider border-red-500/20 bg-red-500/10 text-red-400">
+                        Inactive
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-        )}
-        <div className="flex-1">
-          <h2 className="text-3xl font-bold text-white">
-            {user.first_name} {user.last_name}
-          </h2>
-          <p className="text-white/60 mt-1">{user.account_id}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <span
-              className={`px-3 py-1 rounded-full border text-xs font-semibold ${getRoleBadgeColor(user.role)}`}
-            >
-              {user.role}
-            </span>
-            <span
-              className={`px-3 py-1 rounded-full border text-xs font-semibold ${user.is_active ? "bg-green-900/30 text-green-300 border-green-500" : "bg-red-900/30 text-red-300 border-red-500"}`}
-            >
-              {user.is_active ? "Active" : "Inactive"}
-            </span>
-            {user.is_email_verified && (
-              <span className="px-3 py-1 rounded-full border text-xs font-semibold bg-green-900/30 text-green-300 border-green-500 flex items-center gap-1">
-                <CheckCircle className="w-3 h-3" />
-                Email Verified
-              </span>
+          <div className="flex items-center gap-2">
+            {!isEditing && (
+              <button
+                onClick={onToggleActive}
+                disabled={isToggling}
+                className="p-2 rounded-lg transition-colors z-10"
+                title={user.is_active ? "Deactivate" : "Activate"}
+              >
+                {isToggling ? (
+                  <Loader2 size={18} className="text-white/40 animate-spin" />
+                ) : (
+                  <Power
+                    size={18}
+                    className={user.is_active ? "text-red-400 hover:bg-red-500/10" : "text-green-400 hover:bg-green-500/10"}
+                  />
+                )}
+              </button>
+            )}
+            {!isEditing && (
+              <button
+                onClick={() => {
+                  setEditedUser(JSON.parse(JSON.stringify(user)));
+                  setIsEditing(true);
+                }}
+                className="p-2 rounded-lg transition-colors z-10"
+                title="Edit"
+              >
+                <TbEdit size={21} className="text-blue-400 hover:bg-blue-500/10" />
+              </button>
+            )}
+            {isEditing ? (
+              <>
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-white/5 border border-white/10 text-white/60 rounded-md text-xs uppercase tracking-widest hover:bg-white/10 transition-all z-10"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-md text-xs uppercase tracking-widest hover:bg-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50 z-10"
+                >
+                  {isSaving && <Loader2 size={14} className="animate-spin" />}
+                  Save
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onDelete}
+                className="p-2 rounded-lg transition-colors z-10"
+                title="Delete"
+              >
+                <Trash2 size={19} className="text-red-400 hover:bg-red-500/10" />
+              </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Contact Information */}
-      <div>
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Phone className="w-5 h-5 text-blue-400" />
-          Contact Information
-        </h3>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-            <Mail className="w-5 h-5 text-white/40" />
-            <div>
-              <p className="text-white/60 text-sm">Email</p>
-              <p className="text-white">{user.email}</p>
-            </div>
+      {/* Content */}
+      <div className="flex-1 overflow-hidden flex min-h-0">
+        {/* Left Column */}
+        <div className="w-1/2 border-r border-white/5 overflow-y-auto custom-scrollbar">
+          <div className="px-8 py-4">
+            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-4">Primary Identity</h3>
+            
+            {isEditing ? (
+              <>
+                <InputField
+                  icon={User}
+                  label="First Name"
+                  value={editedUser.first_name}
+                  onChange={(val) => setEditedUser(prev => ({ ...prev, first_name: val }))}
+                />
+                <InputField
+                  icon={User}
+                  label="Last Name"
+                  value={editedUser.last_name}
+                  onChange={(val) => setEditedUser(prev => ({ ...prev, last_name: val }))}
+                />
+                <InputField
+                  icon={Mail}
+                  label="Email"
+                  value={editedUser.email}
+                  onChange={(val) => setEditedUser(prev => ({ ...prev, email: val }))}
+                  type="email"
+                />
+                <InputField
+                  icon={Phone}
+                  label="Phone"
+                  value={editedUser.mobile || ""}
+                  onChange={(val) => setEditedUser(prev => ({ ...prev, mobile: val }))}
+                />
+                <InputField
+                  icon={User}
+                  label="Gender"
+                  value={editedUser.gender || ""}
+                  onChange={(val) => setEditedUser(prev => ({ ...prev, gender: val }))}
+                  type="select"
+                  options={["", "Male", "Female", "Other"]}
+                />
+                <InputField
+                  icon={Shield}
+                  label="Role"
+                  value={editedUser.role}
+                  onChange={(val) => setEditedUser(prev => ({ ...prev, role: val }))}
+                  type="select"
+                  options={["Superadmin", "Admin", "Manager", "Staff", "Vendor", "User", "Others"]}
+                />
+              </>
+            ) : (
+              <>
+                <Field
+                  icon={User}
+                  label="Full Name"
+                  value={`${user.first_name} ${user.last_name}`}
+                />
+                <Field
+                  icon={Mail}
+                  label="Email"
+                  value={user.email}
+                  actions={<CopyButton text={user.email} />}
+                />
+                <Field
+                  icon={Phone}
+                  label="Phone"
+                  value={user.mobile}
+                  actions={user.mobile && <CopyButton text={user.mobile} />}
+                />
+                <Field
+                  icon={User}
+                  label="Gender"
+                  value={user.gender}
+                />
+                <Field
+                  icon={Shield}
+                  label="Role"
+                  value={user.role}
+                />
+              </>
+            )}
           </div>
-          {user.mobile && (
-            <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-              <Phone className="w-5 h-5 text-white/40" />
-              <div>
-                <p className="text-white/60 text-sm">Mobile</p>
-                <p className="text-white">{user.mobile}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Organization Information */}
-      <div>
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-blue-400" />
-          Organization
-        </h3>
-        <div className="space-y-3">
-          {user.organization_name && (
-            <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-              <Building2 className="w-5 h-5 text-white/40" />
-              <div>
-                <p className="text-white/60 text-sm">Organization</p>
-                <p className="text-white">{user.organization_name}</p>
-              </div>
-            </div>
-          )}
-          {user.department_name && (
-            <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-              <Users className="w-5 h-5 text-white/40" />
-              <div>
-                <p className="text-white/60 text-sm">Department</p>
-                <p className="text-white">{user.department_name}</p>
-              </div>
-            </div>
-          )}
-          {user.supervisor_name && (
-            <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-              <User className="w-5 h-5 text-white/40" />
-              <div>
-                <p className="text-white/60 text-sm">Supervisor</p>
-                <p className="text-white">{user.supervisor_name}</p>
-              </div>
-            </div>
-          )}
+          <div className="px-8 py-4 border-t border-white/5">
+            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-4">Organization</h3>
+            {isEditing ? (
+              <>
+                <div ref={dropdownRef} className="relative">
+                  <div className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
+                    <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0 mt-0.5">
+                      <Users size={13} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-white/30 mb-0.5 uppercase tracking-widest">Groups</p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowGroupDropdown(!showGroupDropdown);
+                        }}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-white/20 transition-all text-left flex items-center justify-between"
+                      >
+                        <span>{editedUser.department?.name || "Select group"}</span>
+                        {isAssigningGroup ? (
+                          <Loader2 size={14} className="animate-spin text-blue-400" />
+                        ) : (
+                          <ChevronDown size={14} className="text-white/40" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  {showGroupDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 border border-white/5 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto backdrop-blur-sm">
+                      {departments.map((dept) => (
+                        <button
+                          key={dept.id}
+                          onClick={() => {
+                            setEditedUser(prev => ({ ...prev, department: dept }));
+                            setShowGroupDropdown(false);
+                          }}
+                          className={`w-full px-4 py-2.5 text-left text-xs transition-all duration-150 ${
+                            editedUser.department?.id === dept.id 
+                              ? 'text-blue-400 bg-blue-500/10 border-l-2 border-blue-500' 
+                              : 'text-white/70 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+                          }`}
+                        >
+                          {dept.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <Field
+                  icon={Building2}
+                  label="Organization"
+                  value={user.organization?.name}
+                />
+                <div ref={dropdownRef} className="relative">
+                  <Field
+                    icon={Users}
+                    label="Groups"
+                    value={isAssigningGroup ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 size={12} className="animate-spin text-blue-400" />
+                        <span>Updating...</span>
+                      </div>
+                    ) : (user.department?.name || "nil")}
+                    actions={
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowGroupDropdown(!showGroupDropdown);
+                          }}
+                          disabled={isAssigningGroup}
+                          className="p-1.5 rounded-md border border-blue-500/30 hover:bg-blue-500/10 text-blue-500/60 hover:text-blue-400 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          title="Add Group"
+                        >
+                          {isAssigningGroup ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                          {!isAssigningGroup && <ChevronDown size={12} />}
+                        </button>
+                      </div>
+                    }
+                  />
+                  {showGroupDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 border border-white/5 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto backdrop-blur-sm">
+                      {departments.map((dept) => (
+                        <button
+                          key={dept.id}
+                          onClick={() => handleGroupSelect(dept)}
+                          className={`w-full px-4 py-2.5 text-left text-xs transition-all duration-150 ${
+                            user.department?.id === dept.id 
+                              ? 'text-blue-400 bg-blue-500/10 border-l-2 border-blue-500' 
+                              : 'text-white/70 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+                          }`}
+                        >
+                          {dept.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Account Timeline */}
-      <div>
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-blue-400" />
-          Account Timeline
-        </h3>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-            <Calendar className="w-5 h-5 text-white/40" />
-            <div>
-              <p className="text-white/60 text-sm">Created</p>
-              <p className="text-white">{formatDate(user.created_at)}</p>
-            </div>
+        {/* Right Column */}
+        <div className="w-1/2 overflow-y-auto custom-scrollbar">
+          <div className="px-8 py-6">
+            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-6">Account Details</h3>
+            <Field
+              icon={BadgeIcon}
+              label="Account ID"
+              value={user.account_id}
+              actions={<CopyButton text={user.account_id} />}
+            />
           </div>
-          <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-            <Calendar className="w-5 h-5 text-white/40" />
-            <div>
-              <p className="text-white/60 text-sm">Last Updated</p>
-              <p className="text-white">{formatDate(user.updated_at)}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-zinc-800/30 rounded-lg">
-            <Calendar className="w-5 h-5 text-white/40" />
-            <div>
-              <p className="text-white/60 text-sm">Last Login</p>
-              <p className="text-white">{formatDate(user.last_login)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Verification Status */}
-      <div>
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-blue-400" />
-          Verification Status
-        </h3>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between p-3 bg-zinc-800/30 rounded-lg">
-            <span className="text-white/60">Email Verified</span>
-            <span
-              className={`font-semibold ${user.is_email_verified ? "text-green-400" : "text-red-400"}`}
-            >
-              {user.is_email_verified ? "✓ Yes" : "✗ No"}
-            </span>
+          <div className="px-8 py-6 border-t border-white/5">
+            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-6">Account Timeline</h3>
+            <Field
+              icon={Calendar}
+              label="Account Created"
+              value={formatDate(user.created_at)}
+            />
+            <Field
+              icon={Calendar}
+              label="Last Updated"
+              value={formatDate(user.updated_at)}
+            />
+            <Field
+              icon={BadgeIcon}
+              label="Last Login"
+              value={user.last_login ? formatDate(user.last_login) : "Never"}
+            />
           </div>
-          <div className="flex items-center justify-between p-3 bg-zinc-800/30 rounded-lg">
-            <span className="text-white/60">Mobile Verified</span>
-            <span
-              className={`font-semibold ${user.is_mobile_verified ? "text-green-400" : "text-red-400"}`}
-            >
-              {user.is_mobile_verified ? "✓ Yes" : "✗ No"}
-            </span>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-zinc-800/30 rounded-lg">
-            <span className="text-white/60">Staff Status</span>
-            <span
-              className={`font-semibold ${user.is_staff ? "text-green-400" : "text-red-400"}`}
-            >
-              {user.is_staff ? "✓ Staff" : "✗ Not Staff"}
-            </span>
+
+          <div className="px-8 py-6 border-t border-white/5">
+            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-6">Verification Status</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-3 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0">
+                    <CheckCircle size={13} className={user.email_verified ? "text-green-400" : "text-white/20"} />
+                  </div>
+                  <span className="text-[10px] text-white/30 uppercase tracking-widest">Email Verified</span>
+                </div>
+                <span className={`text-xs font-semibold ${user.email_verified ? "text-green-400" : "text-red-400"}`}>
+                  {user.email_verified ? "Yes" : "No"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0">
+                    <CheckCircle size={13} className={user.mobile_verified ? "text-green-400" : "text-white/20"} />
+                  </div>
+                  <span className="text-[10px] text-white/30 uppercase tracking-widest">Phone Verified</span>
+                </div>
+                <span className={`text-xs font-semibold ${user.mobile_verified ? "text-green-400" : "text-red-400"}`}>
+                  {user.mobile_verified ? "Yes" : "No"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
