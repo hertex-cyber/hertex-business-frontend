@@ -87,15 +87,19 @@ export const useUsers = () => {
       setError(null);
       try {
         const result = await UserService.deleteUser(userId);
-        // Refresh list
-        await fetchUsers(fetchParams);
+        // Update local state immediately instead of re-fetching
+        setUsers(prev => prev.filter(user => user.id !== userId));
+        setPagination(prev => ({
+          ...prev,
+          count: prev.count - 1
+        }));
         return result;
       } catch (err) {
         setError(err.message);
         throw err;
       }
     },
-    [fetchUsers],
+    [],
   );
 
   const bulkUpdateUsers = useCallback(
@@ -103,8 +107,16 @@ export const useUsers = () => {
       setError(null);
       try {
         const result = await UserService.bulkUpdateUsers(userIds, updates);
-        // Refresh list
-        await fetchUsers(fetchParams);
+        // Update local state if we have updated users data
+        if (result.updated_users) {
+          setUsers(prev => prev.map(user => {
+            const updated = result.updated_users.find(u => u.id === user.id);
+            return updated || user;
+          }));
+        } else {
+          // Fallback to re-fetching if no updated users data
+          await fetchUsers(fetchParams);
+        }
         return result;
       } catch (err) {
         setError(err.message);
@@ -119,15 +131,19 @@ export const useUsers = () => {
       setError(null);
       try {
         const result = await UserService.bulkDeleteUsers(userIds);
-        // Refresh list
-        await fetchUsers(fetchParams);
+        // Update local state immediately instead of re-fetching
+        setUsers(prev => prev.filter(user => !userIds.includes(user.id)));
+        setPagination(prev => ({
+          ...prev,
+          count: prev.count - (result.deleted_count || userIds.length)
+        }));
         return result;
       } catch (err) {
         setError(err.message);
         throw err;
       }
     },
-    [fetchUsers],
+    [],
   );
 
   return {
