@@ -29,6 +29,7 @@ ByteHive is designed to feel like a high-end, precision technical instrument rat
 - **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
 - **UI Components**: Custom-built with Radix/shadcn primitives
 - **Icons**: [Lucide React](https://lucide.dev/) (Thin/Normal weights only)
+- **Utility**: Use `cn()` from `@/lib/utils` for conditional class merging
 
 ---
 
@@ -49,7 +50,14 @@ ByteHive is designed to feel like a high-end, precision technical instrument rat
 ```jsx
 <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
   {/* Left: Component Identity */}
+  <div className="space-y-1">
+    <h1 className="text-2xl font-semibold text-white">Page Title</h1>
+    <p className="text-sm text-white/40">Page description</p>
+  </div>
   {/* Right: Action Toolbar (Search Refinement / CTEs) */}
+  <div className="flex items-center gap-3">
+    {/* Action buttons go here */}
+  </div>
 </header>
 ```
 
@@ -89,6 +97,7 @@ ByteHive is designed to feel like a high-end, precision technical instrument rat
 Repositories must be house in a visible, minimum-height container to anchor the page.
 - **Base Style**: `bg-zinc-900/30 border border-zinc-800 rounded-xl shadow-xl min-h-[500px]`
 - **Row Style**: `hover:bg-white/[0.02] transition-all duration-300 border-b border-zinc-800`
+- **Fixed Header/Footer**: Table headers and footers should be fixed, with only the content area scrollable
 
 ### Interactive Stat Cards
 - **Base Style**: `p-6 bg-zinc-900/30 border border-zinc-800 rounded-2xl`
@@ -97,6 +106,7 @@ Repositories must be house in a visible, minimum-height container to anchor the 
 ### High-Capacity Buttons
 - **Primary Action**: Blue background, text-[10px], rounded-lg, tracking-widest, font-medium.
 - **Secondary Tool**: `bg-zinc-900/30` with subtle zinc borders, strictly `!w-auto`.
+- **Icon-Only Tool Buttons**: `h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center`
 
 ### The Industrial Registry (Detail Modals)
 Used for deep data exploration (Contacts, Deal Details).
@@ -107,6 +117,7 @@ Used for deep data exploration (Contacts, Deal Details).
 - **Action Toolbar**: Top-right placement for record management (Edit/Delete).
   - **Edit**: `TbEdit` (size 21, blue accent)
   - **Delete**: `Trash2` (size 19, red accent)
+- **Portal**: Always use React's `createPortal` for modals, rendering to `document.body`
 
 ### Standard Global Loader (`RingLoader`)
 Used for all async states and pipeline transitions.
@@ -122,12 +133,98 @@ Used for high-level operational modules.
   - Icons: `scale-110` with zero rotation (maintain level horizon).
 - **Typography**: Industrial Medium (Upper case + Tracking). Footer utilizes a "Configure" CTE with a directional arrow.
 
-### Sliding Navigation Tabs
-Primary mode switcher for dashboard views.
-- **Structure**: A fixed-width container with a prominent `border-white/20`.
-- **Highlighter**: A sliding `bg-blue-500/20` div that glides between active states.
-- **Geometry**: Internal edges of the highlighter are **sharp** (e.g., `rounded-r-none` when left-aligned) to simulate a connected mechanical assembly.
-- **Hierarchy**: Inactive tabs use `text-white/50`, while active tabs use the primary `text-blue-400`.
+### Sliding Navigation Tabs (Pill-Based)
+Primary mode switcher for dashboard views. Must be used for all tab navigation.
+- **Structure**: A fixed-width container with `relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md`.
+- **Highlighter**: A sliding `absolute inset-y-0 bg-blue-500/20` div with `transition-all duration-300` that glides between active states.
+- **Width Calculation**: 
+  - 2 tabs: `w-1/2` for each
+  - 3 tabs: `w-1/3` for each
+- **Geometry**: Internal edges of the highlighter are **sharp** (e.g., `rounded-l rounded-r-none` when left-aligned, `rounded-r rounded-l-none` when right-aligned) to simulate a connected mechanical assembly.
+- **Hierarchy**: 
+  - Inactive tabs: `text-white/50 hover:text-white/80`
+  - Active tabs: `text-blue-400`
+- **Typography**: All tabs must use `text-[10px] font-medium uppercase tracking-[0.2em]`
+- **JSX Example (3 tabs)**:
+```jsx
+<div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
+  <div 
+    className={cn(
+      "absolute inset-y-0 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
+      activeTab === 'users' 
+        ? "left-0 w-1/3 rounded-l rounded-r-none bg-blue-500/20" 
+        : activeTab === 'groups'
+        ? "left-1/3 w-1/3 bg-blue-500/20"
+        : "left-2/3 w-1/3 rounded-r rounded-l-none bg-blue-500/20"
+    )}
+  />
+  <button
+    onClick={() => setActiveTab('users')}
+    className={cn(
+      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+      activeTab === 'users' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+    )}
+  >
+    Users
+  </button>
+  <button
+    onClick={() => setActiveTab('groups')}
+    className={cn(
+      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+      activeTab === 'groups' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+    )}
+  >
+    Groups
+  </button>
+  <button
+    onClick={() => setActiveTab('audit')}
+    className={cn(
+      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+      activeTab === 'audit' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+    )}
+  >
+    Audit Log
+  </button>
+</div>
+```
+- **JSX Example (2 tabs)**:
+```jsx
+<div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
+  <div 
+    className={cn(
+      "absolute inset-y-0 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
+      activeTab === TABS.CONTACTS 
+        ? "left-0 w-1/2 rounded-l rounded-r-none bg-blue-500/20" 
+        : "left-1/2 w-1/2 rounded-r rounded-l-none bg-blue-500/20"
+    )}
+  />
+  <button
+    onClick={() => setActiveTab(TABS.CONTACTS)}
+    className={cn(
+      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+      activeTab === TABS.CONTACTS ? "text-blue-400" : "text-white/50 hover:text-white/80"
+    )}
+  >
+    Contacts
+  </button>
+  <button
+    onClick={() => setActiveTab(TABS.IMPORTS)}
+    className={cn(
+      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+      activeTab === TABS.IMPORTS ? "text-blue-400" : "text-white/50 hover:text-white/80"
+    )}
+  >
+    Imports
+  </button>
+</div>
+```
+
+### List View Modal (GroupUserModal style)
+For showing a list of items in a modal:
+- **Structure**: Uses `createPortal` to render to `document.body`
+- **Layout**: Header with title and icon, scrollable content area, footer with close button
+- **Styling**: Uses `bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]`
+- **Content**: Grid-based layout for list items with perfect alignment
 
 ---
 
@@ -139,6 +236,9 @@ Every new feature must satisfy:
 - [ ] Is the header using **`backdrop-blur-xl`** and anchored with a zinc-800 border?
 - [ ] Are badges and labels following the **Industrial Typography** (Upper case + Wide tracking + Medium weight)?
 - [ ] Does the page feel like a specific **Technical Instrument** (high scannability, no fluff)?
+- [ ] Are tabs using the **Sliding Navigation Tabs** pattern if applicable?
+- [ ] Are modals using **createPortal**?
+- [ ] Is `cn()` being used for conditional Tailwind class merging?
 
 ---
 
@@ -151,6 +251,7 @@ src/
 ├── modules/
 │   ├── crm/                # Pipeline/Deals domain
 │   ├── contacts/           # Repository/Ingestion domain
+│   ├── admin/              # User/Organization management domain
 │   ├── invoice/            # Financial/PDF domain
 │   └── ...                 # Future modules
 ```

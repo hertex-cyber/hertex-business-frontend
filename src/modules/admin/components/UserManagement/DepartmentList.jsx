@@ -2,7 +2,7 @@ import React from "react";
 import { Users, User, Edit2 } from "lucide-react";
 import RingLoader from "@/components/ui/RingLoader";
 
-const DepartmentList = ({ departments, loading, error }) => {
+const DepartmentList = ({ departments, loading, error, onSelectDepartment }) => {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -39,13 +39,14 @@ const DepartmentList = ({ departments, loading, error }) => {
         {departments.map((dept) => (
           <div
             key={dept.id}
-            className="bg-zinc-900/30 border border-zinc-800 rounded-xl p-5 hover:bg-white/[0.02] transition-all group"
+            onClick={() => onSelectDepartment && onSelectDepartment(dept)}
+            className="bg-zinc-900/30 border border-zinc-800 rounded-xl p-5 hover:bg-white/[0.02] transition-all group cursor-pointer"
           >
             <div className="flex items-start justify-between">
               <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/15 group-hover:border-blue-500/30 transition-all">
                 <Users size={18} />
               </div>
-              <button className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 hover:text-white/50 transition-colors">
+              <button className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 hover:text-white/50 transition-colors" onClick={(e) => e.stopPropagation()}>
                 <Edit2 size={14} />
               </button>
             </div>

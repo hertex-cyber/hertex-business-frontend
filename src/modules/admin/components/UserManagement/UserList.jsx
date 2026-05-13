@@ -10,7 +10,9 @@ import UserFilters from "./UserFilters";
 import BulkActions from "./BulkActions";
 import ConfirmDeleteDialog from "../../../../components/ConfirmDeleteDialog";
 import SearchDialog from "./SearchDialog";
+import GroupUserModal from "./GroupUserModal";
 import RingLoader from "@/components/ui/RingLoader";
+import { cn } from "@/lib/utils";
 
 const UserList = () => {
   const {
@@ -30,6 +32,7 @@ const UserList = () => {
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [startInEditMode, setStartInEditMode] = useState(false);
   const [filters, setFilters] = useState({
     search: "",
@@ -42,6 +45,7 @@ const UserList = () => {
   const [isTogglingActive, setIsTogglingActive] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isRemovingUser, setIsRemovingUser] = useState(null);
   const [activeTab, setActiveTab] = useState('users');
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -176,6 +180,17 @@ const UserList = () => {
     setPagination((prev) => ({ ...prev, page: newPage }));
   };
 
+  const handleRemoveUser = async (userId) => {
+    setIsRemovingUser(userId);
+    try {
+      await updateUser(userId, { department_id: null }, filters);
+    } catch (err) {
+      console.error("Error removing user from group:", err);
+    } finally {
+      setIsRemovingUser(null);
+    }
+  };
+
   return (
     <div className="flex flex-col bg-black h-full">
       <header className="px-10 py-8 flex justify-between items-center border-b border-white/5 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
@@ -200,14 +215,7 @@ const UserList = () => {
           )}
         </div>
 
-        {activeTab === 'groups' && (
-          <button
-            className="!w-auto h-9 px-4 bg-white text-black rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-2"
-          >
-            <Plus size={14} />
-            Create Group
-          </button>
-        )}
+
       </header>
 
       <main className="flex-1 px-10 pt-5 pb-5 relative z-10 overflow-hidden flex flex-col gap-0 min-h-0">
@@ -217,35 +225,42 @@ const UserList = () => {
           </div>
         )}
 
-        <div className="flex items-center border-b border-white/5 shrink-0 pb-4">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center shrink-0 pb-4">
+          <div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
+            <div 
+              className={cn(
+                "absolute inset-y-0 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
+                activeTab === 'users' 
+                  ? "left-0 w-1/3 rounded-l rounded-r-none bg-blue-500/20" 
+                  : activeTab === 'groups'
+                  ? "left-1/3 w-1/3 bg-blue-500/20"
+                  : "left-2/3 w-1/3 rounded-r rounded-l-none bg-blue-500/20"
+              )}
+            />
             <button
               onClick={() => setActiveTab('users')}
-              className={`px-4 py-2.5 text-sm capitalize transition-all border-b-2 -mb-px ${
-                activeTab === 'users'
-                  ? 'text-white border-blue-500 font-medium'
-                  : 'text-white/30 border-transparent hover:text-white/60'
-              }`}
+              className={cn(
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                activeTab === 'users' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+              )}
             >
               Users
             </button>
             <button
               onClick={() => setActiveTab('groups')}
-              className={`px-4 py-2.5 text-sm capitalize transition-all border-b-2 -mb-px ${
-                activeTab === 'groups'
-                  ? 'text-white border-blue-500 font-medium'
-                  : 'text-white/30 border-transparent hover:text-white/60'
-              }`}
+              className={cn(
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                activeTab === 'groups' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+              )}
             >
               Groups
             </button>
             <button
               onClick={() => setActiveTab('audit')}
-              className={`px-4 py-2.5 text-sm capitalize transition-all border-b-2 -mb-px ${
-                activeTab === 'audit'
-                  ? 'text-white border-blue-500 font-medium'
-                  : 'text-white/30 border-transparent hover:text-white/60'
-              }`}
+              className={cn(
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                activeTab === 'audit' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+              )}
             >
               Audit Log
             </button>
@@ -276,6 +291,24 @@ const UserList = () => {
                 onClick={() => setShowCreateForm(true)}
                 className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
                 title="Create User"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          )}
+          {activeTab === 'groups' && (
+            <div className="ml-auto flex items-center gap-3">
+              <button
+                // TODO: Add group search dialog later
+                className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Search Groups"
+              >
+                <Search size={16} />
+              </button>
+              <button
+                // TODO: Add create group modal later
+                className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Create Group"
               >
                 <Plus size={16} />
               </button>
@@ -314,6 +347,7 @@ const UserList = () => {
               departments={departments}
               loading={deptsLoading}
               error={deptsError}
+              onSelectDepartment={setSelectedDepartment}
             />
           )}
 
@@ -369,6 +403,17 @@ const UserList = () => {
           setSelectedUser(user);
           setIsSearchDialogOpen(false);
         }}
+      />
+      <GroupUserModal
+        department={selectedDepartment}
+        users={users}
+        onViewDetails={(user) => {
+          setStartInEditMode(false);
+          setSelectedUser(user);
+        }}
+        onRemoveUser={handleRemoveUser}
+        isRemovingUser={isRemovingUser}
+        onClose={() => setSelectedDepartment(null)}
       />
       <ConfirmDeleteDialog
         isOpen={!!showDeleteConfirm}

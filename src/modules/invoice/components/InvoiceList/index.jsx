@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import RingLoader from '@/components/ui/RingLoader';
 import { useInvoiceList, useInvoiceStatusCounts } from '../../hooks/useInvoice';
@@ -8,6 +9,7 @@ import { formatINR } from '../../utils/gstUtils';
 import { useAuth } from '@/context/AuthContext';
 import ApproveModal from '../AdminPanel/ReviewDashboard/ApproveModal';
 import RejectModal from '../AdminPanel/ReviewDashboard/RejectModal';
+import { cn } from '@/lib/utils';
 
 const ADMIN_TABS = [
   { label: 'Completed', value: 'completed' },
@@ -67,40 +69,67 @@ const InvoiceList = () => {
           <h1 className="text-2xl font-bold text-white">Invoices</h1>
           <p className="text-white/40 text-sm mt-1">{count} invoice{count !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => navigate('/invoices/new')}
-          className="text-sm px-5 py-2.5 rounded-lg bg-white text-black font-semibold hover:bg-gray-100 transition-all"
-        >
-          + New Invoice
-        </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-white/10">
-        {TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setActiveTab(tab.value)}
-            className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
-              activeTab === tab.value
-                ? 'text-white border-white'
-                : 'text-white/40 border-transparent hover:text-white/70'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              {tab.label}
-              {counts[tab.value] !== undefined && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                  activeTab === tab.value
-                    ? 'bg-white text-black'
-                    : 'bg-white/10 text-white/50'
-                }`}>
-                  {counts[tab.value]}
-                </span>
+      {/* Tabs and Action Button */}
+      <div className="flex items-center justify-between">
+        <div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md w-fit">
+          <div 
+            className={cn(
+              "absolute inset-y-0 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
+              // Calculate width and position based on TABS length
+              TABS.length === 4 
+                ? activeTab === TABS[0].value 
+                  ? "left-0 w-1/4 rounded-l rounded-r-none bg-blue-500/20" 
+                  : activeTab === TABS[1].value
+                  ? "left-1/4 w-1/4 bg-blue-500/20"
+                  : activeTab === TABS[2].value
+                  ? "left-2/4 w-1/4 bg-blue-500/20"
+                  : "left-3/4 w-1/4 rounded-r rounded-l-none bg-blue-500/20"
+                : TABS.length === 5 
+                ? activeTab === TABS[0].value 
+                  ? "left-0 w-1/5 rounded-l rounded-r-none bg-blue-500/20" 
+                  : activeTab === TABS[1].value
+                  ? "left-1/5 w-1/5 bg-blue-500/20"
+                  : activeTab === TABS[2].value
+                  ? "left-2/5 w-1/5 bg-blue-500/20"
+                  : activeTab === TABS[3].value
+                  ? "left-3/5 w-1/5 bg-blue-500/20"
+                  : "left-4/5 w-1/5 rounded-r rounded-l-none bg-blue-500/20"
+                : ""
+            )}
+          />
+          {TABS.map((tab, index) => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={cn(
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300 flex items-center gap-2",
+                activeTab === tab.value ? "text-blue-400" : "text-white/50 hover:text-white/80"
               )}
-            </span>
-          </button>
-        ))}
+            >
+              {tab.label}
+            {counts[tab.value] !== undefined && (
+              <span className={cn(
+                "text-xs px-1.5 py-0.5 rounded-full font-semibold transition-colors",
+                activeTab === tab.value
+                  ? 'bg-white text-black'
+                  : 'bg-white/10 text-white/50'
+              )}>
+                {counts[tab.value]}
+              </span>
+            )}
+            </button>
+          ))}
+        </div>
+        
+        <button
+          onClick={() => navigate('/invoices/new')}
+          className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+          title="Create Invoice"
+        >
+          <Plus size={16} />
+        </button>
       </div>
 
       {/* Error */}
