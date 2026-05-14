@@ -148,6 +148,18 @@ class UserService {
   }
 
   /**
+   * Create department
+   */
+  static async createDepartment(departmentData) {
+    try {
+      const response = await axios.post(`${BASE}/departments`, departmentData);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Delete department
    */
   static async deleteDepartment(departmentId) {

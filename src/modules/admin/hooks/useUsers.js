@@ -288,6 +288,7 @@ export const useDepartments = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isDeletingDepartment, setIsDeletingDepartment] = useState(null);
+  const [isCreatingDepartment, setIsCreatingDepartment] = useState(false);
 
   const fetchDepartments = useCallback(async () => {
     setLoading(true);
@@ -303,6 +304,23 @@ export const useDepartments = () => {
       setLoading(false);
     }
   }, []);
+
+  const createDepartment = useCallback(async (departmentData) => {
+    setIsCreatingDepartment(true);
+    setError(null);
+    try {
+      const result = await UserService.createDepartment(departmentData);
+      // Refresh the list
+      await fetchDepartments();
+      return result;
+    } catch (err) {
+      setError(err.message);
+      console.error("Error creating department:", err);
+      throw err;
+    } finally {
+      setIsCreatingDepartment(false);
+    }
+  }, [fetchDepartments]);
 
   const deleteDepartment = useCallback(async (departmentId) => {
     setIsDeletingDepartment(departmentId);
@@ -330,7 +348,9 @@ export const useDepartments = () => {
     loading,
     error,
     refetch: fetchDepartments,
+    createDepartment,
     deleteDepartment,
     isDeletingDepartment,
+    isCreatingDepartment,
   };
 };

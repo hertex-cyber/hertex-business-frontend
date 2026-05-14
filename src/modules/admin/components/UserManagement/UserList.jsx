@@ -3,6 +3,7 @@ import { Users, Plus, Search, Users as UsersIcon, Trash2 } from "lucide-react";
 import { useUsers, useAuditLog, useDepartments } from "../../hooks/useUsers";
 import UserTable from "./UserTable";
 import CreateUserForm from "./CreateUserForm";
+import CreateGroupForm from "./CreateGroupForm";
 import UserDetail from "./UserDetail";
 import AuditLog from "./AuditLog";
 import DepartmentList from "./DepartmentList";
@@ -28,10 +29,11 @@ const UserList = () => {
     bulkUpdateUsers,
     bulkDeleteUsers,
   } = useUsers();
-  const { departments, loading: deptsLoading, error: deptsError, refetch: refetchDepts, deleteDepartment, isDeletingDepartment } = useDepartments();
+  const { departments, loading: deptsLoading, error: deptsError, refetch: refetchDepts, deleteDepartment, isDeletingDepartment, createDepartment, isCreatingDepartment } = useDepartments();
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [selectedDepartments, setSelectedDepartments] = useState(new Set());
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCreateGroupForm, setShowCreateGroupForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -93,6 +95,15 @@ const UserList = () => {
       setShowCreateForm(false);
     } catch (err) {
       console.error("Error creating user:", err);
+    }
+  };
+
+  const handleCreateGroup = async (groupData) => {
+    try {
+      await createDepartment(groupData);
+      setShowCreateGroupForm(false);
+    } catch (err) {
+      console.error("Error creating group:", err);
     }
   };
 
@@ -389,7 +400,7 @@ const UserList = () => {
                     <Search size={16} />
                   </button>
                   <button
-                    // TODO: Add create group modal later
+                    onClick={() => setShowCreateGroupForm(true)}
                     className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
                     title="Create Group"
                   >
@@ -452,6 +463,16 @@ const UserList = () => {
           <CreateUserForm
             onSubmit={handleCreateUser}
             onCancel={() => setShowCreateForm(false)}
+          />
+        </div>
+      )}
+
+      {showCreateGroupForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCreateGroupForm(false)} />
+          <CreateGroupForm
+            onSubmit={handleCreateGroup}
+            onCancel={() => setShowCreateGroupForm(false)}
           />
         </div>
       )}
