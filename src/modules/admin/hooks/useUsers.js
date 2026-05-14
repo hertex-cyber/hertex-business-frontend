@@ -287,6 +287,7 @@ export const useDepartments = () => {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isDeletingDepartment, setIsDeletingDepartment] = useState(null);
 
   const fetchDepartments = useCallback(async () => {
     setLoading(true);
@@ -303,6 +304,23 @@ export const useDepartments = () => {
     }
   }, []);
 
+  const deleteDepartment = useCallback(async (departmentId) => {
+    setIsDeletingDepartment(departmentId);
+    setError(null);
+    try {
+      const result = await UserService.deleteDepartment(departmentId);
+      // Update local state immediately
+      setDepartments(prev => prev.filter(dept => dept.id !== departmentId));
+      return result;
+    } catch (err) {
+      setError(err.message);
+      console.error("Error deleting department:", err);
+      throw err;
+    } finally {
+      setIsDeletingDepartment(null);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDepartments();
   }, [fetchDepartments]);
@@ -312,5 +330,7 @@ export const useDepartments = () => {
     loading,
     error,
     refetch: fetchDepartments,
+    deleteDepartment,
+    isDeletingDepartment,
   };
 };

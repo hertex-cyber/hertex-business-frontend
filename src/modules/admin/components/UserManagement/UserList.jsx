@@ -28,11 +28,15 @@ const UserList = () => {
     bulkUpdateUsers,
     bulkDeleteUsers,
   } = useUsers();
-  const { departments, loading: deptsLoading, error: deptsError, refetch: refetchDepts } = useDepartments();
+  const { departments, loading: deptsLoading, error: deptsError, refetch: refetchDepts, deleteDepartment, isDeletingDepartment } = useDepartments();
   const [selectedUsers, setSelectedUsers] = useState(new Set());
+  const [selectedDepartments, setSelectedDepartments] = useState(new Set());
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [wasDeletingDepartment, setWasDeletingDepartment] = useState(false);
   const [startInEditMode, setStartInEditMode] = useState(false);
   const [filters, setFilters] = useState({
     search: "",
@@ -40,12 +44,12 @@ const UserList = () => {
     department: "",
     status: "",
   });
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [isBulkDelete, setIsBulkDelete] = useState(false);
   const [isTogglingActive, setIsTogglingActive] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isRemovingUser, setIsRemovingUser] = useState(null);
+  const [isAddingUser, setIsAddingUser] = useState(null);
   const [activeTab, setActiveTab] = useState('users');
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,6 +66,21 @@ const UserList = () => {
       }
     }
   }, [users, selectedUser?.id]);
+
+  useEffect(() => {
+    if (isDeletingDepartment !== null) {
+      setWasDeletingDepartment(true);
+    } else if (wasDeletingDepartment && selectedDepartment) {
+      setSelectedDepartment(null);
+      setWasDeletingDepartment(false);
+    }
+  }, [isDeletingDepartment, selectedDepartment, wasDeletingDepartment]);
+
+  useEffect(() => {
+    if (showBulkDeleteConfirm && isDeletingDepartment === null && selectedDepartments.size === 0) {
+      setShowBulkDeleteConfirm(false);
+    }
+  }, [isDeletingDepartment, showBulkDeleteConfirm, selectedDepartments.size]);
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -191,6 +210,51 @@ const UserList = () => {
     }
   };
 
+  const handleAddUser = async (userId) => {
+    setIsAddingUser(userId);
+    try {
+      await updateUser(userId, { department_id: selectedDepartment.id }, filters);
+    } catch (err) {
+      console.error("Error adding user to group:", err);
+    } finally {
+      setIsAddingUser(null);
+    }
+  };
+
+  const handleSelectDepartmentCard = (deptId) => {
+    setSelectedDepartments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(deptId)) {
+        newSet.delete(deptId);
+      } else {
+        newSet.add(deptId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleDeleteDepartment = async () => {
+    if (!selectedDepartment) return;
+    try {
+      await deleteDepartment(selectedDepartment.id);
+    } catch (err) {
+      console.error("Error deleting department:", err);
+    }
+  };
+
+  const handleBulkDeleteDepartments = async () => {
+    if (selectedDepartments.size === 0) return;
+    try {
+      const deptsToDelete = Array.from(selectedDepartments);
+      for (const deptId of deptsToDelete) {
+        await deleteDepartment(deptId);
+      }
+      setSelectedDepartments(new Set());
+    } catch (err) {
+      console.error("Error bulk deleting departments:", err);
+    }
+  };
+
   return (
     <div className="flex flex-col bg-black h-full">
       <header className="px-10 py-8 flex justify-between items-center border-b border-white/5 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
@@ -298,20 +362,41 @@ const UserList = () => {
           )}
           {activeTab === 'groups' && (
             <div className="ml-auto flex items-center gap-3">
-              <button
-                // TODO: Add group search dialog later
-                className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
-                title="Search Groups"
-              >
-                <Search size={16} />
-              </button>
-              <button
-                // TODO: Add create group modal later
-                className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
-                title="Create Group"
-              >
-                <Plus size={16} />
-              </button>
+              {selectedDepartments.size > 0 ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedDepartments(new Set())}
+                    className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center"
+                    title="Clear Selection"
+                  >
+                    <span className="text-lg leading-none">&times;</span>
+                  </button>
+                  <button
+                    onClick={() => setShowBulkDeleteConfirm(true)}
+                    className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-red-400 hover:text-red-300 hover:bg-red-500/10 hover:border-red-500/30 transition-all flex items-center justify-center"
+                    title="Delete Selected Groups"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    // TODO: Add group search dialog later
+                    className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                    title="Search Groups"
+                  >
+                    <Search size={16} />
+                  </button>
+                  <button
+                    // TODO: Add create group modal later
+                    className="h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                    title="Create Group"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -348,6 +433,10 @@ const UserList = () => {
               loading={deptsLoading}
               error={deptsError}
               onSelectDepartment={setSelectedDepartment}
+              onDeleteDepartment={deleteDepartment}
+              isDeletingDepartment={isDeletingDepartment}
+              selectedDepartments={selectedDepartments}
+              onSelectDepartmentCard={handleSelectDepartmentCard}
             />
           )}
 
@@ -413,6 +502,10 @@ const UserList = () => {
         }}
         onRemoveUser={handleRemoveUser}
         isRemovingUser={isRemovingUser}
+        onAddUser={handleAddUser}
+        isAddingUser={isAddingUser}
+        onDeleteDepartment={handleDeleteDepartment}
+        isDeletingDepartment={isDeletingDepartment}
         onClose={() => setSelectedDepartment(null)}
       />
       <ConfirmDeleteDialog
@@ -436,6 +529,22 @@ const UserList = () => {
           setIsBulkDelete(false);
         }}
         isDeleting={isDeleting}
+      />
+
+      {/* Bulk Delete Groups Dialog */}
+      <ConfirmDeleteDialog
+        isOpen={showBulkDeleteConfirm}
+        title="Delete Selected Groups"
+        description={`Are you sure you want to delete ${selectedDepartments.size} selected group${selectedDepartments.size !== 1 ? 's' : ''}? This will unassign all users from these groups. This action cannot be undone.`}
+        onConfirm={() => {
+          handleBulkDeleteDepartments();
+        }}
+        onClose={() => {
+          if (!isDeletingDepartment) {
+            setShowBulkDeleteConfirm(false);
+          }
+        }}
+        isDeleting={isDeletingDepartment !== null}
       />
     </div>
   );

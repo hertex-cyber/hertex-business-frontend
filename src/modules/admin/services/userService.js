@@ -148,6 +148,18 @@ class UserService {
   }
 
   /**
+   * Delete department
+   */
+  static async deleteDepartment(departmentId) {
+    try {
+      const response = await axios.delete(`${BASE}/departments/${departmentId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Handle API errors
    */
   static handleError(error) {
