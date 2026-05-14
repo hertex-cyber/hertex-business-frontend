@@ -84,14 +84,19 @@ const UserPipelineManager = ({
   }, [uniqueSelectedUsers, searchQuery]);
 
   const handleSave = async () => {
+    console.log("handleSave called", { selectedPipeline, selectedDepartments, assignmentType });
     if (!selectedPipeline) return;
     
     setIsSaving(true);
     try {
-      await CRMApiService.updatePipeline(selectedPipeline.id, {
+      const data = {
         department_ids: selectedDepartments.map(d => d.id),
         assignment_type: assignmentType
-      });
+      };
+      console.log("Sending data:", data);
+      
+      const result = await CRMApiService.updatePipeline(selectedPipeline.id, data);
+      console.log("Update result:", result);
       
       if (onPipelineUpdated) {
         onPipelineUpdated();
@@ -100,6 +105,7 @@ const UserPipelineManager = ({
       onClose();
     } catch (err) {
       console.error("Error updating pipeline:", err);
+      console.error("Error details:", err.response?.data);
     } finally {
       setIsSaving(false);
     }

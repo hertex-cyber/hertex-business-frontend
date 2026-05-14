@@ -60,6 +60,18 @@ const CRM = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dealToDelete, setDealToDelete] = useState(null);
 
+  const getEligibleUsersForPipeline = () => {
+    console.log("getEligibleUsersForPipeline called", { selectedPipeline, users });
+    if (!selectedPipeline || !users) return [];
+    const pipelineDeptIds = (selectedPipeline.departments || []).map(d => d.id);
+    console.log("Pipeline dept IDs:", pipelineDeptIds);
+    const eligible = users.filter(user => 
+      user.departments?.some(dept => pipelineDeptIds.includes(dept.id))
+    );
+    console.log("Eligible users:", eligible);
+    return eligible;
+  };
+
   const transformDeal = (deal) => ({
     id: deal.id,
     name: deal.contact_details?.name || "Unknown",
@@ -69,6 +81,9 @@ const CRM = () => {
     value: `₹ ${deal.value}`,
     priority: deal.priority,
     lastContact: new Date(deal.updated_at).toLocaleDateString(),
+    assigned_user: deal.assigned_user,
+    assigned_user_details: deal.assigned_user_details,
+    stage: deal.stage,
     raw: deal,
   });
 
@@ -269,15 +284,18 @@ const CRM = () => {
       setIsDeleting(true);
       await axios.delete(`/api/crm/pipeline/${dealToDelete.id}/`);
       
-      const stage = dealToDelete.status.toLowerCase();
-      setDeals(prev => ({
-        ...prev,
-        [stage]: {
-          ...prev[stage],
-          items: prev[stage].items.filter(item => item.id !== dealToDelete.id),
-          count: prev[stage].count - 1
-        }
-      }));
+      // Find the stage ID from the deal's raw data
+      const stageId = dealToDelete.raw?.stage;
+      if (stageId) {
+        setDeals(prev => ({
+          ...prev,
+          [stageId]: {
+            ...prev[stageId],
+            items: prev[stageId].items.filter(item => item.id !== dealToDelete.id),
+            count: Math.max(0, (prev[stageId]?.count || 0) - 1)
+          }
+        }));
+      }
       
       setIsDetailsOpen(false);
       setShowDeleteConfirm(false);
@@ -390,7 +408,7 @@ const CRM = () => {
         {/* Dynamic Content Area */}
         <div className="flex-1 overflow-hidden relative">
           {activeTab === 'pipeline' ? (
-            isPipelinesLoading || (isLoading && (!deals["lead"] || deals["lead"].items.length === 0)) ? (
+            isPipelinesLoading || isLoading ? (
               <div className="h-full flex items-center justify-center">
                 <RingLoader />
               </div>
@@ -490,6 +508,10 @@ const CRM = () => {
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
         deal={viewingDeal}
+        eligibleUsers={getEligibleUsersForPipeline()}
+        onUpdate={() => {
+          fetchDeals();
+        }}
         onDelete={(deal) => {
           setDealToDelete(deal);
           setShowDeleteConfirm(true);
