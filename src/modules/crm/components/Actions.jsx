@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import CreatePipelineModal from './CreatePipelineModal';
 import ManageStageModal from './ManageStageModal';
+import UserPipelineManager from './UserPipelineManager';
 
 const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, onClick }) => {
     return (
@@ -55,9 +56,10 @@ const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, 
     );
 };
 
-const Actions = ({ selectedPipeline, pipelines, stages, onPipelineCreated, onPipelineDeleted, onPipelineUpdated, onStagesChanged }) => {
+const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users = [], onPipelineCreated, onPipelineDeleted, onPipelineUpdated, onPipelineUpdatedForUsers, onStagesChanged }) => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isManageStageOpen, setIsManageStageOpen] = useState(false);
+    const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
 
     const actionItems = [
         {
@@ -92,7 +94,8 @@ const Actions = ({ selectedPipeline, pipelines, stages, onPipelineCreated, onPip
             title: "Manage Users",
             description: "Assign territory permissions, role-based access, and seat management.",
             colorClass: "bg-white",
-            showBadge: true
+            showBadge: true,
+            onClick: () => setIsUserManagerOpen(true)
         },
         {
             id: 'manage-payment',
@@ -141,6 +144,16 @@ const Actions = ({ selectedPipeline, pipelines, stages, onPipelineCreated, onPip
                 pipeline={selectedPipeline}
                 stages={stages}
                 onStagesChanged={onStagesChanged}
+            />
+
+            <UserPipelineManager
+                isOpen={isUserManagerOpen}
+                onClose={() => setIsUserManagerOpen(false)}
+                departments={departments}
+                users={users}
+                pipelines={pipelines}
+                selectedPipeline={selectedPipeline}
+                onPipelineUpdated={onPipelineUpdatedForUsers}
             />
         </div>
     );

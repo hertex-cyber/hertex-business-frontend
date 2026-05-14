@@ -4,10 +4,12 @@ import { Users, User, Mail, Shield, Loader2, Plus, Search, Trash2 } from "lucide
 import { cn } from "@/lib/utils";
 import UserService from "../../services/userService";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import RingLoader from "@/components/ui/RingLoader";
 
 const GroupUserModal = ({
   department,
   users: initialUsers,
+  loading: usersLoading,
   onViewDetails,
   onRemoveUser,
   isRemovingUser,
@@ -21,6 +23,7 @@ const GroupUserModal = ({
 
   const [activeTab, setActiveTab] = useState('users');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchQueryChanged, setSearchQueryChanged] = useState(false);
   const [fetchedUsers, setFetchedUsers] = useState(initialUsers);
   const [isSearching, setIsSearching] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -46,19 +49,27 @@ const GroupUserModal = ({
   }, [initialUsers]);
 
   useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      fetchUsersWithSearch(searchQuery);
-    }, 300);
+    if (searchQueryChanged) {
+      const debounceTimer = setTimeout(() => {
+        fetchUsersWithSearch(searchQuery);
+      }, 300);
 
-    return () => clearTimeout(debounceTimer);
-  }, [searchQuery, fetchUsersWithSearch]);
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [searchQuery, fetchUsersWithSearch, searchQueryChanged]);
 
   useEffect(() => {
     setFetchedUsers(initialUsers);
     setSearchQuery('');
+    setSearchQueryChanged(false);
   }, [initialUsers]);
+  
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setSearchQueryChanged(true);
+  };
 
-  const isUserInGroup = (user) => user.department?.id === department.id;
+  const isUserInGroup = (user) => user.departments?.some(d => d.id === department.id);
   
   // When searching, show all users; when not, use tab filtering
   const displayUsers = searchQuery 
@@ -116,7 +127,7 @@ const GroupUserModal = ({
               type="text"
               placeholder="Search users..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
               className="w-full bg-zinc-950/50 border border-zinc-800 rounded-md pl-10 pr-4 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-zinc-950 transition-all"
             />
           </div>
@@ -172,7 +183,11 @@ const GroupUserModal = ({
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
-          {displayUsers.length === 0 ? (
+          {usersLoading ? (
+            <div className="p-12 flex items-center justify-center">
+              <RingLoader />
+            </div>
+          ) : displayUsers.length === 0 ? (
             <div className="p-12 text-center">
               <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-medium">
                 {searchQuery ? 'No users found' : (activeTab === 'users' ? 'No users in this group' : 'All users are already in this group')}

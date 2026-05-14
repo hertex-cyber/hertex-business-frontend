@@ -213,7 +213,9 @@ const UserList = () => {
   const handleRemoveUser = async (userId) => {
     setIsRemovingUser(userId);
     try {
-      await updateUser(userId, { department_id: null }, filters);
+      const user = users.find(u => u.id === userId);
+      const newDepartments = user?.departments?.filter(d => d.id !== selectedDepartment.id).map(d => d.id) || [];
+      await updateUser(userId, { department_ids: newDepartments }, filters);
     } catch (err) {
       console.error("Error removing user from group:", err);
     } finally {
@@ -224,7 +226,9 @@ const UserList = () => {
   const handleAddUser = async (userId) => {
     setIsAddingUser(userId);
     try {
-      await updateUser(userId, { department_id: selectedDepartment.id }, filters);
+      const user = users.find(u => u.id === userId);
+      const newDepartments = [...(user?.departments?.map(d => d.id) || []), selectedDepartment.id];
+      await updateUser(userId, { department_ids: newDepartments }, filters);
     } catch (err) {
       console.error("Error adding user to group:", err);
     } finally {
@@ -315,7 +319,7 @@ const UserList = () => {
             <button
               onClick={() => setActiveTab('users')}
               className={cn(
-                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center text-center w-1/3 whitespace-nowrap",
                 activeTab === 'users' ? "text-blue-400" : "text-white/50 hover:text-white/80"
               )}
             >
@@ -324,7 +328,7 @@ const UserList = () => {
             <button
               onClick={() => setActiveTab('groups')}
               className={cn(
-                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center text-center w-1/3 whitespace-nowrap",
                 activeTab === 'groups' ? "text-blue-400" : "text-white/50 hover:text-white/80"
               )}
             >
@@ -333,7 +337,7 @@ const UserList = () => {
             <button
               onClick={() => setActiveTab('audit')}
               className={cn(
-                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center text-center w-1/3 whitespace-nowrap",
                 activeTab === 'audit' ? "text-blue-400" : "text-white/50 hover:text-white/80"
               )}
             >
@@ -473,6 +477,7 @@ const UserList = () => {
           <CreateGroupForm
             onSubmit={handleCreateGroup}
             onCancel={() => setShowCreateGroupForm(false)}
+            users={users}
           />
         </div>
       )}
@@ -517,6 +522,7 @@ const UserList = () => {
       <GroupUserModal
         department={selectedDepartment}
         users={users}
+        loading={loading}
         onViewDetails={(user) => {
           setStartInEditMode(false);
           setSelectedUser(user);

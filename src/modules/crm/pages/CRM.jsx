@@ -17,9 +17,18 @@ import SearchDialog from "../components/SearchDialog";
 import DealDetailsDialog from "../components/DealDetailsDialog";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import Actions from "../components/Actions";
+import { useUsers, useDepartments } from "../../admin/hooks/useUsers";
 import { cn } from "@/lib/utils";
 
 const CRM = () => {
+  const { users, fetchUsers } = useUsers();
+  const { departments, refetch: fetchDepartments } = useDepartments();
+  
+  useEffect(() => {
+    fetchUsers();
+    fetchDepartments();
+  }, [fetchUsers, fetchDepartments]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       distance: 5,
@@ -296,6 +305,10 @@ const CRM = () => {
     }
   };
 
+  const handlePipelineUpdated = () => {
+    fetchPipelines();
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
@@ -434,6 +447,8 @@ const CRM = () => {
               selectedPipeline={selectedPipeline} 
               pipelines={pipelines}
               stages={stages}
+              departments={departments}
+              users={users}
               onPipelineCreated={(newPipeline) => {
                 setPipelines([...pipelines, newPipeline]);
                 setSelectedPipeline(newPipeline);
@@ -441,6 +456,7 @@ const CRM = () => {
               }}
               onPipelineDeleted={handleDeletePipeline}
               onPipelineUpdated={handleUpdatePipeline}
+              onPipelineUpdatedForUsers={handlePipelineUpdated}
               onStagesChanged={() => { fetchStages(); }}
             />
           )}

@@ -91,14 +91,11 @@ const DepartmentList = ({
 
               <div className="mt-4 space-y-2">
                 <h3 className="font-medium text-white truncate">{dept.name}</h3>
-                {dept.description && (
-                  <p className="text-sm text-white/40 line-clamp-2">{dept.description}</p>
-                )}
                 <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-2 text-xs text-white/30">
-                    <User size={11} />
+                    <Users size={11} />
                     <span>
-                      {dept.manager ? `Manager: ${dept.manager.first_name} ${dept.manager.last_name}` : 'No manager assigned'}
+                      {dept.user_count || 0} user{(dept.user_count || 0) !== 1 ? 's' : ''} assigned
                     </span>
                   </div>
                   <button

@@ -144,6 +144,13 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
   const [isAssigningGroup, setIsAssigningGroup] = useState(false);
   const dropdownRef = useRef(null);
+  
+  const getCurrentDepartments = () => {
+    if (isEditing) {
+      return editedUser.departments || [];
+    }
+    return user.departments || [];
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -158,10 +165,7 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
 
   const handleSave = async () => {
     const userToSave = { ...user, ...editedUser };
-    
-    if (userToSave.department && userToSave.department.id) {
-      userToSave.department_id = userToSave.department.id;
-    }
+    userToSave.department_ids = (editedUser.departments || []).map(d => d.id);
     
     console.log("UserDetail.handleSave: userToSave =", userToSave);
     
@@ -174,22 +178,41 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
     setIsEditing(false);
   };
 
-
+  const toggleDepartment = (department) => {
+    const currentDepts = getCurrentDepartments();
+    const isSelected = currentDepts.some(d => d.id === department.id);
+    
+    let newDepts;
+    if (isSelected) {
+      newDepts = currentDepts.filter(d => d.id !== department.id);
+    } else {
+      newDepts = [...currentDepts, department];
+    }
+    
+    setEditedUser(prev => ({ ...prev, departments: newDepts }));
+  };
 
   const handleGroupSelect = async (department) => {
     console.log("UserDetail.handleGroupSelect: department =", department, "isEditing =", isEditing);
+    setShowGroupDropdown(false);
     if (isEditing) {
-      setEditedUser(prev => ({ ...prev, department, department_id: department.id }));
+      toggleDepartment(department);
     } else {
       setIsAssigningGroup(true);
-      setEditedUser(prev => ({ ...prev, department }));
-      const userToSave = { ...user, department, department_id: department.id };
+      const currentDepts = user.departments || [];
+      const isSelected = currentDepts.some(d => d.id === department.id);
+      let newDepts;
+      if (isSelected) {
+        newDepts = currentDepts.filter(d => d.id !== department.id);
+      } else {
+        newDepts = [...currentDepts, department];
+      }
+      const userToSave = { ...user, departments: newDepts, department_ids: newDepts.map(d => d.id) };
       console.log("UserDetail.handleGroupSelect: userToSave (non-edit) =", userToSave);
       const serverResponse = await onSave(userToSave);
       console.log("UserDetail.handleGroupSelect: serverResponse =", serverResponse);
       setIsAssigningGroup(false);
     }
-    setShowGroupDropdown(false);
   };
 
   useEffect(() => {
@@ -397,108 +420,111 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
             )}
           </div>
 
-          <div className="px-8 py-4 border-t border-white/5">
-            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-4">Organization</h3>
+          <div ref={dropdownRef} className="px-8 py-4 border-t border-white/5 relative">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Groups</h3>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowGroupDropdown(!showGroupDropdown);
+                }}
+                className="p-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors"
+                title="Add Group"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            
             {isEditing ? (
               <>
-                <div ref={dropdownRef} className="relative">
-                  <div className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
-                    <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0 mt-0.5">
-                      <Users size={13} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-white/30 mb-0.5 uppercase tracking-widest">Groups</p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowGroupDropdown(!showGroupDropdown);
-                        }}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-white/20 transition-all text-left flex items-center justify-between"
-                      >
-                        <span>{editedUser.department?.name || "Select group"}</span>
-                        {isAssigningGroup ? (
-                          <Loader2 size={14} className="animate-spin text-blue-400" />
-                        ) : (
-                          <ChevronDown size={14} className="text-white/40" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  {showGroupDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 border border-white/5 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto backdrop-blur-sm">
-                      {departments.map((dept) => (
-                        <button
-                          key={dept.id}
-                          onClick={() => {
-                            setEditedUser(prev => ({ ...prev, department: dept, department_id: dept.id }));
-                            setShowGroupDropdown(false);
-                          }}
-                          className={`w-full px-4 py-2.5 text-left text-xs transition-all duration-150 ${
-                            editedUser.department?.id === dept.id 
-                              ? 'text-blue-400 bg-blue-500/10 border-l-2 border-blue-500' 
-                              : 'text-white/70 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
-                          }`}
+                <div className="py-2 border-b border-white/5 last:border-0">
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {getCurrentDepartments().length > 0 ? (
+                      getCurrentDepartments().map(dept => (
+                        <div 
+                          key={dept.id} 
+                          className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded-md text-xs text-blue-400 flex items-center gap-1"
                         >
                           {dept.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleDepartment(dept);
+                            }}
+                            className="text-blue-400/50 hover:text-blue-400"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-sm text-white/20">No groups</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowGroupDropdown(!showGroupDropdown);
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-white/20 transition-all text-left flex items-center justify-between"
+                  >
+                    <span className="text-white/30">Add group...</span>
+                    <ChevronDown size={14} className="text-white/40" />
+                  </button>
                 </div>
               </>
             ) : (
               <>
-                <Field
-                  icon={Building2}
-                  label="Organization"
-                  value={user.organization?.name}
-                />
-                <div ref={dropdownRef} className="relative">
-                  <Field
-                    icon={Users}
-                    label="Groups"
-                    value={isAssigningGroup ? (
-                      <div className="flex items-center gap-2">
-                        <Loader2 size={12} className="animate-spin text-blue-400" />
-                        <span>Updating...</span>
-                      </div>
-                    ) : (user.department?.name || "nil")}
-                    actions={
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowGroupDropdown(!showGroupDropdown);
-                          }}
-                          disabled={isAssigningGroup}
-                          className="p-1.5 rounded-md border border-blue-500/30 hover:bg-blue-500/10 text-blue-500/60 hover:text-blue-400 transition-colors disabled:opacity-50 flex items-center gap-1"
-                          title="Add Group"
-                        >
-                          {isAssigningGroup ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                          {!isAssigningGroup && <ChevronDown size={12} />}
-                        </button>
-                      </div>
-                    }
-                  />
-                  {showGroupDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 border border-white/5 rounded-lg shadow-2xl z-50 max-h-48 overflow-y-auto backdrop-blur-sm">
-                      {departments.map((dept) => (
-                        <button
-                          key={dept.id}
-                          onClick={() => handleGroupSelect(dept)}
-                          className={`w-full px-4 py-2.5 text-left text-xs transition-all duration-150 ${
-                            user.department?.id === dept.id 
-                              ? 'text-blue-400 bg-blue-500/10 border-l-2 border-blue-500' 
-                              : 'text-white/70 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
-                          }`}
+                <div className="py-2 border-b border-white/5 last:border-0">
+                  {isAssigningGroup ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 size={12} className="animate-spin text-blue-400" />
+                      <span className="text-sm text-white/40">Updating...</span>
+                    </div>
+                  ) : (getCurrentDepartments().length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {getCurrentDepartments().map(dept => (
+                        <div 
+                          key={dept.id} 
+                          className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded-md text-xs text-blue-400"
                         >
                           {dept.name}
-                        </button>
+                        </div>
                       ))}
                     </div>
-                  )}
+                  ) : (
+                    <p className="text-sm text-white/20">nil</p>
+                  ))}
                 </div>
               </>
+            )}
+            
+            {showGroupDropdown && (
+              <div className="absolute z-50 left-0 right-0 mt-2 bg-zinc-900/95 border border-white/5 rounded-lg shadow-2xl max-h-48 overflow-y-auto backdrop-blur-sm">
+                {departments.map((dept) => {
+                  const isSelected = getCurrentDepartments().some(d => d.id === dept.id);
+                  return (
+                    <button
+                      key={dept.id}
+                      onClick={() => {
+                        if (isEditing) {
+                          toggleDepartment(dept);
+                        } else {
+                          handleGroupSelect(dept);
+                        }
+                        setShowGroupDropdown(false);
+                      }}
+                      className={`w-full px-4 py-2.5 text-left text-xs transition-all duration-150 ${
+                        isSelected 
+                          ? 'text-blue-400 bg-blue-500/10 border-l-2 border-blue-500' 
+                          : 'text-white/70 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+                      }`}
+                    >
+                      {dept.name}
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
