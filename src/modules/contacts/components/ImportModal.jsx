@@ -292,9 +292,9 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                 {/* Footer */}
                 <div className="p-8 border-t border-zinc-800 flex justify-end gap-3 shrink-0 bg-zinc-950 outline-none">
                     {step !== STEPS.UPLOAD && (
-                        <Button
-                            variant="secondary"
-                            className="!w-auto px-6 py-2 rounded-lg border-none bg-white/5 text-white/40 font-bold hover:text-white transition-colors focus:outline-none outline-none ring-0"
+                        <button
+                            type="button"
+                            className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]"
                             onClick={() => {
                                 if (step === STEPS.PREVIEW) setStep(STEPS.MAP);
                                 else if (step === STEPS.MAP) setStep(STEPS.SELECT_COLS);
@@ -302,11 +302,12 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                             }}
                         >
                             Back
-                        </Button>
+                        </button>
                     )}
                     {step !== STEPS.UPLOAD && (
-                        <Button
-                            className="!w-auto px-8 py-2 rounded-lg font-bold uppercase text-[10px] tracking-widest focus:outline-none outline-none ring-0"
+                        <button
+                            type="button"
+                            className="px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
                             disabled={isImporting}
                             onClick={() => {
                                 if (step === STEPS.SELECT_COLS) goToMapping();
@@ -315,14 +316,11 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                             }}
                         >
                             {isImporting ? (
-                                <div className="flex items-center gap-2">
-                                    <RingLoader size="1.2em" />
-                                    <span>Importing...</span>
-                                </div>
+                                <span>Importing...</span>
                             ) : (
                                 <span>{step === STEPS.PREVIEW ? 'Import Now' : 'Next'}</span>
                             )}
-                        </Button>
+                        </button>
                     )}
                 </div>
             </div>
