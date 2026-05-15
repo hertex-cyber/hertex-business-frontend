@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Rocket, Layout, Loader2, Check } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Rocket, Layout, Loader2, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
@@ -9,6 +10,10 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
   const [selectedPipeline, setSelectedPipeline] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingPipeline, setIsCreatingPipeline] = useState(false);
+  const [newPipelineName, setNewPipelineName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -40,91 +45,174 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
     onClose();
   };
 
+  const handleCreatePipeline = async (e) => {
+    e.preventDefault();
+    if (!newPipelineName.trim()) return;
+    setIsCreating(true);
+    setCreateError('');
+    try {
+      const res = await axios.post('/api/crm/pipelines/', { name: newPipelineName });
+      setPipelines([...pipelines, res.data]);
+      setSelectedPipeline(res.data);
+      setIsCreatingPipeline(false);
+      setNewPipelineName('');
+    } catch (err) {
+      setCreateError('Failed to create pipeline.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="px-8 py-6 border-b border-zinc-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <Rocket size={20} />
-            </div>
-            <div>
-              <h2 className="text-lg font-normal text-white">Add to CRM</h2>
-              <p className="text-xs text-white/40">Export {contactCount} contacts to pipeline</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 text-white/20 transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-8 space-y-6">
-          {isLoading ? (
-            <div className="py-10 flex flex-col items-center gap-4">
-              <Loader2 className="animate-spin text-blue-500" size={24} />
-              <p className="text-[10px] font-normal uppercase tracking-wider text-white/20">Loading Pipelines...</p>
-            </div>
-          ) : pipelines.length === 0 ? (
-            <div className="py-6 text-center space-y-4">
-              <p className="text-sm text-white/40">No pipelines found. Please create one in the CRM page first.</p>
-              <Button onClick={onClose} variant="secondary" className="w-full font-normal">Close</Button>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3">
-                <label className="text-[10px] font-normal uppercase tracking-wider text-white/30">Select Target Pipeline</label>
-                <div className="max-h-[240px] overflow-y-auto pr-2 custom-scrollbar space-y-2">
-                  {pipelines.map(p => (
-                    <button
-                      key={p.id}
-                      onClick={() => setSelectedPipeline(p)}
-                      className={cn(
-                        "w-full px-4 py-4 rounded-xl flex items-center justify-between transition-all duration-300 border",
-                        selectedPipeline?.id === p.id 
-                          ? "bg-blue-500/10 border-blue-500/40 text-white shadow-[0_0_20px_rgba(59,130,246,0.1)]" 
-                          : "bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.05] hover:border-white/10"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                          selectedPipeline?.id === p.id ? "bg-blue-500/20 text-blue-400" : "bg-white/5 text-white/20"
-                        )}>
-                          <Layout size={14} />
-                        </div>
-                        <span className="text-[10px] font-normal uppercase tracking-widest">{p.name}</span>
-                      </div>
-                      {selectedPipeline?.id === p.id && (
-                        <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                          <Check size={12} strokeWidth={4} className="text-black" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
+      <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-zinc-800 flex items-start justify-between shrink-0 bg-black/50 backdrop-blur-xl rounded-t-lg">
+          <div className="flex items-start justify-between gap-4 w-full">
+            <div className="flex items-center gap-5">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                <Rocket size={18} />
+              </div>
+              <div>
+                <h2 className="text-lg font-medium text-white">Add to CRM</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-blue-400">
+                    {contactCount} contacts selected
+                  </span>
                 </div>
               </div>
+            </div>
+            <button 
+                onClick={onClose}
+                className="p-2 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-colors"
+            >
+                <X size={20} />
+            </button>
+          </div>
+        </div>
 
-              <div className="pt-2 flex gap-3">
-                <Button variant="secondary" onClick={onClose} className="flex-1 h-12 font-normal text-sm">
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleConfirm}
-                  disabled={isSubmitting || !selectedPipeline}
-                  className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white font-normal text-sm"
-                >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Export'}
-                </Button>
+        {/* Content */}
+        <div className="p-6 bg-zinc-900/30 flex-1 overflow-hidden flex flex-col">
+          {isLoading ? (
+            <div className="py-10 flex flex-col items-center gap-4">
+              <Loader2 className="animate-spin text-blue-500/50" size={24} />
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/20">Loading Pipelines...</p>
+            </div>
+          ) : isCreatingPipeline || pipelines.length === 0 ? (
+            <form onSubmit={handleCreatePipeline} className="space-y-4 py-2">
+              <div>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 mb-2 block">
+                  New Pipeline Name
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newPipelineName}
+                  onChange={(e) => setNewPipelineName(e.target.value)}
+                  placeholder="e.g. Inbound Leads"
+                  className="w-full bg-black/40 border border-zinc-800 rounded-md px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                />
               </div>
-            </>
+              {createError && (
+                <p className="text-[10px] text-red-400 uppercase tracking-[0.2em]">{createError}</p>
+              )}
+              <div className="flex gap-2">
+                {pipelines.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsCreatingPipeline(false); setNewPipelineName(''); setCreateError(''); }}
+                    className="flex-1 py-2 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={isCreating || !newPipelineName.trim()}
+                  className="flex-1 py-2 rounded-md bg-blue-500/10 border border-blue-500/30 text-[10px] font-medium uppercase tracking-[0.2em] text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isCreating ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                  Create & Select
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4 flex-1 flex flex-col min-h-0">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">Select Target Pipeline</label>
+                <button
+                  onClick={() => setIsCreatingPipeline(true)}
+                  className="text-[10px] font-medium uppercase tracking-[0.2em] text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                >
+                  <Plus size={10} /> New
+                </button>
+              </div>
+              <div className="overflow-y-auto pr-2 custom-scrollbar space-y-2 flex-1">
+                {pipelines.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedPipeline(p)}
+                    className={cn(
+                      "w-full px-4 py-4 rounded-lg flex items-center justify-between transition-all duration-300 border",
+                      selectedPipeline?.id === p.id 
+                        ? "bg-blue-500/10 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.1)]" 
+                        : "bg-zinc-950/30 border-zinc-800/50 hover:bg-zinc-900/50 hover:border-zinc-700"
+                    )}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "w-8 h-8 rounded-md border flex items-center justify-center transition-colors",
+                        selectedPipeline?.id === p.id ? "bg-blue-500/20 border-blue-500/30 text-blue-400" : "bg-zinc-800 border-zinc-700 text-white/20"
+                      )}>
+                        <Layout size={14} />
+                      </div>
+                      <span className={cn(
+                        "text-[10px] font-medium uppercase tracking-[0.2em]",
+                        selectedPipeline?.id === p.id ? "text-blue-400" : "text-white/60"
+                      )}>{p.name}</span>
+                    </div>
+                    {selectedPipeline?.id === p.id && (
+                      <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/50 flex items-center justify-center">
+                        <Check size={12} strokeWidth={3} className="text-blue-400" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-zinc-800 bg-black/50 backdrop-blur-xl flex justify-end gap-3 shrink-0 rounded-b-lg">
+            <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]"
+            >
+                Cancel
+            </button>
+            <button
+                onClick={handleConfirm}
+                disabled={isSubmitting || !selectedPipeline}
+                className="px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
+            >
+                {isSubmitting ? (
+                    <><Loader2 size={14} className="animate-spin" /> Exporting...</>
+                ) : (
+                    'Confirm Export'
+                )}
+            </button>
+        </div>
+
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

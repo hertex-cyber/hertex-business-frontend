@@ -11,6 +11,7 @@ const AssignTab = ({ selectedPipeline, assignmentType, setAssignmentType }) => {
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isTriggering, setIsTriggering] = useState(false);
   const [triggerResult, setTriggerResult] = useState(null);
+  const [selectedSingleUser, setSelectedSingleUser] = useState("");
 
   const fetchStats = useCallback(async () => {
     if (!selectedPipeline?.id) return;
@@ -29,12 +30,16 @@ const AssignTab = ({ selectedPipeline, assignmentType, setAssignmentType }) => {
     fetchStats();
   }, [fetchStats]);
 
-  const handleTrigger = async (strategy) => {
+  const handleTrigger = async (strategy, targetUserId = null) => {
     if (!selectedPipeline?.id) return;
     setIsTriggering(true);
     setTriggerResult(null);
     try {
-      const res = await axios.post(`/api/crm/pipelines/${selectedPipeline.id}/trigger-assignment/`, { strategy });
+      const payload = { strategy };
+      if (targetUserId) {
+        payload.target_user_id = targetUserId;
+      }
+      const res = await axios.post(`/api/crm/pipelines/${selectedPipeline.id}/trigger-assignment/`, payload);
       setTriggerResult(res.data);
       await fetchStats(); // refresh stats
     } catch (err) {
@@ -51,7 +56,7 @@ const AssignTab = ({ selectedPipeline, assignmentType, setAssignmentType }) => {
   const types = [
     { id: 'round_robin', label: 'Round Robin', description: 'Distribute deals evenly across users' },
     { id: 'least_loaded', label: 'Least Loaded', description: 'Assign to user with fewest deals' },
-    { id: 'manual', label: 'Manual', description: 'Assign deals manually one by one' }
+    { id: 'single_user', label: 'Single User', description: 'Assign all unassigned deals to a specific user' }
   ];
 
   return (
@@ -59,7 +64,7 @@ const AssignTab = ({ selectedPipeline, assignmentType, setAssignmentType }) => {
       {types.map((type) => {
         const isSelected = assignmentType === type.id;
         const isExpanded = expandedType === type.id;
-        const canExpand = type.id !== 'manual';
+        const canExpand = true;
 
         return (
           <div
@@ -213,6 +218,73 @@ const AssignTab = ({ selectedPipeline, assignmentType, setAssignmentType }) => {
                     )}
 
                     {/* Result feedback */}
+                    {type.id === 'single_user' && (
+                      <>
+                        <div className="space-y-2">
+                          <p className="text-[9px] text-white/30 uppercase tracking-widest font-medium">Select Target User</p>
+                          {stats.user_loads.length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                              {stats.user_loads.map((user) => (
+                                <div
+                                  key={user.id}
+                                  onClick={() => setSelectedSingleUser(user.id)}
+                                  className={cn(
+                                    "flex items-center gap-3 px-3 py-2 rounded-md border cursor-pointer transition-all",
+                                    selectedSingleUser === user.id
+                                      ? "bg-blue-500/20 border-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.1)]"
+                                      : "bg-zinc-950/30 border-zinc-800/50 hover:bg-zinc-900/50 hover:border-zinc-700"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-6 h-6 rounded-full border flex items-center justify-center shrink-0",
+                                    selectedSingleUser === user.id
+                                      ? "bg-blue-500/20 border-blue-500/50"
+                                      : "bg-zinc-800 border-zinc-700"
+                                  )}>
+                                    <User size={10} className={selectedSingleUser === user.id ? "text-blue-400" : "text-white/40"} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <span className={cn(
+                                      "text-xs truncate block font-medium",
+                                      selectedSingleUser === user.id ? "text-blue-400" : "text-white/70"
+                                    )}>{user.name}</span>
+                                    <span className="text-[10px] text-white/30 truncate block">{user.email}</span>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <span className={cn(
+                                      "text-xs font-medium",
+                                      selectedSingleUser === user.id ? "text-blue-400" : "text-white/60"
+                                    )}>{user.deal_count}</span>
+                                    <span className="text-[9px] text-white/30 ml-1">deals</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-white/20 uppercase tracking-widest text-center py-4 border border-zinc-800/50 rounded-md">
+                              No eligible users in assigned groups
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="p-3 rounded-md bg-zinc-950/50 border border-zinc-800 flex items-center justify-between mt-4">
+                          <span className="text-[10px] text-white/40 uppercase tracking-widest font-medium">Unassigned Deals</span>
+                          <span className="text-sm font-semibold text-white">{stats.unassigned_deals}</span>
+                        </div>
+
+                        <button
+                          onClick={() => handleTrigger('single_user', selectedSingleUser)}
+                          disabled={isTriggering || stats.unassigned_deals === 0 || !selectedSingleUser}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-blue-500/20 border border-blue-500/30 text-blue-400 text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
+                        >
+                          {isTriggering ? <Loader2 size={14} className="animate-spin" /> : <User size={14} />}
+                          {stats.unassigned_deals === 0
+                            ? "All Deals Assigned"
+                            : `Assign ${stats.unassigned_deals} to Selected User`}
+                        </button>
+                      </>
+                    )}
+
                     {triggerResult && (
                       <div className={cn(
                         "p-3 rounded-md text-center text-[10px] font-medium uppercase tracking-widest",

@@ -59,7 +59,7 @@ const Contacts = () => {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                    {selectedIds.length > 0 && activeTab === TABS.CONTACTS && (
+                    {selectedIds.length > 0 && (
                         <Button
                             variant="secondary"
                             className="!w-auto h-9 px-4 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold"
