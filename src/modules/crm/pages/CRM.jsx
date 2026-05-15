@@ -38,6 +38,14 @@ const CRM = () => {
 
   const [pipelines, setPipelines] = useState([]);
   const [selectedPipeline, setSelectedPipeline] = useState(null);
+
+  const selectPipeline = useCallback((pipeline) => {
+    setSelectedPipeline(pipeline);
+    if (pipeline?.id) {
+      localStorage.setItem('crm_selected_pipeline_id', pipeline.id);
+    }
+  }, []);
+
   const [stages, setStages] = useState([]); // dynamic stages for selected pipeline
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline' or 'actions'
@@ -61,15 +69,20 @@ const CRM = () => {
   const [dealToDelete, setDealToDelete] = useState(null);
 
   const getEligibleUsersForPipeline = () => {
-    console.log("getEligibleUsersForPipeline called", { selectedPipeline, users });
     if (!selectedPipeline || !users) return [];
-    const pipelineDeptIds = (selectedPipeline.departments || []).map(d => d.id);
-    console.log("Pipeline dept IDs:", pipelineDeptIds);
-    const eligible = users.filter(user => 
-      user.departments?.some(dept => pipelineDeptIds.includes(dept.id))
+    
+    // Support both object-based and ID-based department lists
+    const departments = selectedPipeline.departments || [];
+    const pipelineDeptIds = departments.map(d => typeof d === 'object' ? d.id : d);
+    
+    if (pipelineDeptIds.length === 0) return [];
+
+    return users.filter(user => 
+      user.departments?.some(dept => {
+        const deptId = typeof dept === 'object' ? dept.id : dept;
+        return pipelineDeptIds.includes(deptId);
+      })
     );
-    console.log("Eligible users:", eligible);
-    return eligible;
   };
 
   const transformDeal = (deal) => ({
@@ -94,14 +107,16 @@ const CRM = () => {
       const data = response.data.results || response.data;
       setPipelines(data);
       if (data.length > 0 && !selectedPipeline) {
-        setSelectedPipeline(data[0]);
+        const savedId = localStorage.getItem('crm_selected_pipeline_id');
+        const restored = savedId ? data.find(p => p.id === savedId) : null;
+        selectPipeline(restored || data[0]);
       }
     } catch (error) {
       console.error("Error fetching pipelines:", error);
     } finally {
       setIsPipelinesLoading(false);
     }
-  }, [selectedPipeline]);
+  }, [selectedPipeline, selectPipeline]);
 
   const fetchStages = useCallback(async () => {
     if (!selectedPipeline) return;
@@ -398,7 +413,7 @@ const CRM = () => {
               <PipelineSelector 
                 pipelines={pipelines}
                 selectedPipeline={selectedPipeline}
-                onSelect={setSelectedPipeline}
+                onSelect={selectPipeline}
                 onCreateNew={() => setIsCreateModalOpen(true)}
               />
             </div>
@@ -509,8 +524,23 @@ const CRM = () => {
         onClose={() => setIsDetailsOpen(false)}
         deal={viewingDeal}
         eligibleUsers={getEligibleUsersForPipeline()}
-        onUpdate={() => {
-          fetchDeals();
+        onUpdate={(updatedDeal) => {
+          if (updatedDeal?.id) {
+            // Patch just this deal in local state — no full reload
+            setDeals(prev => {
+              const next = { ...prev };
+              for (const key of Object.keys(next)) {
+                next[key] = {
+                  ...next[key],
+                  items: next[key].items.map(item =>
+                    item.id === updatedDeal.id ? updatedDeal : item
+                  )
+                };
+              }
+              return next;
+            });
+            setViewingDeal(updatedDeal);
+          }
         }}
         onDelete={(deal) => {
           setDealToDelete(deal);

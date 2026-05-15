@@ -5,7 +5,7 @@ const BASE = "/api/crm";
 class CRMApiService {
   static async getPipelines(params = {}) {
     try {
-      const response = await axios.get(`${BASE}/pipelines`, { params });
+      const response = await axios.get(`${BASE}/pipelines/`, { params });
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -14,7 +14,7 @@ class CRMApiService {
 
   static async getPipelineById(pipelineId) {
     try {
-      const response = await axios.get(`${BASE}/pipelines/${pipelineId}`);
+      const response = await axios.get(`${BASE}/pipelines/${pipelineId}/`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -23,7 +23,7 @@ class CRMApiService {
 
   static async updatePipeline(pipelineId, pipelineData) {
     try {
-      const response = await axios.patch(`${BASE}/pipelines/${pipelineId}`, pipelineData);
+      const response = await axios.patch(`${BASE}/pipelines/${pipelineId}/`, pipelineData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
