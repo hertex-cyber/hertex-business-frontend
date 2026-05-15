@@ -15,6 +15,7 @@ import PipelineSelector from "../components/PipelineSelector";
 import CreatePipelineModal from "../components/CreatePipelineModal";
 import SearchDialog from "../components/SearchDialog";
 import DealDetailsDialog from "../components/DealDetailsDialog";
+import AddLeadDialog from "../components/AddLeadDialog";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import Actions from "../components/Actions";
 import { useUsers, useDepartments } from "../../admin/hooks/useUsers";
@@ -48,6 +49,7 @@ const CRM = () => {
 
   const [stages, setStages] = useState([]); // dynamic stages for selected pipeline
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline' or 'actions'
   const [deals, setDeals] = useState({
     lead: { items: [], nextPage: null, hasMore: false, count: 0 },
@@ -401,9 +403,9 @@ const CRM = () => {
               </button>
 
               <button 
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={() => setIsAddLeadOpen(true)}
                 className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
-                title="Create Pipeline"
+                title="Add Lead"
               >
                 <Plus size={16} />
               </button>
@@ -504,6 +506,30 @@ const CRM = () => {
         onSelect={(deal) => {
           handleViewDeal(transformDeal(deal));
           setIsSearchDialogOpen(false);
+        }}
+      />
+
+      <AddLeadDialog
+        isOpen={isAddLeadOpen}
+        onClose={() => setIsAddLeadOpen(false)}
+        pipeline={selectedPipeline}
+        stages={stages}
+        onSuccess={(newDealRaw) => {
+          if (newDealRaw && newDealRaw.stage) {
+            const transformedDeal = transformDeal(newDealRaw);
+            setDeals(prev => {
+              const stageId = newDealRaw.stage;
+              const colData = prev[stageId] || { items: [], count: 0, hasMore: false, nextPage: null };
+              return {
+                ...prev,
+                [stageId]: {
+                  ...colData,
+                  items: [transformedDeal, ...colData.items],
+                  count: colData.count + 1
+                }
+              };
+            });
+          }
         }}
       />
 
