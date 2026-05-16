@@ -28,14 +28,14 @@ const Contacts = () => {
         setRefreshKey(k => k + 1);
     };
 
-    const handleAddToCRM = async (pipelineId) => {
-        if (selectedIds.length === 0) return;
+    const handleAddToCRM = async (pipelineId, stageId) => {
+        if (selectedIds.length === 0 || !stageId) return;
         setIsAddingToCRM(true);
         try {
             const promises = selectedIds.map(id => 
                 axios.post('/api/crm/pipeline/', { 
                     contact: id, 
-                    stage: 'lead',
+                    stage: stageId,
                     pipeline: pipelineId
                 })
             );

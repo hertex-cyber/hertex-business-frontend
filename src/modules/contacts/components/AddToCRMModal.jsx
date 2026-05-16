@@ -40,7 +40,8 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
   const handleConfirm = async () => {
     if (!selectedPipeline) return;
     setIsSubmitting(true);
-    await onConfirm(selectedPipeline.id);
+    const firstStage = selectedPipeline.stages?.sort((a, b) => a.order - b.order)[0];
+    await onConfirm(selectedPipeline.id, firstStage?.id);
     setIsSubmitting(false);
     onClose();
   };
