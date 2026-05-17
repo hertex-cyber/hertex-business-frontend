@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Mail, Phone, Tag, Calendar, Database, FileText, User, Trash2, Wallet, Clock, Users, Save, ChevronDown, Check, Plus, Loader2 } from 'lucide-react';
+import { X, Mail, Phone, Tag, Calendar, Database, FileText, User, Trash2, Wallet, Clock, Users, Save, ChevronDown, Check, Plus, Loader2, MessageSquare } from 'lucide-react';
 import { TbEdit } from "react-icons/tb";
 import { cn } from '@/lib/utils';
 import axios from 'axios';
@@ -47,6 +47,8 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
     const [localDeal, setLocalDeal] = useState(deal);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const [isPaymentMethodDropdownOpen, setIsPaymentMethodDropdownOpen] = useState(false);
+    const paymentMethodDropdownRef = useRef(null);
 
     // Inline Contact Edit States
     const [isEditingContact, setIsEditingContact] = useState(false);
@@ -82,10 +84,10 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
     };
 
     const fetchPayments = async () => {
-        if (!localDeal?.raw?.contact_details?.id) return;
+        if (!localDeal?.id) return;
         setIsLoadingPayments(true);
         try {
-            const response = await axios.get(`/api/payments/?contact=${localDeal.raw.contact_details.id}&crm=${localDeal.id}`);
+            const response = await axios.get(`/api/payments/?crm=${localDeal.id}`);
             setPayments(response.data.results || response.data);
         } catch (err) {
             console.error("Failed to fetch payments:", err);
@@ -93,6 +95,78 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
             setIsLoadingPayments(false);
         }
     };
+
+    // Activity Log States
+    const [logs, setLogs] = useState([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+
+    const fetchLogs = async () => {
+        const contactId = localDeal.raw?.contact_details?.id || localDeal.raw?.contact;
+        if (!localDeal?.id || !contactId) return;
+        setIsLoadingLogs(true);
+        try {
+            const response = await axios.get(`/api/contacts/logs/?crm=${localDeal.id}&contact=${contactId}`);
+            setLogs(response.data.results || response.data);
+        } catch (err) {
+            console.error("Failed to fetch activity logs:", err);
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    };
+
+    // Remarks States
+    const [remarks, setRemarks] = useState([]);
+    const [isLoadingRemarks, setIsLoadingRemarks] = useState(false);
+    const [newRemarkText, setNewRemarkText] = useState('');
+    const [isSubmittingRemark, setIsSubmittingRemark] = useState(false);
+    const [isEditingRemark, setIsEditingRemark] = useState(false);
+
+    const fetchRemarks = async () => {
+        const contactId = localDeal.raw?.contact_details?.id || localDeal.raw?.contact;
+        if (!localDeal?.id || !contactId) return;
+        setIsLoadingRemarks(true);
+        try {
+            const response = await axios.get(`/api/contacts/remarks/?crm=${localDeal.id}&contact=${contactId}`);
+            setRemarks(response.data.results || response.data);
+        } catch (err) {
+            console.error("Failed to fetch remarks:", err);
+        } finally {
+            setIsLoadingRemarks(false);
+        }
+    };
+
+    const handleAddRemark = async (e) => {
+        e.preventDefault();
+        const contactId = localDeal.raw?.contact_details?.id || localDeal.raw?.contact;
+        if (!newRemarkText.trim() || !contactId) return;
+        setIsSubmittingRemark(true);
+        try {
+            await axios.post('/api/contacts/remarks/', {
+                contact: contactId,
+                crm: localDeal.id,
+                text: newRemarkText.trim()
+            });
+            setNewRemarkText('');
+            setIsEditingRemark(false);
+            await fetchRemarks();
+        } catch (err) {
+            console.error("Failed to add remark:", err);
+        } finally {
+            setIsSubmittingRemark(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen && activeTab === 'activity') {
+            fetchLogs();
+        }
+    }, [isOpen, activeTab, localDeal]);
+
+    useEffect(() => {
+        if (isOpen && activeTab === 'profile') {
+            fetchRemarks();
+        }
+    }, [isOpen, activeTab, localDeal]);
 
     useEffect(() => {
         if (isOpen) {
@@ -105,12 +179,15 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
                 setIsDropdownOpen(false);
             }
+            if (paymentMethodDropdownRef.current && !paymentMethodDropdownRef.current.contains(e.target)) {
+                setIsPaymentMethodDropdownOpen(false);
+            }
         };
-        if (isDropdownOpen) {
+        if (isDropdownOpen || isPaymentMethodDropdownOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isDropdownOpen]);
+    }, [isDropdownOpen, isPaymentMethodDropdownOpen]);
 
     useEffect(() => {
         setLocalDeal(deal);
@@ -180,6 +257,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
             setIsEditingUser(false);
             setIsDropdownOpen(false);
             setError(null);
+            await fetchLogs();
         } catch (err) {
             console.error("Error assigning user:", err);
             setError(err.response?.data?.detail || err.message || "Failed to assign user");
@@ -372,6 +450,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
             setPaymentInvoice('');
 
             await fetchPayments();
+            await fetchLogs();
         } catch (err) {
             console.error("Failed to save payment:", err);
             setPaymentError(err.response?.data?.detail || err.message || "Failed to add payment.");
@@ -644,70 +723,170 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                         <div className="w-px bg-zinc-900 self-stretch shrink-0 pointer-events-none" />
 
                         {/* Right Column: Tabbed Content (Profile/Registry, Payments [Pay/Ledger], Activity) */}
-                        <div className="flex-1 pl-6 pr-6 overflow-y-auto custom-scrollbar">
+                        <div className="flex-1 pl-6 overflow-hidden flex flex-col">
                             {activeTab === 'profile' ? (
-                                <div className="space-y-6 pb-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <Database size={14} className="text-purple-400" />
-                                            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 font-semibold">Additional Registry</p>
-                                        </div>
-                                        {isEditingContact ? (
-                                            <div className="space-y-3 pb-4">
-                                                {editAdditionalData.map((item, idx) => (
-                                                    <div key={item.id} className="flex items-center gap-2">
-                                                        <input 
-                                                            type="text" 
-                                                            value={item.key} 
-                                                            onChange={(e) => handleUpdateAdditionalKey(idx, e.target.value)} 
-                                                            placeholder="Field Name"
-                                                            disabled={item.isPipelineConfigured}
-                                                            className={cn(
-                                                                "flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-[10px] text-white font-medium uppercase tracking-wider outline-none focus:border-blue-500/50",
-                                                                item.isPipelineConfigured && "opacity-60 cursor-not-allowed border-zinc-900/50 bg-zinc-950/20"
+                                <div className="flex flex-col h-full pb-4">
+                                    {/* Top 70% */}
+                                    <div className="flex-[7] min-h-0 overflow-y-auto custom-scrollbar pr-6 space-y-6 pb-4">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Database size={14} className="text-purple-400" />
+                                                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 font-semibold">Additional Registry</p>
+                                            </div>
+                                            {isEditingContact ? (
+                                                <div className="space-y-3 pb-4">
+                                                    {editAdditionalData.map((item, idx) => (
+                                                        <div key={item.id} className="flex items-center gap-2">
+                                                            <input 
+                                                                type="text" 
+                                                                value={item.key} 
+                                                                onChange={(e) => handleUpdateAdditionalKey(idx, e.target.value)} 
+                                                                placeholder="Field Name"
+                                                                disabled={item.isPipelineConfigured}
+                                                                className={cn(
+                                                                    "flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-[10px] text-white font-medium uppercase tracking-wider outline-none focus:border-blue-500/50",
+                                                                    item.isPipelineConfigured && "opacity-60 cursor-not-allowed border-zinc-900/50 bg-zinc-950/20"
+                                                                )}
+                                                            />
+                                                            <input 
+                                                                type="text" 
+                                                                value={item.value} 
+                                                                onChange={(e) => handleUpdateAdditionalValue(idx, e.target.value)} 
+                                                                placeholder="Value"
+                                                                className="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-[10px] text-white font-medium outline-none focus:border-blue-500/50"
+                                                            />
+                                                            {!item.isPipelineConfigured && (
+                                                                <button 
+                                                                    onClick={() => handleRemoveAdditionalField(idx)}
+                                                                    className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all shrink-0 cursor-pointer"
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
                                                             )}
+                                                        </div>
+                                                    ))}
+                                                    {!customFieldsEnabled && (
+                                                        <button
+                                                            onClick={handleAddAdditionalField}
+                                                            className="w-full py-2 rounded-sm border border-dashed border-zinc-800 hover:border-zinc-700 text-white/40 hover:text-white/60 text-[9px] font-medium uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+                                                        >
+                                                            <Plus size={11} /> Add Field
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : displayEntries.length > 0 ? (
+                                                <div className="grid grid-cols-1 gap-3 pb-4">
+                                                    {displayEntries.map(([key, value]) => (
+                                                        <div key={key} className="px-4 py-3.5 rounded-lg bg-white/[0.01] border border-zinc-900 flex items-center justify-between group hover:bg-white/[0.02] transition-all duration-300">
+                                                            <span className="text-[9px] font-medium text-white/30 uppercase tracking-[0.15em]">{key.replace(/_/g, ' ')}</span>
+                                                            <span className="text-[10px] text-white uppercase tracking-wider font-semibold">{String(value)}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="min-h-[250px] rounded-lg border border-dashed border-zinc-900 flex flex-col items-center justify-center gap-3 bg-white/[0.005]">
+                                                    <Database size={18} className="text-white/5" />
+                                                    <p className="text-[9px] font-medium text-white/20 uppercase tracking-[0.15em]">No Extended Data</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom 30% - Current Updates (Remarks) */}
+                                    <div className="flex-[3] min-h-[30%] shrink-0 border-t border-zinc-900 pt-4 flex flex-col mr-6">
+                                        <div className="flex items-center gap-2 mb-3 shrink-0">
+                                            <MessageSquare size={14} className="text-pink-400" />
+                                            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">Current Update</p>
+                                        </div>
+
+                                        <div className="flex-1 flex flex-col justify-center mb-3 pr-2">
+                                            {isLoadingRemarks ? (
+                                                <div className="flex items-center justify-center py-6">
+                                                    <Loader2 size={16} className="animate-spin text-white/20" />
+                                                </div>
+                                            ) : remarks.length > 0 ? (
+                                                <div className="bg-zinc-950/50 border border-zinc-900 rounded-md p-4 flex flex-col justify-between h-full relative group">
+                                                    {isEditingRemark ? (
+                                                        <textarea
+                                                            autoFocus
+                                                            value={newRemarkText}
+                                                            onChange={(e) => setNewRemarkText(e.target.value)}
+                                                            placeholder="Update current status..."
+                                                            className="flex-1 w-full bg-zinc-900/50 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white placeholder:text-white/20 focus:outline-none focus:border-pink-500/50 transition-colors resize-none custom-scrollbar min-h-[60px]"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                                    e.preventDefault();
+                                                                    handleAddRemark(e);
+                                                                }
+                                                            }}
                                                         />
-                                                        <input 
-                                                            type="text" 
-                                                            value={item.value} 
-                                                            onChange={(e) => handleUpdateAdditionalValue(idx, e.target.value)} 
-                                                            placeholder="Value"
-                                                            className="flex-1 min-w-0 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-[10px] text-white font-medium outline-none focus:border-blue-500/50"
-                                                        />
-                                                        {!item.isPipelineConfigured && (
-                                                            <button 
-                                                                onClick={() => handleRemoveAdditionalField(idx)}
-                                                                className="p-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-all shrink-0 cursor-pointer"
-                                                            >
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                                {!customFieldsEnabled && (
-                                                    <button
-                                                        onClick={handleAddAdditionalField}
-                                                        className="w-full py-2 rounded-sm border border-dashed border-zinc-800 hover:border-zinc-700 text-white/40 hover:text-white/60 text-[9px] font-medium uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-1"
+                                                    ) : (
+                                                        <p className="text-[12px] text-white/90 leading-relaxed break-words line-clamp-3 pr-6">{remarks[0].text}</p>
+                                                    )}
+                                                    
+                                                    <button 
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            if (isEditingRemark) {
+                                                                handleAddRemark(e);
+                                                            } else {
+                                                                setNewRemarkText(remarks[0].text);
+                                                                setIsEditingRemark(true);
+                                                            }
+                                                        }}
+                                                        disabled={isSubmittingRemark}
+                                                        className="absolute top-3 right-3 p-1.5 rounded bg-zinc-900 border border-zinc-800 text-white/40 hover:text-white hover:border-zinc-700 transition-all opacity-0 group-hover:opacity-100 cursor-pointer disabled:opacity-50"
                                                     >
-                                                        <Plus size={11} /> Add Field
+                                                        {isSubmittingRemark ? <Loader2 size={12} className="animate-spin" /> : isEditingRemark ? <Check size={12} className="text-pink-400" /> : <TbEdit size={12} />}
                                                     </button>
-                                                )}
-                                            </div>
-                                        ) : displayEntries.length > 0 ? (
-                                            <div className="grid grid-cols-1 gap-3 pb-4">
-                                                {displayEntries.map(([key, value]) => (
-                                                    <div key={key} className="px-4 py-3.5 rounded-lg bg-white/[0.01] border border-zinc-900 flex items-center justify-between group hover:bg-white/[0.02] transition-all duration-300">
-                                                        <span className="text-[9px] font-medium text-white/30 uppercase tracking-[0.15em]">{key.replace(/_/g, ' ')}</span>
-                                                        <span className="text-[10px] text-white uppercase tracking-wider font-semibold">{String(value)}</span>
+
+                                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5 shrink-0">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[9px] font-mono text-white/50 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded leading-none">
+                                                                {remarks[0].user_details 
+                                                                    ? `${remarks[0].user_details.first_name || ''} ${remarks[0].user_details.last_name || ''}`.trim() || remarks[0].user_details.email
+                                                                    : 'System'
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[9px] font-mono text-white/30 uppercase">
+                                                            {new Date(remarks[0].created_at).toLocaleDateString()} • {new Date(remarks[0].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="min-h-[250px] rounded-lg border border-dashed border-zinc-900 flex flex-col items-center justify-center gap-3 bg-white/[0.005]">
-                                                <Database size={18} className="text-white/5" />
-                                                <p className="text-[9px] font-medium text-white/20 uppercase tracking-[0.15em]">No Extended Data</p>
-                                            </div>
-                                        )}
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1 rounded-lg border border-dashed border-zinc-900 flex flex-col items-center justify-center gap-3 bg-white/[0.005]">
+                                                    <p className="text-[9px] font-medium text-white/20 uppercase tracking-[0.15em]">No recent updates</p>
+                                                    {isEditingRemark ? (
+                                                        <div className="w-full px-4 flex gap-2">
+                                                            <input 
+                                                                autoFocus
+                                                                type="text"
+                                                                value={newRemarkText}
+                                                                onChange={(e) => setNewRemarkText(e.target.value)}
+                                                                placeholder="Add an update..."
+                                                                className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-xs text-white placeholder:text-white/20 focus:outline-none focus:border-pink-500/50 transition-colors"
+                                                                onKeyDown={(e) => e.key === 'Enter' && handleAddRemark(e)}
+                                                            />
+                                                            <button 
+                                                                onClick={handleAddRemark}
+                                                                disabled={!newRemarkText.trim() || isSubmittingRemark}
+                                                                className="px-3 bg-pink-500/10 border border-pink-500/20 hover:bg-pink-500/20 text-pink-400 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
+                                                            >
+                                                                {isSubmittingRemark ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => setIsEditingRemark(true)}
+                                                            className="px-3 py-1.5 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-800 text-white/40 hover:text-white text-[9px] uppercase tracking-wider font-medium rounded transition-colors flex items-center gap-1.5 cursor-pointer"
+                                                        >
+                                                            <Plus size={10} /> Add Update
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ) : activeTab === 'payments' ? (
@@ -717,9 +896,9 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                         <button
                                             onClick={() => setPaymentSubTab('pay')}
                                             className={cn(
-                                                "px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.15em] transition-all rounded border font-mono cursor-pointer",
+                                                "px-3.5 py-1.5 text-[9px] font-medium uppercase transition-all rounded border font-mono cursor-pointer",
                                                 paymentSubTab === 'pay' 
-                                                    ? "bg-blue-500/10 border-blue-500/30 text-blue-400" 
+                                                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
                                                     : "bg-zinc-950/20 border-zinc-900 text-white/40 hover:text-white/60"
                                             )}
                                         >
@@ -728,9 +907,9 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                         <button
                                             onClick={() => setPaymentSubTab('ledger')}
                                             className={cn(
-                                                "px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.15em] transition-all rounded border font-mono cursor-pointer",
+                                                "px-3.5 py-1.5 text-[9px] font-medium uppercase transition-all rounded border font-mono cursor-pointer",
                                                 paymentSubTab === 'ledger' 
-                                                    ? "bg-blue-500/10 border-blue-500/30 text-blue-400" 
+                                                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
                                                     : "bg-zinc-950/20 border-zinc-900 text-white/40 hover:text-white/60"
                                             )}
                                         >
@@ -742,7 +921,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                     {paymentSubTab === 'pay' ? (
                                         <div className="flex-1 space-y-4 mt-2">
                                             <div className="flex items-center gap-2 mb-1">
-                                                <Plus size={14} className="text-blue-400" />
+                                                <Plus size={14} className="text-emerald-400" />
                                                 <h3 className="text-[10px] font-semibold text-white uppercase tracking-widest">New Payment</h3>
                                             </div>
 
@@ -764,7 +943,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                             placeholder="0"
                                                             value={paymentAmount}
                                                             onChange={(e) => setPaymentAmount(e.target.value)}
-                                                            className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-7 py-2 text-xs text-white placeholder-white/10 outline-none focus:border-blue-500/50 font-semibold font-mono"
+                                                            className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-7 py-2 text-xs text-white placeholder-white/10 outline-none focus:border-emerald-500/50 font-semibold font-mono"
                                                         />
                                                     </div>
                                                 </div>
@@ -777,24 +956,60 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                         placeholder="e.g. Licensing Fee, Initial Setup"
                                                         value={paymentFor}
                                                         onChange={(e) => setPaymentFor(e.target.value)}
-                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white placeholder-white/15 outline-none focus:border-blue-500/50"
+                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white placeholder-white/15 outline-none focus:border-emerald-500/50"
                                                     />
                                                 </div>
 
-                                                <div>
+                                                <div className="relative" ref={paymentMethodDropdownRef}>
                                                     <label className="block text-[8px] text-white/35 uppercase tracking-widest font-mono font-semibold mb-1.5">Payment Method</label>
-                                                    <select 
-                                                        value={paymentMethod}
-                                                        onChange={(e) => setPaymentMethod(e.target.value)}
-                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white outline-none focus:border-blue-500/50 cursor-pointer font-mono"
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsPaymentMethodDropdownOpen(!isPaymentMethodDropdownOpen)}
+                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white outline-none focus:border-emerald-500/50 flex items-center justify-between cursor-pointer font-mono select-none"
                                                     >
-                                                        <option value="UPI">UPI</option>
-                                                        <option value="Bank Transfer">Bank Transfer</option>
-                                                        <option value="Cash">Cash</option>
-                                                        <option value="Card">Card</option>
-                                                        <option value="Net Banking">Net Banking</option>
-                                                        <option value="Other">Other</option>
-                                                    </select>
+                                                        <span className="text-white/80 font-medium uppercase tracking-wider">{paymentMethod}</span>
+                                                        <ChevronDown 
+                                                            size={12} 
+                                                            className={cn(
+                                                                "text-white/30 transition-transform duration-200",
+                                                                isPaymentMethodDropdownOpen && "rotate-180 text-emerald-400"
+                                                            )} 
+                                                        />
+                                                    </button>
+                                                    
+                                                    {isPaymentMethodDropdownOpen && (
+                                                        <div className="absolute left-0 right-0 mt-1.5 bg-zinc-900 border border-zinc-800 rounded-md shadow-2xl z-[100] overflow-hidden py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                                                            {[
+                                                                'UPI',
+                                                                'Bank Transfer',
+                                                                'Cash',
+                                                                'Card',
+                                                                'Net Banking',
+                                                                'Other'
+                                                            ].map(method => {
+                                                                const isSelected = paymentMethod === method;
+                                                                return (
+                                                                    <button
+                                                                        key={method}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setPaymentMethod(method);
+                                                                            setIsPaymentMethodDropdownOpen(false);
+                                                                        }}
+                                                                        className={cn(
+                                                                            "w-full flex items-center justify-between px-3 py-2.5 text-xs transition-colors text-left font-mono",
+                                                                            isSelected 
+                                                                                ? "bg-emerald-500/10 text-emerald-400 font-semibold" 
+                                                                                : "text-white/70 hover:bg-white/5 hover:text-white"
+                                                                        )}
+                                                                    >
+                                                                        <span className="uppercase tracking-wider">{method}</span>
+                                                                        {isSelected && <Check size={11} className="text-emerald-400" />}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 <div>
@@ -803,7 +1018,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                         placeholder="References, remarks, transaction ID..."
                                                         value={paymentRemarks}
                                                         onChange={(e) => setPaymentRemarks(e.target.value)}
-                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white placeholder-white/15 outline-none focus:border-blue-500/50 min-h-[60px] resize-none"
+                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white placeholder-white/15 outline-none focus:border-emerald-500/50 min-h-[60px] resize-none"
                                                     />
                                                 </div>
 
@@ -814,14 +1029,14 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                         placeholder="e.g. INV-2026-001"
                                                         value={paymentInvoice}
                                                         onChange={(e) => setPaymentInvoice(e.target.value)}
-                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white placeholder-white/15 outline-none focus:border-blue-500/50 font-mono"
+                                                        className="w-full bg-zinc-950/60 border border-zinc-800 rounded px-3 py-2 text-xs text-white placeholder-white/15 outline-none focus:border-emerald-500/50 font-mono"
                                                     />
                                                 </div>
 
                                                 <button 
                                                     type="submit"
                                                     disabled={isSubmittingPayment}
-                                                    className="w-full py-2.5 rounded bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[9px] font-bold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-1.5 cursor-pointer font-mono"
+                                                    className="w-full py-2.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[9px] font-bold uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-1.5 cursor-pointer font-mono"
                                                 >
                                                     {isSubmittingPayment ? <Loader2 size={12} className="animate-spin" /> : <Wallet size={12} />} Record
                                                 </button>
@@ -839,7 +1054,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
 
                                             {isLoadingPayments ? (
                                                 <div className="flex-1 flex items-center justify-center min-h-[250px]">
-                                                    <Loader2 className="animate-spin text-blue-400" size={20} />
+                                                    <Loader2 className="animate-spin text-emerald-400" size={20} />
                                                 </div>
                                             ) : payments.length > 0 ? (
                                                 <div className="space-y-2 overflow-y-auto pr-3 custom-scrollbar max-h-[380px] shrink-0">
@@ -851,7 +1066,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                                 className={cn(
                                                                     "border transition-all duration-300 rounded-md",
                                                                     isExpanded 
-                                                                        ? "border-blue-500/30 bg-blue-500/[0.02] shadow-[0_0_15px_rgba(59,130,246,0.05)]" 
+                                                                        ? "border-emerald-500/30 bg-emerald-500/[0.02] shadow-[0_0_15px_rgba(16,185,129,0.05)]" 
                                                                         : "border-zinc-900 bg-zinc-950/40 hover:border-zinc-800 hover:bg-zinc-900/10"
                                                                 )}
                                                             >
@@ -881,7 +1096,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                                             size={12} 
                                                                             className={cn(
                                                                                 "text-white/30 transition-transform duration-300",
-                                                                                isExpanded && "rotate-180 text-blue-400"
+                                                                                isExpanded && "rotate-180 text-emerald-400"
                                                                             )} 
                                                                         />
                                                                     </div>
@@ -926,6 +1141,18 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                                                             <span className="text-[8.5px] text-white/25 font-mono">—</span>
                                                                                         )}
                                                                                     </div>
+                                                                                    <div>
+                                                                                        <span className="text-[7.5px] text-white/20 font-mono block leading-none mb-1">Recorded By</span>
+                                                                                        {payment.recorded_by_details ? (
+                                                                                            <span className="text-[8.5px] text-white/70 font-mono font-medium">
+                                                                                                {payment.recorded_by_details.first_name 
+                                                                                                    ? `${payment.recorded_by_details.first_name} ${payment.recorded_by_details.last_name || ''}`.trim() 
+                                                                                                    : payment.recorded_by_details.email}
+                                                                                            </span>
+                                                                                        ) : (
+                                                                                            <span className="text-[8.5px] text-white/25 font-mono">System</span>
+                                                                                        )}
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -945,9 +1172,71 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                     )}
                                 </div>
                             ) : (
-                                <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[300px]">
-                                    <Clock size={20} className="text-white/5" />
-                                    <h3 className="text-[9px] font-medium text-white/25 uppercase tracking-[0.15em]">No Recent Activity Logs</h3>
+                                <div className="flex-1 flex flex-col min-h-[300px] mt-2">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <Clock size={14} className="text-white/40" />
+                                        <h3 className="text-[10px] font-semibold text-white uppercase tracking-widest">Activity History</h3>
+                                    </div>
+
+                                    {isLoadingLogs ? (
+                                        <div className="flex-1 flex items-center justify-center min-h-[250px]">
+                                            <Loader2 className="w-5 h-5 animate-spin text-white/20" />
+                                        </div>
+                                    ) : logs && logs.length > 0 ? (
+                                        <div className="relative pl-5 border-l border-zinc-900 space-y-6 py-2 ml-2">
+                                            {logs.map((log) => {
+                                                const date = new Date(log.created_at);
+                                                const formattedDate = date.toLocaleDateString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    year: 'numeric'
+                                                });
+                                                const formattedTime = date.toLocaleTimeString('en-US', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                });
+
+                                                return (
+                                                    <div key={log.id} className="relative group">
+                                                        {/* Timeline node */}
+                                                        <div className="absolute -left-[25px] top-1 w-2 h-2 rounded-full bg-zinc-950 border border-zinc-800 group-hover:border-emerald-500/50 transition-colors" />
+
+                                                        <div className="flex flex-col space-y-1.5 bg-zinc-950/20 border border-zinc-900 rounded p-3.5 hover:bg-zinc-950/40 hover:border-zinc-800/80 transition-all duration-300">
+                                                            <div className="flex items-start justify-between gap-4">
+                                                                <span className="text-[9.5px] font-medium text-white/80 uppercase tracking-wide leading-relaxed">
+                                                                    {log.description}
+                                                                </span>
+                                                                <span className="text-[8px] font-mono text-white/30 uppercase shrink-0 mt-0.5">
+                                                                    {formattedDate} • {formattedTime}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                                                                <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">
+                                                                    Event Type: <span className="text-white/40">{log.activity_type}</span>
+                                                                </span>
+                                                                
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">Actor</span>
+                                                                    <span className="text-[8.5px] font-mono text-white/50 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded leading-none">
+                                                                        {log.user_details 
+                                                                            ? `${log.user_details.first_name || ''} ${log.user_details.last_name || ''}`.trim() || log.user_details.email
+                                                                            : 'System'
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[250px] rounded-lg border border-dashed border-zinc-900 bg-white/[0.005]">
+                                            <Clock size={20} className="text-white/5" />
+                                            <p className="text-[9px] font-medium text-white/20 uppercase tracking-[0.15em]">No activity logs recorded yet</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
