@@ -16,6 +16,7 @@ import CreatePipelineModal from "../components/CreatePipelineModal";
 import SearchDialog from "../components/SearchDialog";
 import DealDetailsDialog from "../components/DealDetailsDialog";
 import AddLeadDialog from "../components/AddLeadDialog";
+import AddLeadStructured from "../components/AddLeadStructured";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import Actions from "../components/Actions";
 import { useUsers, useDepartments } from "../../admin/hooks/useUsers";
@@ -509,29 +510,55 @@ const CRM = () => {
         }}
       />
 
-      <AddLeadDialog
-        isOpen={isAddLeadOpen}
-        onClose={() => setIsAddLeadOpen(false)}
-        pipeline={selectedPipeline}
-        stages={stages}
-        onSuccess={(newDealRaw) => {
-          if (newDealRaw && newDealRaw.stage) {
-            const transformedDeal = transformDeal(newDealRaw);
-            setDeals(prev => {
-              const stageId = newDealRaw.stage;
-              const colData = prev[stageId] || { items: [], count: 0, hasMore: false, nextPage: null };
-              return {
-                ...prev,
-                [stageId]: {
-                  ...colData,
-                  items: [transformedDeal, ...colData.items],
-                  count: colData.count + 1
-                }
-              };
-            });
-          }
-        }}
-      />
+      {selectedPipeline?.custom_fields_enabled ? (
+        <AddLeadStructured
+          isOpen={isAddLeadOpen}
+          onClose={() => setIsAddLeadOpen(false)}
+          pipeline={selectedPipeline}
+          stages={stages}
+          onSuccess={(newDealRaw) => {
+            if (newDealRaw && newDealRaw.stage) {
+              const transformedDeal = transformDeal(newDealRaw);
+              setDeals(prev => {
+                const stageId = newDealRaw.stage;
+                const colData = prev[stageId] || { items: [], count: 0, hasMore: false, nextPage: null };
+                return {
+                  ...prev,
+                  [stageId]: {
+                    ...colData,
+                    items: [transformedDeal, ...colData.items],
+                    count: colData.count + 1
+                  }
+                };
+              });
+            }
+          }}
+        />
+      ) : (
+        <AddLeadDialog
+          isOpen={isAddLeadOpen}
+          onClose={() => setIsAddLeadOpen(false)}
+          pipeline={selectedPipeline}
+          stages={stages}
+          onSuccess={(newDealRaw) => {
+            if (newDealRaw && newDealRaw.stage) {
+              const transformedDeal = transformDeal(newDealRaw);
+              setDeals(prev => {
+                const stageId = newDealRaw.stage;
+                const colData = prev[stageId] || { items: [], count: 0, hasMore: false, nextPage: null };
+                return {
+                  ...prev,
+                  [stageId]: {
+                    ...colData,
+                    items: [transformedDeal, ...colData.items],
+                    count: colData.count + 1
+                  }
+                };
+              });
+            }
+          }}
+        />
+      )}
 
       <CreatePipelineModal 
         isOpen={isCreateModalOpen}

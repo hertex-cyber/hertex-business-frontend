@@ -1,69 +1,31 @@
-# ByteHive CRM Frontend - Design & Architecture
+# ByteHive CRM Frontend - Design & Architecture Reference
 
-This document outlines the core design system, visual philosophy, and component patterns that define the ByteHive "Industrial Instrument" aesthetic.
+This document defines the core design system, visual philosophy, component blueprints, and styling guidelines that govern the **ByteHive "Industrial Instrument"** aesthetic. It serves as a master reference guide for developers to ensure perfect styling and user experience consistency across all modules of the platform.
+
+---
 
 ## 🎨 Design Philosophy: "Industrial Instrument"
 
-ByteHive is designed to feel like a high-end, precision technical instrument rather than a generic web application. The aesthetic balances a minimalist dark mode with atmospheric depth and mechanical definition.
+ByteHive is designed to feel like a high-end, high-performance precision technical instrument rather than a generic web application. The aesthetic balances a minimalist dark mode with atmospheric depth, mechanical definition, and high data density.
 
 ### 🌌 Atmospheric Depth
-- **The Pitched Void**: The primary background is always a true **Black (#000000)**, but it is never a flat void.
-- **Structural Grid**: A fixed `radial-gradient` point grid (32px intervals) provides a subtle sense of scale and technical precision.
-- **Ambient Glow**: Soft, moving radial "blobs" in the background (using `blur-[120px]`) provide tactile depth and prevent visual fatigue.
+*   **The Pitched Void**: The primary background is always a true **Black (#000000)**, but it is never flat.
+*   **Structural Grid**: A fixed `radial-gradient` point grid (32px intervals) provides a subtle sense of scale and technical precision.
+*   **Ambient Glows**: Soft, moving radial "blobs" in the background (using `blur-[120px]` and localized top-corner glows) provide depth and prevent visual fatigue.
 
 ### 💡 Lighting Architecture: "Top-Down Illumination"
-- **Instrument Header**: Headers use a semi-transparent `bg-black/50` with high-intensity `backdrop-blur-xl`.
-- **Radial Lighting**: All primary page headers are illuminated from the top-center using a radial gradient that fades into the repository area.
-- **Micro-Glows**: Interactive elements (stats, buttons, rows) feature subtle blue or neutral glows on hover to simulate a digital "powered-on" state.
+*   **Instrument Header**: Headers use a semi-transparent `bg-black/50` with high-intensity `backdrop-blur-xl` and a sharp bottom divider (`border-b border-zinc-800`).
+*   **Radial Lighting**: All primary page headers are illuminated from the top-center using a radial gradient that fades into the data repository area.
+*   **Micro-Glows**: Interactive elements (stats, buttons, rows, active inputs) feature subtle blue or neutral glows on hover/focus to simulate a digital "powered-on" state.
 
 ### ⚙️ Materiality & Borders
-- **Mechanical Gray**: Primary data containers (Kanban stages, Repositories, Modals) use a solid **`bg-zinc-900/30`** background.
-- **Sharp Definition**: Borders are never "soft" or blurry. Use **`border-zinc-800`** for primary container definition and `border-white/5` for ultra-subtle internal dividers.
-- **Refined Glass**: Glassmorphism is used sparingly for overlays, typically with `bg-white/[0.02]` and `border-white/10`.
+*   **Mechanical Gray**: Primary data containers (Kanban stages, Repositories, Modals) use a solid **`bg-zinc-900/30`** background.
+*   **Sharp Definition**: Borders are never "soft" or blurry. Use **`border-zinc-800`** for primary container definition and `border-white/5` for ultra-subtle internal dividers.
+*   **Refined Glass**: Glassmorphism is used sparingly for overlays, typically with `bg-white/[0.02]` and `border-white/10`.
 
 ---
 
-## 🛠 Tech Stack
-- **Framework**: [React 19](https://react.dev/)
-- **Build Tool**: [Vite 8](https://vitejs.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **UI Components**: Custom-built with Radix/shadcn primitives
-- **Icons**: [Lucide React](https://lucide.dev/) (Thin/Normal weights only)
-- **Utility**: Use `cn()` from `@/lib/utils` for conditional class merging
-
----
-
-## 📐 Layout Architecture
-
-### Standard Spacing Scale
-| Element | Spacing |
-|---------|---------|
-| Page padding | `px-10 py-8` |
-| Section gap | `space-y-10` or `gap-8` |
-| Card grid gap | `gap-6` |
-| Card internal padding | `p-6` |
-| Button groups | `gap-4` |
-| Modal width (Wide) | `max-w-3xl` |
-| Modal width (Slim) | `max-w-md` |
-
-### The Unified Header (Standard Pattern)
-```jsx
-<header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
-  {/* Left: Component Identity */}
-  <div className="space-y-1">
-    <h1 className="text-2xl font-semibold text-white">Page Title</h1>
-    <p className="text-sm text-white/40">Page description</p>
-  </div>
-  {/* Right: Action Toolbar (Search Refinement / CTEs) */}
-  <div className="flex items-center gap-3">
-    {/* Action buttons go here */}
-  </div>
-</header>
-```
-
----
-
-## 🎭 Color System
+## 🎭 Color & Accent Tokens
 
 ### Technical Base
 ```css
@@ -73,79 +35,127 @@ ByteHive is designed to feel like a high-end, precision technical instrument rat
 --accent: #3b82f6           /* blue-500 - Operational primary color */
 ```
 
-### High-Density Transparency Scale
-| Token | usage |
-|-------|-------|
-| `zinc-900/30` | Standard Mechanical Background |
-| `white/10` | Interactive Hover States |
-| `white/40` | Tertiary Labels / Muted Meta-data |
-| `white/60` | Body Text / Primary Labels |
+### Contrast Highlights & Accents
+To maintain a high-end utilitarian look, accents are applied via low-saturation, semi-transparent fills combined with matching borders and colored text. Avoid full-bleed solid color fills unless explicitly required.
 
-### Global Status Indicators
-| Status | Accent |
-|--------|-------|
-| **Live/Primary** | `blue-500` |
-| **Success** | `green-500` |
-| **Warning** | `amber-500` |
-| **Critical** | `red-500` |
+| Accent Category | CSS Classes | Usage Example |
+| :--- | :--- | :--- |
+| **System/Primary (Blue)** | `bg-blue-500/10 text-blue-400 border-blue-500/20` | Active pipelines, primary tools, standard dialog states |
+| **Custom/Settings (Amber)** | `bg-amber-500/10 text-amber-400 border-amber-500/20` | Toggled active status, custom fields enabled, warnings |
+| **Success/Value (Emerald)** | `bg-emerald-500/10 text-emerald-400 border-emerald-500/20` | Deal values, win statuses, positive metrics |
+| **Critical/Alert (Red)** | `bg-red-500/10 text-red-500 border-red-500/20` | Validation errors, delete confirmations, lost states |
+
+---
+
+## 📐 Layout Architecture
+
+### Standard Spacing Scale
+*   **Page Padding**: `px-10 py-8` (Strictly uniform across all dashboards).
+*   **Section Gap**: `space-y-10` or `gap-8`.
+*   **Card Grid Gap**: `gap-6` (Grid cards, actions, columns).
+*   **Card Internal Padding**: `p-6` (Dense, legible padding).
+*   **Button Groups**: `gap-3` or `gap-4`.
+
+### The Unified Header (Standard Pattern)
+Used at the top of both the CRM and Contacts modules to establish perfect layout symmetry:
+```jsx
+<header className="px-10 py-8 flex justify-between items-center border-b border-white/5 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
+  <div className="space-y-0.5">
+    <h1 className="text-2xl font-semibold text-white">Page Title</h1>
+    <p className="text-sm text-white/40">Page description / sub-text</p>
+  </div>
+  
+  <div className="flex items-center gap-2">
+    {/* Buttons, Actions, Tools, or Ingestion triggers */}
+  </div>
+</header>
+```
 
 ---
 
 ## 🧩 Component Blueprints
 
-### The Technical Repository (Table/Grid)
-Repositories must be house in a visible, minimum-height container to anchor the page.
-- **Base Style**: `bg-zinc-900/30 border border-zinc-800 rounded-xl shadow-xl min-h-[500px]`
-- **Row Style**: `hover:bg-white/[0.02] transition-all duration-300 border-b border-zinc-800`
-- **Fixed Header/Footer**: Table headers and footers should be fixed, with only the content area scrollable
+### 1. High-Density Structured Modals (Settings-Driven Forms)
+Used for forms whose fields are configured dynamically (e.g., `AddLeadStructured.jsx`).
+*   **Width**: Snug, centered **`max-w-lg`** (512px) for maximum readability and high layout density.
+*   **Grid Structure**: Responsive 2-in-a-row CSS Grid:
+    ```jsx
+    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+      {/* Symmetrical fields are rendered as col-span-2 sm:col-span-1 */}
+    </div>
+    ```
+*   **Minimalist Labels**: Clean, lightweight labels without bold weights or wide letter trackings to maintain terminal-like elegance:
+    ```jsx
+    <label className="text-[10px] text-white/40 uppercase flex items-center gap-1">
+      Name <span className="text-red-500">*</span>
+    </label>
+    ```
+*   **Micro-Size Badges**: For dense, high-end visual indicators under headers:
+    ```jsx
+    <span className="text-[9px] px-2 py-0.5 rounded border uppercase bg-amber-500/10 text-amber-400 border-amber-500/20">
+      Custom Fields Enabled
+    </span>
+    ```
 
-### Interactive Stat Cards
-- **Base Style**: `p-6 bg-zinc-900/30 border border-zinc-800 rounded-2xl`
-- **Animation**: Subtle scale up (`hover:scale-[1.02]`) and color shift for icon containers.
+### 2. The Split-Screen Registry Modal (Details/Comprehensive Forms)
+Used for deep data exploration or massive detail entry (e.g., `AddLeadDialog.jsx`, `ContactDetailModal.jsx`).
+*   **Width**: Symmetrical **`max-w-3xl`** (768px).
+*   **Layout**: Symmetrical double columns separated by a crisp 1px vertical divider:
+    ```jsx
+    <div className="flex relative min-h-0 flex-1">
+      {/* Left Column: Primary Details */}
+      <div className="flex-1 overflow-y-auto pr-3">...</div>
+      
+      {/* Divider */}
+      <div className="w-[1px] bg-white/5 mx-6 shrink-0" />
+      
+      {/* Right Column: Registry Ledger / Custom fields */}
+      <div className="flex-1 overflow-y-auto pr-3">...</div>
+    </div>
+    ```
 
-### High-Capacity Buttons
-- **Primary Action**: Blue background, text-[10px], rounded-lg, tracking-widest, font-medium.
-- **Secondary Tool**: `bg-zinc-900/30` with subtle zinc borders, strictly `!w-auto`.
-- **Icon-Only Tool Buttons**: `h-8 w-8 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center`
+### 3. Sliding Navigation Tabs (Pill-Based Switcher)
+Primary mode switcher for dashboard views. Must be used for all tab navigation to ensure consistency.
+*   **Structure**: A fixed-width container with `relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md`.
+*   **Highlighter**: A sliding `absolute inset-y-0 bg-blue-500/20` div with `transition-all duration-300` that glides between active states.
+*   **Geometry**: Internal edges of the highlighter are **sharp** (e.g., `rounded-l rounded-r-none` when left-aligned, `rounded-r rounded-l-none` when right-aligned) to simulate a connected mechanical assembly.
+*   **Hierarchy**: 
+  *   *Inactive*: `text-white/50 hover:text-white/80`
+  *   *Active*: `text-blue-400`
+*   **Typography**: All tabs must use `text-[10px] font-medium uppercase tracking-[0.2em]`
+*   **JSX Example (2 tabs - e.g., Contacts vs Imports)**:
+```jsx
+<div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
+  <div 
+    className={cn(
+      "absolute inset-y-0 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
+      activeTab === TABS.CONTACTS 
+        ? "left-0 w-1/2 rounded-l rounded-r-none bg-blue-500/20" 
+        : "left-1/2 w-1/2 rounded-r rounded-l-none bg-blue-500/20"
+    )}
+  />
+  <button
+    onClick={() => setActiveTab(TABS.CONTACTS)}
+    className={cn(
+      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+      activeTab === TABS.CONTACTS ? "text-blue-400" : "text-white/50 hover:text-white/80"
+    )}
+  >
+    Contacts
+  </button>
+  <button
+    onClick={() => setActiveTab(TABS.IMPORTS)}
+    className={cn(
+      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+      activeTab === TABS.IMPORTS ? "text-blue-400" : "text-white/50 hover:text-white/80"
+    )}
+  >
+    Imports
+  </button>
+</div>
+```
 
-### The Industrial Registry (Detail Modals)
-Used for deep data exploration (Contacts, Deal Details).
-- **Layout**: Two-column split-screen (`max-w-3xl`) with a connected vertical divider.
-- **Divider**: A subtle `w-px bg-white/5` line that spans exactly from header border to footer border.
-- **Scroll Architecture**: Independent scrolling for the registry section while maintaining a fixed header and footer.
-- **Corner Radius**: Standardized to `rounded-lg` for the main container and avatar; `rounded-md` for internal data badges.
-- **Action Toolbar**: Top-right placement for record management (Edit/Delete).
-  - **Edit**: `TbEdit` (size 21, blue accent)
-  - **Delete**: `Trash2` (size 19, red accent)
-- **Portal**: Always use React's `createPortal` for modals, rendering to `document.body`
-
-### Standard Global Loader (`RingLoader`)
-Used for all async states and pipeline transitions.
-- **Design**: A 12-bar technical spinner (`54px` x `54px`).
-- **Interaction**: Uses a non-linear fade animation (`fade458`) to simulate a rotating "powered-on" mechanical sensor.
-- **Materiality**: Subtle `rgb(128, 128, 128)` bars with micro-shadows for tactile definition against the void.
-
-### Module Configuration Cards (The Actions Grid)
-Used for high-level operational modules.
-- **Visuals**: `bg-zinc-900/30` with color-coded ambient glows (`blur-3xl`, `opacity-20`) in the top-right corner on hover.
-- **Micro-Animations**: 
-  - Card: Subtle `scale-[1.02]` on hover.
-  - Icons: `scale-110` with zero rotation (maintain level horizon).
-- **Typography**: Industrial Medium (Upper case + Tracking). Footer utilizes a "Configure" CTE with a directional arrow.
-
-### Sliding Navigation Tabs (Pill-Based)
-Primary mode switcher for dashboard views. Must be used for all tab navigation.
-- **Structure**: A fixed-width container with `relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md`.
-- **Highlighter**: A sliding `absolute inset-y-0 bg-blue-500/20` div with `transition-all duration-300` that glides between active states.
-- **Width Calculation**: 
-  - 2 tabs: `w-1/2` for each
-  - 3 tabs: `w-1/3` for each
-- **Geometry**: Internal edges of the highlighter are **sharp** (e.g., `rounded-l rounded-r-none` when left-aligned, `rounded-r rounded-l-none` when right-aligned) to simulate a connected mechanical assembly.
-- **Hierarchy**: 
-  - Inactive tabs: `text-white/50 hover:text-white/80`
-  - Active tabs: `text-blue-400`
-- **Typography**: All tabs must use `text-[10px] font-medium uppercase tracking-[0.2em]`
-- **JSX Example (3 tabs)**:
+*   **JSX Example (3 tabs - e.g., Users vs Groups vs Audit Logs)**:
 ```jsx
 <div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
   <div 
@@ -183,75 +193,45 @@ Primary mode switcher for dashboard views. Must be used for all tab navigation.
       activeTab === 'audit' ? "text-blue-400" : "text-white/50 hover:text-white/80"
     )}
   >
-    Audit Log
-  </button>
-</div>
-```
-- **JSX Example (2 tabs)**:
-```jsx
-<div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
-  <div 
-    className={cn(
-      "absolute inset-y-0 shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all duration-300 ease-out z-0",
-      activeTab === TABS.CONTACTS 
-        ? "left-0 w-1/2 rounded-l rounded-r-none bg-blue-500/20" 
-        : "left-1/2 w-1/2 rounded-r rounded-l-none bg-blue-500/20"
-    )}
-  />
-  <button
-    onClick={() => setActiveTab(TABS.CONTACTS)}
-    className={cn(
-      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
-      activeTab === TABS.CONTACTS ? "text-blue-400" : "text-white/50 hover:text-white/80"
-    )}
-  >
-    Contacts
-  </button>
-  <button
-    onClick={() => setActiveTab(TABS.IMPORTS)}
-    className={cn(
-      "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
-      activeTab === TABS.IMPORTS ? "text-blue-400" : "text-white/50 hover:text-white/80"
-    )}
-  >
-    Imports
+    Audit Logs
   </button>
 </div>
 ```
 
-### List View Modal (GroupUserModal style)
-For showing a list of items in a modal:
-- **Structure**: Uses `createPortal` to render to `document.body`
-- **Layout**: Header with title and icon, scrollable content area, footer with close button
-- **Styling**: Uses `bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]`
-- **Content**: Grid-based layout for list items with perfect alignment
+### 4. High-Capacity Tool Buttons & Search Dialogs
+*   **Tool Triggers**: Micro buttons for operational utilities should use uniform dimensions:
+    `h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group`
+*   **Secondary Tool Actions**: `bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-800 text-white/60` to keep secondary operations subtle.
+
+### 5. Reusable Component Button Variants (`Button.jsx`)
+Used for master page actions, headers, and standard layout triggers:
+*   **Primary Variant (Stark Contrast)**: Solid white with black text.
+    `bg-white text-black hover:bg-gray-100 active:scale-[0.98]`
+*   **Secondary Variant (Translucent Glass)**: Transparent white with light border.
+    `bg-white/5 text-white border border-white/10 hover:bg-white/10 active:scale-[0.98]`
+
+### 6. Unified Form Dialog Buttons (Industrial Scale)
+All modal footers and dialog sheets must utilize our signature HSL semi-transparent color states:
+*   **Primary / Save Button**: Uses the technical Blue Accent for active confirmation states.
+    `px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all`
+*   **Destructive / Delete Button**: Uses the high-intensity Red Accent for permanent removals.
+    `px-4 py-2 rounded-lg text-xs bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors`
+*   **Secondary / Cancel Button**: Uses the muted Zinc-Gray Accent.
+    `px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]`
 
 ---
 
 ## 📋 Operational Design Checklist
 
-Every new feature must satisfy:
-- [ ] Does it use the **Pitched Void** (#000000) as the base?
-- [ ] Are primary containers using the **`bg-zinc-900/30`** / **`border-zinc-800`** material combo?
-- [ ] Is the header using **`backdrop-blur-xl`** and anchored with a zinc-800 border?
-- [ ] Are badges and labels following the **Industrial Typography** (Upper case + Wide tracking + Medium weight)?
-- [ ] Does the page feel like a specific **Technical Instrument** (high scannability, no fluff)?
-- [ ] Are tabs using the **Sliding Navigation Tabs** pattern if applicable?
-- [ ] Are modals using **createPortal**?
-- [ ] Is `cn()` being used for conditional Tailwind class merging?
-
----
-
-## 🏗 Architecture: Domain-Driven Modular Structure
-
-```text
-src/
-├── components/             # Global primitives (Buttons, Inputs, Shell)
-├── context/                # Global state (Auth, Notification)
-├── modules/
-│   ├── crm/                # Pipeline/Deals domain
-│   ├── contacts/           # Repository/Ingestion domain
-│   ├── admin/              # User/Organization management domain
-│   ├── invoice/            # Financial/PDF domain
-│   └── ...                 # Future modules
-```
+Every new feature and screen built inside ByteHive must satisfy this design audit:
+- [ ] Does it use **True Black (#000000)** as the base canvas?
+- [ ] Are primary components utilizing the **`bg-zinc-900/30`** and **`border-zinc-800`** mechanical container combo?
+- [ ] Are secondary internal dividers utilizing **`border-white/5`**?
+- [ ] Do page headers align to the **Unified Header** spacing scheme (`px-10 py-8` with matching heights)?
+- [ ] Are navigation state shifts built around the **Sliding Navigation Tabs** highlighter architecture?
+- [ ] Do settings-driven structured forms use the **`max-w-lg`** snug 2-in-a-row grid layout?
+- [ ] Do details/comprehensive forms use the **`max-w-3xl`** split-screen registry layout?
+- [ ] Are input labels clean and elegant (`text-[10px] text-white/40 uppercase` without bold weight or letters tracking)?
+- [ ] Are validation badges styled with the unified transparent accent scale (`bg-color/10 border-color/20 text-color`)?
+- [ ] Are all portal triggers bound to `document.body` using **`createPortal`**?
+- [ ] Is Tailwind class merging handled correctly using the **`cn()`** utility?

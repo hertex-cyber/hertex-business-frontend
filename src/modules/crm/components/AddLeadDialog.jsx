@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, User, Phone, Mail, Building, Briefcase, DollarSign, Loader2, Plus, Trash2, Database } from 'lucide-react';
+import { X, User, Loader2, Plus, Trash2, Database } from 'lucide-react';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 
@@ -12,9 +12,6 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
         name: '',
         email: '',
         phone: '',
-        job_title: '',
-        company_name: '',
-        deal_value: '0',
     });
 
     const [customFields, setCustomFields] = useState([]);
@@ -40,12 +37,12 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
         e.preventDefault();
         setError(null);
 
-        if (!formData.name) {
+        if (!formData.name.trim()) {
             setError("Name is required.");
             return;
         }
 
-        if (!formData.email && !formData.phone) {
+        if (!formData.email.trim() && !formData.phone.trim()) {
             setError("Either Email or Phone is required.");
             return;
         }
@@ -67,11 +64,11 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
 
             const contactPayload = {
                 name: formData.name,
-                email: formData.email || null,
-                phone: formData.phone || null,
-                job_title: formData.job_title || null,
-                company_name: formData.company_name || null,
-                custom_fields: customFieldsObj
+                email: formData.email.trim() || null,
+                phone: formData.phone.trim() || null,
+                job_title: null,
+                company_name: null,
+                additional_data: customFieldsObj
             };
 
             const contactRes = await axios.post('/api/contacts/', contactPayload);
@@ -83,7 +80,7 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
                 contact: contactId,
                 pipeline: pipeline.id,
                 stage: firstStage.id,
-                value: parseFloat(formData.deal_value) || 0,
+                value: 0,
                 priority: 'Medium'
             };
 
@@ -93,7 +90,7 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
             onClose();
 
             setFormData({
-                name: '', email: '', phone: '', job_title: '', company_name: '', deal_value: '0'
+                name: '', email: '', phone: ''
             });
             setCustomFields([]);
 
@@ -118,8 +115,8 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
                 onClick={() => !isSubmitting && onClose()}
             />
             
-            {/* The Industrial Registry Modal Base */}
-            <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            {/* Redesigned Snug Container Base */}
+            <div className="relative w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
                 
                 {/* Header (Top-Down Illumination) */}
                 <div className="px-6 py-5 border-b border-zinc-800 flex items-start justify-between shrink-0 bg-black/50 backdrop-blur-xl rounded-t-lg">
@@ -127,8 +124,8 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
                         <div className="flex items-center gap-5">
                             <div>
                                 <h2 className="text-lg font-medium text-white">Add New Lead</h2>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] px-3 py-1 rounded-md border font-medium uppercase tracking-[0.2em] bg-blue-500/10 text-blue-400 border-blue-500/20">
+                                <div className="flex items-center gap-2 mt-1.5">
+                                    <span className="text-[9px] px-2 py-0.5 rounded border uppercase bg-blue-500/10 text-blue-400 border-blue-500/20">
                                         Pipeline: {pipeline?.name}
                                     </span>
                                 </div>
@@ -144,7 +141,7 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
                     </div>
                 </div>
 
-                {/* Form Content - Split Screen */}
+                {/* Form Content - High Density Single Column */}
                 <form id="add-lead-form" onSubmit={handleSubmit} className="overflow-hidden p-6 flex flex-col min-h-0 bg-zinc-900/30">
                     
                     {error && (
@@ -153,149 +150,109 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
                         </div>
                     )}
 
-                    <div className="flex relative min-h-0 flex-1">
+                    <div className="relative min-h-0 flex-1">
                         
-                        {/* Left Column: Primary Details */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ maxHeight: '420px' }}>
-                            <div className="space-y-6 pb-4 pr-3">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <User size={14} className="text-blue-400" />
-                                        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/60">Primary Details</p>
-                                    </div>
-                                    
-                                    <div className="space-y-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">Name *</label>
-                                            <input
-                                                type="text"
-                                                value={formData.name}
-                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                                className="w-full bg-black/40 border border-zinc-800 rounded-md px-3 py-2 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-black/60 transition-all hover:bg-white/[0.02]"
-                                                placeholder="John Doe"
-                                            />
-                                        </div>
+                        <div className="w-full overflow-y-auto overflow-x-hidden custom-scrollbar pr-3 space-y-6" style={{ maxHeight: '420px' }}>
+                            {/* Primary Details Header */}
+                            <div className="flex items-center gap-2 mb-2 border-b border-zinc-900 pb-3">
+                                <User size={14} className="text-blue-400" />
+                                <p className="text-[10px] uppercase text-white/60">Primary Details</p>
+                            </div>
+                            
+                            {/* Form Input Matrix */}
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                {/* Name - Full Width */}
+                                <div className="space-y-1.5 col-span-2">
+                                    <label className="text-[10px] text-white/40 uppercase flex items-center gap-1">
+                                        Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        className="w-full bg-black/40 border border-zinc-800 focus:border-blue-500/50 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none transition-all hover:bg-white/[0.02]"
+                                        placeholder="John Doe"
+                                    />
+                                </div>
 
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">Email</label>
-                                            <input
-                                                type="email"
-                                                value={formData.email}
-                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                                className="w-full bg-black/40 border border-zinc-800 rounded-md px-3 py-2 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-black/60 transition-all hover:bg-white/[0.02]"
-                                                placeholder="john@example.com"
-                                            />
-                                        </div>
+                                {/* Email */}
+                                <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                                    <label className="text-[10px] text-white/40 uppercase flex items-center gap-1">
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        className="w-full bg-black/40 border border-zinc-800 focus:border-blue-500/50 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none transition-all hover:bg-white/[0.02]"
+                                        placeholder="john@example.com"
+                                    />
+                                </div>
 
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">Phone</label>
-                                            <input
-                                                type="text"
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                className="w-full bg-black/40 border border-zinc-800 rounded-md px-3 py-2 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-black/60 transition-all hover:bg-white/[0.02]"
-                                                placeholder="+1 234 567 890"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] text-emerald-500/80 uppercase tracking-[0.2em] font-medium">Deal Value</label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
-                                                value={formData.deal_value}
-                                                onChange={(e) => setFormData({ ...formData, deal_value: e.target.value })}
-                                                className="w-full bg-black/40 border border-zinc-800 rounded-md px-3 py-2 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-emerald-500/50 focus:bg-black/60 transition-all hover:bg-white/[0.02]"
-                                                placeholder="0.00"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">Job Title</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.job_title}
-                                                    onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-                                                    className="w-full bg-black/40 border border-zinc-800 rounded-md px-3 py-2 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-black/60 transition-all hover:bg-white/[0.02]"
-                                                    placeholder="CEO"
-                                                />
-                                            </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">Company</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.company_name}
-                                                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                                                    className="w-full bg-black/40 border border-zinc-800 rounded-md px-3 py-2 text-sm text-white/60 placeholder:text-white/20 focus:outline-none focus:border-blue-500/50 focus:bg-black/60 transition-all hover:bg-white/[0.02]"
-                                                    placeholder="Acme Corp"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
+                                {/* Phone */}
+                                <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                                    <label className="text-[10px] text-white/40 uppercase flex items-center gap-1">
+                                        Phone
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        className="w-full bg-black/40 border border-zinc-800 focus:border-blue-500/50 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none transition-all hover:bg-white/[0.02]"
+                                        placeholder="+1 234 567 890"
+                                    />
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Exact Divider Spanning Full Height */}
-                        <div className="w-[1px] bg-white/5 mx-6 shrink-0 relative" />
-
-                        {/* Right Column: Additional Registry */}
-                        <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ maxHeight: '420px' }}>
-                            <div className="space-y-6 pb-4 pr-3">
-                                <div>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className="flex items-center gap-2">
-                                            <Database size={14} className="text-amber-400" />
-                                            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/60">Additional Registry</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleAddCustomField}
-                                            className="h-8 px-3 rounded-md bg-zinc-900/50 border border-zinc-800 text-[10px] uppercase tracking-[0.2em] text-white/40 hover:text-white hover:bg-zinc-800 transition-all font-medium flex items-center gap-1"
-                                        >
-                                            <Plus size={12} /> Add Field
-                                        </button>
+                            {/* Additional Registry Section */}
+                            <div className="space-y-4 pt-4 border-t border-zinc-900">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Database size={14} className="text-amber-400" />
+                                        <p className="text-[10px] uppercase text-white/60">Additional Registry</p>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddCustomField}
+                                        className="h-7 px-3 rounded-md bg-zinc-900/50 border border-zinc-800 text-[9px] uppercase text-white/40 hover:text-white hover:bg-zinc-800 transition-all font-medium flex items-center gap-1"
+                                    >
+                                        <Plus size={12} /> Add Field
+                                    </button>
+                                </div>
 
-                                    <div className="space-y-3">
-                                        {customFields.length === 0 ? (
-                                            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] text-center py-8 border border-dashed border-zinc-800 rounded-md bg-black/20">
-                                                No registry entries
-                                            </p>
-                                        ) : (
-                                            customFields.map((field, idx) => (
-                                                <div key={idx} className="flex flex-col gap-2 p-4 rounded-md border border-zinc-800 bg-black/40 hover:bg-white/[0.02] transition-colors">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-medium">Field #{idx + 1}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveCustomField(idx)}
-                                                            className="h-6 w-6 rounded-md bg-zinc-900/50 border border-zinc-800 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all flex items-center justify-center shrink-0"
-                                                            title="Delete Entry"
-                                                        >
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    </div>
-                                                    <input
-                                                        type="text"
-                                                        value={field.key}
-                                                        onChange={(e) => handleUpdateCustomField(idx, 'key', e.target.value)}
-                                                        className="w-full bg-zinc-950/50 border border-zinc-800 rounded-md px-3 py-1.5 text-[11px] text-white/60 placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 focus:bg-black/60 transition-all"
-                                                        placeholder="Registry Key (e.g. Industry)"
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={field.value}
-                                                        onChange={(e) => handleUpdateCustomField(idx, 'value', e.target.value)}
-                                                        className="w-full bg-zinc-950/50 border border-zinc-800 rounded-md px-3 py-1.5 text-[11px] text-white/60 placeholder:text-white/20 focus:outline-none focus:border-amber-500/50 focus:bg-black/60 transition-all"
-                                                        placeholder="Value (e.g. Technology)"
-                                                    />
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
+                                <div className="space-y-3">
+                                    {customFields.length === 0 ? (
+                                        <p className="text-[9px] uppercase text-white/20 text-center py-6 border border-dashed border-zinc-800 rounded-md bg-black/20">
+                                            No registry entries
+                                        </p>
+                                    ) : (
+                                        customFields.map((field, idx) => (
+                                            <div key={idx} className="flex gap-2 items-center">
+                                                <input
+                                                    type="text"
+                                                    value={field.key}
+                                                    onChange={(e) => handleUpdateCustomField(idx, 'key', e.target.value)}
+                                                    className="flex-1 min-w-0 bg-black/40 border border-zinc-800 focus:border-amber-500/50 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none transition-all hover:bg-white/[0.02]"
+                                                    placeholder="Key (e.g. Industry)"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={field.value}
+                                                    onChange={(e) => handleUpdateCustomField(idx, 'value', e.target.value)}
+                                                    className="flex-1 min-w-0 bg-black/40 border border-zinc-800 focus:border-amber-500/50 rounded-md px-3 py-2 text-sm text-white placeholder:text-white/20 focus:outline-none transition-all hover:bg-white/[0.02]"
+                                                    placeholder="Value"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveCustomField(idx)}
+                                                    className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all flex items-center justify-center shrink-0"
+                                                    title="Delete Entry"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -316,7 +273,7 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
                     <button
                         type="submit"
                         form="add-lead-form"
-                        disabled={isSubmitting || !formData.name || (!formData.email && !formData.phone)}
+                        disabled={isSubmitting || !formData.name.trim() || (!formData.email.trim() && !formData.phone.trim())}
                         className="px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
                     >
                         {isSubmitting ? (

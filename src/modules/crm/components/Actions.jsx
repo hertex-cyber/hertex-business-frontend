@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import CreatePipelineModal from './CreatePipelineModal';
 import ManageStageModal from './ManageStageModal';
 import UserPipelineManager from './UserPipelineManager';
+import LeadSettingsModal from './LeadSettingsModal';
 
 const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, onClick }) => {
     return (
@@ -60,6 +61,7 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isManageStageOpen, setIsManageStageOpen] = useState(false);
     const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
+    const [isLeadSettingsOpen, setIsLeadSettingsOpen] = useState(false);
 
     const actionItems = [
         {
@@ -81,14 +83,6 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
             onClick: () => setIsManageStageOpen(true)
         },
         {
-            id: 'manage-status',
-            icon: Activity,
-            title: "Manage Status",
-            description: "Customize deal outcome labels, lost reasons, and win state parameters.",
-            colorClass: "bg-white",
-            showBadge: true
-        },
-        {
             id: 'manage-users',
             icon: Users,
             title: "Manage Users",
@@ -96,6 +90,15 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
             colorClass: "bg-white",
             showBadge: true,
             onClick: () => setIsUserManagerOpen(true)
+        },
+        {
+            id: 'lead-settings',
+            icon: Activity,
+            title: "Lead Settings",
+            description: "Customize deal outcome labels, lost reasons, and win state parameters.",
+            colorClass: "bg-white",
+            showBadge: true,
+            onClick: () => setIsLeadSettingsOpen(true)
         },
         {
             id: 'manage-payment',
@@ -154,6 +157,13 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
                 pipelines={pipelines}
                 selectedPipeline={selectedPipeline}
                 onPipelineUpdated={onPipelineUpdatedForUsers}
+            />
+
+            <LeadSettingsModal
+                isOpen={isLeadSettingsOpen}
+                onClose={() => setIsLeadSettingsOpen(false)}
+                pipeline={selectedPipeline}
+                onSave={onPipelineUpdated}
             />
         </div>
     );
