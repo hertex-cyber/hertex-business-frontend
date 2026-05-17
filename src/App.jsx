@@ -236,49 +236,49 @@ function App() {
             <Route
               path="/admin/menus"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AdminMenus />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/admin/menus/roles"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AdminMenuRoles />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/admin/menus/create"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AdminMenuForm />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/admin/menus/:id/edit"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AdminMenuForm />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/admin/organizations"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AdminOrganizations />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/admin/products"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <AdminProducts />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route

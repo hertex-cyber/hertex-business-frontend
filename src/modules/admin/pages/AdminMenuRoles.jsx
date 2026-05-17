@@ -15,6 +15,9 @@ export default function AdminMenuRoles() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
+  const PAGE_SIZE = 100; // Must match DRF PAGE_SIZE in settings.py
 
   const fetchMenus = async () => {
     try {
@@ -23,13 +26,17 @@ export default function AdminMenuRoles() {
         params: { page: currentPage }
       });
       if (response.data && response.data.results) {
-        setMenus(response.data.results || []);
-        if (response.data.count) {
-          const pageSize = response.data.results.length > 0 ? (response.data.results.length >= 20 ? 20 : (response.data.count > response.data.results.length ? response.data.results.length : 20)) : 20;
-          setTotalPages(Math.ceil(response.data.count / (pageSize || 20)));
-        }
+        // Standard DRF paginated response: { count, next, previous, results }
+        const { count, next, previous, results } = response.data;
+        setMenus(results || []);
+        setHasNext(!!next);
+        setHasPrev(!!previous);
+        setTotalPages(count ? Math.ceil(count / PAGE_SIZE) : 1);
       } else if (Array.isArray(response.data)) {
         setMenus(response.data);
+        setHasNext(false);
+        setHasPrev(false);
+        setTotalPages(1);
       }
     } catch (err) {
       setError(err.message || "Failed to fetch menus");
@@ -187,11 +194,11 @@ export default function AdminMenuRoles() {
               </tbody>
             </table>
             
-            {totalPages > 1 && (
+            {(hasNext || hasPrev) && (
               <div className="flex gap-2 justify-end p-4 border-t border-white/10">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  disabled={!hasPrev}
                   className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
                 >
                   Previous
@@ -200,8 +207,8 @@ export default function AdminMenuRoles() {
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={!hasNext}
                   className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
                 >
                   Next

@@ -45,7 +45,20 @@ const Sidebar = () => {
         {/* Error State */}
         {error && (
           <div className="px-3 py-2 text-[10px] text-red-400 bg-red-500/10 rounded border border-red-500/20">
-            Failed to load menus. Using default menu.
+            Failed to load navigation menus.
+          </div>
+        )}
+
+        {/* Empty State — shown when menus loaded but none assigned to this user's role */}
+        {!loading && !error && Object.keys(sections).length === 0 && (
+          <div className="px-3 py-4 space-y-2">
+            <p className="text-[10px] text-white/30 leading-relaxed">
+              No menus are currently visible for your account.
+            </p>
+            <p className="text-[10px] text-white/20 leading-relaxed">
+              Ask a Superadmin to assign menus to your role at{" "}
+              <span className="text-white/40 font-mono">/admin/menus/roles</span>.
+            </p>
           </div>
         )}
 
@@ -114,29 +127,6 @@ const Sidebar = () => {
               )}
             </div>
           ))}
-
-        {/* Settings Section (static) */}
-        <div className="space-y-1">
-          <h3 className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/20 mb-4">
-            Settings
-          </h3>
-          <Link
-            to="/settings"
-            className="group flex items-center justify-between px-3 py-2 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-all duration-200"
-          >
-            <div className="flex items-center gap-3">
-              <Settings
-                size={18}
-                className="transition-colors group-hover:text-blue-400"
-              />
-              <span className="text-sm font-medium">Preferences</span>
-            </div>
-            <ChevronRight
-              size={14}
-              className="opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"
-            />
-          </Link>
-        </div>
       </div>
 
       {/* User Footer */}

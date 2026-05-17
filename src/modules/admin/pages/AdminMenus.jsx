@@ -23,6 +23,9 @@ export default function AdminMenus() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
+  const PAGE_SIZE = 100; // Must match DRF PAGE_SIZE in settings.py
 
   // Fetch menus
   const fetchMenus = async () => {
@@ -32,19 +35,21 @@ export default function AdminMenus() {
         params: { page: currentPage }
       });
       if (response.data && response.data.results) {
-        setMenus(response.data.results || []);
-        if (response.data.count) {
-          // Default DRF pagination size is often 10 or 20, calculating total pages based on next/previous existance is safer, or assuming PAGE_SIZE
-          // We'll estimate based on returned array length if it's the first page
-          const pageSize = response.data.results.length > 0 ? (response.data.results.length >= 20 ? 20 : (response.data.count > response.data.results.length ? response.data.results.length : 20)) : 20;
-          setTotalPages(Math.ceil(response.data.count / (pageSize || 20)));
-          setTotalCount(response.data.count);
-        }
+        // Standard DRF paginated response: { count, next, previous, results }
+        const { count, next, previous, results } = response.data;
+        setMenus(results || []);
+        setTotalCount(count || 0);
+        setHasNext(!!next);
+        setHasPrev(!!previous);
+        setTotalPages(count ? Math.ceil(count / PAGE_SIZE) : 1);
         setError(null);
       } else if (Array.isArray(response.data)) {
+        // Non-paginated response (all items in one array)
         setMenus(response.data);
         setTotalPages(1);
         setTotalCount(response.data.length);
+        setHasNext(false);
+        setHasPrev(false);
         setError(null);
       } else {
         throw new Error("Invalid response format from server");
@@ -331,17 +336,17 @@ export default function AdminMenus() {
         )}
 
         {/* Stats and Pagination */}
-        {!loading && filteredMenus.length > 0 && (
+        {!loading && (
           <div className="mt-6 flex items-center justify-between">
             <div className="flex gap-4 text-sm text-white/40">
-              <span>Total items: {totalCount}</span>
+              <span>Showing {filteredMenus.length} of {totalCount} menus</span>
             </div>
-            
-            {totalPages > 1 && (
+
+            {(hasNext || hasPrev) && (
               <div className="flex gap-2">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  disabled={!hasPrev}
                   className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
                 >
                   Previous
@@ -350,8 +355,8 @@ export default function AdminMenus() {
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={!hasNext}
                   className="px-3 py-1 bg-white/5 border border-white/10 rounded text-white text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
                 >
                   Next
