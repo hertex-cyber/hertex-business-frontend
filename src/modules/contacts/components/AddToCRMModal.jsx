@@ -28,7 +28,8 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
       const data = response.data.results || response.data;
       setPipelines(data);
       if (data.length > 0) {
-        setSelectedPipeline(data[0]);
+        const firstAvailable = data.find(p => !p.custom_fields_enabled);
+        setSelectedPipeline(firstAvailable || null);
       }
     } catch (err) {
       console.error('Failed to fetch pipelines:', err);
@@ -67,7 +68,7 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       
       <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-lg shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
@@ -157,27 +158,34 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
                 {pipelines.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => setSelectedPipeline(p)}
+                    onClick={() => !p.custom_fields_enabled && setSelectedPipeline(p)}
+                    disabled={p.custom_fields_enabled}
                     className={cn(
                       "w-full px-4 py-4 rounded-lg flex items-center justify-between transition-all duration-300 border",
-                      selectedPipeline?.id === p.id 
-                        ? "bg-blue-500/10 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.1)]" 
-                        : "bg-zinc-950/30 border-zinc-800/50 hover:bg-zinc-900/50 hover:border-zinc-700"
+                      p.custom_fields_enabled
+                        ? "opacity-35 bg-zinc-950/20 border-zinc-900/40 cursor-not-allowed"
+                        : selectedPipeline?.id === p.id 
+                          ? "bg-blue-500/10 border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.1)]" 
+                          : "bg-zinc-950/30 border-zinc-800/50 hover:bg-zinc-900/50 hover:border-zinc-700"
                     )}
                   >
                     <div className="flex items-center gap-4">
                       <div className={cn(
                         "w-8 h-8 rounded-md border flex items-center justify-center transition-colors",
-                        selectedPipeline?.id === p.id ? "bg-blue-500/20 border-blue-500/30 text-blue-400" : "bg-zinc-800 border-zinc-700 text-white/20"
+                        selectedPipeline?.id === p.id && !p.custom_fields_enabled ? "bg-blue-500/20 border-blue-500/30 text-blue-400" : "bg-zinc-800 border-zinc-700 text-white/20"
                       )}>
                         <Layout size={14} />
                       </div>
                       <span className={cn(
                         "text-[10px] font-medium uppercase tracking-[0.2em]",
-                        selectedPipeline?.id === p.id ? "text-blue-400" : "text-white/60"
+                        selectedPipeline?.id === p.id && !p.custom_fields_enabled ? "text-blue-400" : "text-white/60"
                       )}>{p.name}</span>
                     </div>
-                    {selectedPipeline?.id === p.id && (
+                    {p.custom_fields_enabled ? (
+                      <span className="text-[7px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 font-extrabold uppercase tracking-widest font-mono shrink-0">
+                        Custom Fields Enabled
+                      </span>
+                    ) : selectedPipeline?.id === p.id && (
                       <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-500/50 flex items-center justify-center">
                         <Check size={12} strokeWidth={3} className="text-blue-400" />
                       </div>

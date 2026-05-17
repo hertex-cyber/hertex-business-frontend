@@ -225,6 +225,10 @@ const ContactsTable = ({
             contact={selectedContact}
             onClose={() => setSelectedContact(null)}
             onDeleted={(id) => setContacts(prev => prev.filter(c => c.id !== id))}
+            onUpdated={(updatedContact) => {
+                setContacts(prev => prev.map(c => c.id === updatedContact.id ? updatedContact : c));
+                setSelectedContact(updatedContact);
+            }}
         />
 
         <ConfirmDeleteDialog
