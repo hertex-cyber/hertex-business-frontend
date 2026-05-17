@@ -94,7 +94,7 @@ const AddLeadStructured = ({ isOpen, onClose, pipeline, stages, onSuccess }) => 
                 phone: formData.phone || null,
                 job_title: formData.job_title || null,
                 company_name: formData.company_name || null,
-                additional_data: customFieldsObj
+                custom_fields: customFieldsObj
             };
 
             const contactRes = await axios.post('/api/contacts/', contactPayload);

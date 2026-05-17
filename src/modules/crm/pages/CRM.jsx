@@ -109,10 +109,17 @@ const CRM = () => {
       const response = await axios.get("/api/crm/pipelines/");
       const data = response.data.results || response.data;
       setPipelines(data);
-      if (data.length > 0 && !selectedPipeline) {
-        const savedId = localStorage.getItem('crm_selected_pipeline_id');
-        const restored = savedId ? data.find(p => p.id === savedId) : null;
-        selectPipeline(restored || data[0]);
+      if (data.length > 0) {
+        if (!selectedPipeline) {
+          const savedId = localStorage.getItem('crm_selected_pipeline_id');
+          const restored = savedId ? data.find(p => p.id === savedId) : null;
+          selectPipeline(restored || data[0]);
+        } else {
+          const refreshedSelected = data.find(p => p.id === selectedPipeline.id);
+          if (refreshedSelected) {
+            setSelectedPipeline(refreshedSelected);
+          }
+        }
       }
     } catch (error) {
       console.error("Error fetching pipelines:", error);

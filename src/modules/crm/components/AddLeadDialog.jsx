@@ -68,7 +68,7 @@ const AddLeadDialog = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
                 phone: formData.phone.trim() || null,
                 job_title: null,
                 company_name: null,
-                additional_data: customFieldsObj
+                custom_fields: customFieldsObj
             };
 
             const contactRes = await axios.post('/api/contacts/', contactPayload);
