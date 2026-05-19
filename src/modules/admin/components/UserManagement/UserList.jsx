@@ -12,6 +12,7 @@ import BulkActions from "./BulkActions";
 import ConfirmDeleteDialog from "../../../../components/ConfirmDeleteDialog";
 import SearchDialog from "./SearchDialog";
 import GroupUserModal from "./GroupUserModal";
+import UserMenuAssignModal from "./UserMenuAssignModal";
 import RingLoader from "@/components/ui/RingLoader";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ const UserList = () => {
   const [activeTab, setActiveTab] = useState('users');
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [menuAssignUser, setMenuAssignUser] = useState(null);
 
   useEffect(() => {
     fetchUsers(filters);
@@ -434,6 +436,7 @@ const UserList = () => {
                   setSelectedUser(user);
                 }}
                 onEditUser={handleEditUser}
+                onAssignMenu={setMenuAssignUser}
                 currentPage={pagination.page}
                 totalPages={Math.ceil(pagination.count / pagination.pageSize)}
                 onPageChange={handlePageChange}
@@ -519,6 +522,17 @@ const UserList = () => {
           setIsSearchDialogOpen(false);
         }}
       />
+      {menuAssignUser && (
+        <UserMenuAssignModal
+          user={menuAssignUser}
+          onClose={() => setMenuAssignUser(null)}
+          onSuccess={() => {
+            // Refresh users to reflect any changes
+            fetchUsers(filters);
+          }}
+        />
+      )}
+
       <GroupUserModal
         department={selectedDepartment}
         users={users}

@@ -1,6 +1,7 @@
 import React from "react";
-import { Trash2, Eye, Mail, Phone, User, CheckSquare, Square, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, Mail, Phone, User, CheckSquare, Square, ChevronLeft, ChevronRight } from "lucide-react";
 import { TbEdit } from "react-icons/tb";
+import { RiMenuAddLine } from "react-icons/ri";
 import { cn } from "@/lib/utils";
 
 const UserTable = ({
@@ -11,6 +12,7 @@ const UserTable = ({
   onDelete,
   onViewDetails,
   onEditUser,
+  onAssignMenu,
   currentPage,
   totalPages,
   onPageChange,
@@ -101,11 +103,11 @@ const UserTable = ({
 
                 <div className="col-span-1 flex items-center justify-end gap-1">
                   <button
-                    className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors"
-                    title="View"
-                    onClick={(e) => { e.stopPropagation(); onViewDetails(user); }}
+                    className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-white/20 hover:text-emerald-400 transition-colors"
+                    title="Assign Menus"
+                    onClick={(e) => { e.stopPropagation(); onAssignMenu && onAssignMenu(user); }}
                   >
-                    <Eye size={14} />
+                    <RiMenuAddLine size={14} />
                   </button>
                   <button
                     className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors"
