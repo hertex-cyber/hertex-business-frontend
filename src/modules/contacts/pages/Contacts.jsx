@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Upload, Search, Rocket } from 'lucide-react';
 import Button from '@/components/Button';
@@ -8,10 +8,21 @@ import ImportsTab from '../components/tabs/ImportsTab';
 import { cn } from '@/lib/utils';
 import RingLoader from '@/components/ui/RingLoader';
 import AddToCRMModal from '../components/AddToCRMModal';
+import { useAuth } from '@/context/AuthContext';
 
 const TABS = { CONTACTS: 'contacts', IMPORTS: 'imports' };
 
 const Contacts = () => {
+    const { user } = useAuth();
+    const isAdmin = ["Superadmin", "Admin"].includes(user?.role) || user?.is_superuser;
+
+    // Guard: reset to contacts tab if user is not an admin
+    useEffect(() => {
+        if (!isAdmin) {
+            setActiveTab(TABS.CONTACTS);
+        }
+    }, [isAdmin]);
+
     const [activeTab, setActiveTab] = useState(TABS.CONTACTS);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [isAddToCRMModalOpen, setIsAddToCRMModalOpen] = useState(false);
@@ -73,8 +84,14 @@ const Contacts = () => {
 
                     <Button
                         variant="secondary"
-                        className="!w-auto h-9 px-4 border-white/5 bg-white/5 hover:bg-white/10 text-white/60 text-xs font-medium"
-                        onClick={() => setIsImportModalOpen(true)}
+                        disabled={!isAdmin}
+                        className={cn(
+                            "!w-auto h-9 px-4 border-white/5 bg-white/5 text-white/60 text-xs font-medium",
+                            isAdmin && "hover:bg-white/10",
+                            !isAdmin && "opacity-40 cursor-not-allowed"
+                        )}
+                        onClick={() => isAdmin && setIsImportModalOpen(true)}
+                        title={!isAdmin ? "Only admins can import contacts" : undefined}
                     >
                         <Upload size={14} className="mr-2 opacity-50" />
                         Import
@@ -93,23 +110,31 @@ const Contacts = () => {
                                     : "left-1/2 w-1/2 rounded-r rounded-l-none bg-blue-500/20"
                             )}
                         />
-                        {[TABS.CONTACTS, TABS.IMPORTS].map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => { 
-                                    setActiveTab(tab); 
-                                    setSelectedBatch(null); 
-                                    setSearchQuery(''); 
-                                    setSelectedIds([]);
-                                }}
-                                className={cn(
-                                    "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
-                                    activeTab === tab ? "text-blue-400" : "text-white/50 hover:text-white/80"
-                                )}
-                            >
-                                {tab}
-                            </button>
-                        ))}
+                        {[TABS.CONTACTS, TABS.IMPORTS].map(tab => {
+                            const isImportsTab = tab === TABS.IMPORTS;
+                            return (
+                                <button
+                                    key={tab}
+                                    onClick={() => {
+                                        if (isImportsTab && !isAdmin) return;
+                                        setActiveTab(tab); 
+                                        setSelectedBatch(null); 
+                                        setSearchQuery(''); 
+                                        setSelectedIds([]);
+                                    }}
+                                    title={isImportsTab && !isAdmin ? "Only admins can access imports" : undefined}
+                                    className={cn(
+                                        "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
+                                        activeTab === tab ? "text-blue-400" : "text-white/50",
+                                        isImportsTab && !isAdmin && "opacity-40 cursor-not-allowed",
+                                        isImportsTab && isAdmin && !(activeTab === tab) && "hover:text-white/80",
+                                        !isImportsTab && !(activeTab === tab) && "hover:text-white/80"
+                                    )}
+                                >
+                                    {tab}
+                                </button>
+                            );
+                        })}
                     </div>
                     {activeTab === TABS.CONTACTS && (
                         <div className="ml-auto relative">

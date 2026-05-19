@@ -19,10 +19,21 @@ import AddLeadDialog from "../components/AddLeadDialog";
 import AddLeadStructured from "../components/AddLeadStructured";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import Actions from "../components/Actions";
+import { useAuth } from "@/context/AuthContext";
 import { useUsers, useDepartments } from "../../admin/hooks/useUsers";
 import { cn } from "@/lib/utils";
 
 const CRM = () => {
+  const { user } = useAuth();
+  const isAdmin = ["Superadmin", "Admin"].includes(user?.role) || user?.is_superuser;
+
+  // Guard: reset to pipeline tab if user is not an admin
+  useEffect(() => {
+    if (!isAdmin) {
+      setActiveTab('pipeline');
+    }
+  }, [isAdmin]);
+
   const { users, fetchUsers } = useUsers();
   const { departments, refetch: fetchDepartments } = useDepartments();
   
@@ -389,10 +400,13 @@ const CRM = () => {
               Pipeline
             </button>
             <button 
-              onClick={() => setActiveTab('actions')}
+              onClick={() => isAdmin && setActiveTab('actions')}
+              title={!isAdmin ? "Only admins can access actions" : undefined}
               className={cn(
                 "relative z-10 px-6 py-1.5 rounded text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
-                activeTab === 'actions' ? "text-blue-400" : "text-white/50 hover:text-white/80"
+                activeTab === 'actions' ? "text-blue-400" : "text-white/50",
+                !isAdmin && "opacity-40 cursor-not-allowed",
+                isAdmin && !(activeTab === 'actions') && "hover:text-white/80"
               )}
             >
               Actions

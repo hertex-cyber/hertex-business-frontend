@@ -102,13 +102,15 @@ const UserTable = ({
                 </div>
 
                 <div className="col-span-1 flex items-center justify-end gap-1">
-                  <button
-                    className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-white/20 hover:text-emerald-400 transition-colors"
-                    title="Assign Menus"
-                    onClick={(e) => { e.stopPropagation(); onAssignMenu && onAssignMenu(user); }}
-                  >
-                    <RiMenuAddLine size={14} />
-                  </button>
+                  {user.role !== 'Admin' && (
+                    <button
+                      className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-white/20 hover:text-emerald-400 transition-colors"
+                      title="Assign Menus"
+                      onClick={(e) => { e.stopPropagation(); onAssignMenu && onAssignMenu(user); }}
+                    >
+                      <RiMenuAddLine size={14} />
+                    </button>
+                  )}
                   <button
                     className="p-1.5 rounded-lg hover:bg-blue-500/10 text-white/20 hover:text-blue-400 transition-colors"
                     title="Edit"
