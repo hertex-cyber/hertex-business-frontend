@@ -19,18 +19,24 @@ const PipelineSelector = ({ pipelines, selectedPipeline, onSelect, onCreateNew }
         </DropdownMenuTrigger>
         
         <DropdownMenuContent className="w-64 bg-black border-white/10 shadow-[0_20px_50px_rgba(0,0,0,1)] p-1.5">
-          {pipelines.map((p) => (
-            <DropdownMenuItem 
-              key={p.id} 
-              onClick={() => onSelect(p)}
-              className={cn(
-                "cursor-pointer text-[10px] py-2.5 uppercase tracking-widest font-normal transition-colors",
-                selectedPipeline?.id === p.id ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
-              )}
-            >
-              {p.name}
-            </DropdownMenuItem>
-          ))}
+          {pipelines.length === 0 ? (
+            <div className="text-[10px] py-2.5 px-3 uppercase tracking-widest text-white/40">
+              No Pipelines
+            </div>
+          ) : (
+            pipelines.map((p) => (
+              <DropdownMenuItem 
+                key={p.id} 
+                onClick={() => onSelect(p)}
+                className={cn(
+                  "cursor-pointer text-[10px] py-2.5 uppercase tracking-widest font-normal transition-colors",
+                  selectedPipeline?.id === p.id ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                )}
+              >
+                {p.name}
+              </DropdownMenuItem>
+            ))
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

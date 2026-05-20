@@ -453,18 +453,28 @@ const CRM = () => {
               </div>
             ) : pipelines.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center gap-6">
-                <button 
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="group relative"
-                >
-                  <div className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 group-hover:border-blue-500/40 group-hover:scale-110 transition-all duration-500 shadow-[0_0_40px_rgba(59,130,246,0.1)] group-hover:shadow-[0_0_60px_rgba(59,130,246,0.2)]">
-                    <Plus size={40} className="group-hover:rotate-90 transition-transform duration-500" />
+                {isAdmin ? (
+                  <button 
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="group relative"
+                  >
+                    <div className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/20 group-hover:border-blue-500/40 group-hover:scale-110 transition-all duration-500 shadow-[0_0_40px_rgba(59,130,246,0.1)] group-hover:shadow-[0_0_60px_rgba(59,130,246,0.2)]">
+                      <Plus size={40} className="group-hover:rotate-90 transition-transform duration-500" />
+                    </div>
+                    <div className="absolute -inset-4 bg-blue-500/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                ) : (
+                  <div className="w-20 h-20 rounded-3xl bg-zinc-900/30 border border-zinc-800 flex items-center justify-center text-zinc-500">
+                    <Search size={40} />
                   </div>
-                  <div className="absolute -inset-4 bg-blue-500/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
+                )}
                 <div className="space-y-2 relative">
                   <h3 className="text-xl font-semibold text-white tracking-tight">No Pipelines Found</h3>
-                  <p className="text-sm text-white/40 max-w-xs mx-auto font-medium">Click the icon above to create your first sales pipeline and start managing deals.</p>
+                  <p className="text-sm text-white/40 max-w-xs mx-auto font-medium">
+                    {isAdmin 
+                      ? "Click the icon above to create your first sales pipeline and start managing deals."
+                      : "You are not assigned to any pipeline groups. Please contact your administrator."}
+                  </p>
                 </div>
               </div>
             ) : (

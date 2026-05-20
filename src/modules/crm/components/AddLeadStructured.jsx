@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Loader2, Database } from 'lucide-react';
+import { X, User, Loader2, Database } from 'lucide-react';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 const AddLeadStructured = ({ isOpen, onClose, pipeline, stages, onSuccess }) => {
+    const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
@@ -33,7 +35,7 @@ const AddLeadStructured = ({ isOpen, onClose, pipeline, stages, onSuccess }) => 
         f => !['name', 'email', 'phone', 'jobtitle', 'job_title', 'company', 'companyname', 'company_name', 'dealvalue', 'deal_value', 'value'].includes(normalizeFieldName(f))
     );
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e, selfAssign = false) => {
         e.preventDefault();
         setError(null);
 
@@ -107,7 +109,8 @@ const AddLeadStructured = ({ isOpen, onClose, pipeline, stages, onSuccess }) => 
                 pipeline: pipeline.id,
                 stage: firstStage.id,
                 value: parseFloat(formData.deal_value) || 0,
-                priority: 'Medium'
+                priority: 'Medium',
+                ...(selfAssign && user?.id ? { assigned_user: user.id } : {})
             };
 
             const dealRes = await axios.post('/api/crm/pipeline/', dealPayload);
@@ -335,9 +338,21 @@ const AddLeadStructured = ({ isOpen, onClose, pipeline, stages, onSuccess }) => 
                         Cancel
                     </button>
                     <button
-                        type="submit"
-                        form="add-lead-structured-form"
-                        disabled={isSubmitDisabled()}
+                        type="button"
+                        onClick={(e) => handleSubmit(e, true)}
+                        disabled={isSubmitting || isSubmitDisabled()}
+                        className="px-6 py-2 rounded-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
+                    >
+                        {isSubmitting ? (
+                            <><Loader2 size={14} className="animate-spin" /> Saving...</>
+                        ) : (
+                            <><User size={12} /> Self Assign & Save</>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => handleSubmit(e, false)}
+                        disabled={isSubmitting || isSubmitDisabled()}
                         className="px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
                     >
                         {isSubmitting ? (

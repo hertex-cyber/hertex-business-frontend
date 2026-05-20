@@ -678,21 +678,24 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="p-4 rounded-lg bg-white/[0.01] border border-zinc-900 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                                            <div className="flex items-center gap-3">
+                                        <div className="p-4 rounded-lg bg-white/[0.01] border border-zinc-900 flex items-center justify-between hover:bg-white/[0.02] transition-colors min-w-0 group relative">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
                                                 <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
                                                     <User size={12} className="text-white/40" />
                                                 </div>
-                                                <div>
-                                                    <p className="text-[11px] text-white uppercase tracking-wider font-semibold">{getAssignedUserName()}</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-[11px] text-white uppercase tracking-wider font-semibold truncate">{getAssignedUserName()}</p>
                                                     {localDeal?.assigned_user_details?.email && (
-                                                        <p className="text-[9px] text-white/30 tracking-widest uppercase leading-none mt-1">{localDeal?.assigned_user_details.email}</p>
+                                                        <div className="flex items-center gap-1.5 mt-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-0.5 group-hover:translate-y-0">
+                                                            <Mail size={8} className="text-blue-400 shrink-0" />
+                                                            <span className="text-[9px] text-white/50 tracking-wider truncate">{localDeal.assigned_user_details.email}</span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
                                             <button
                                                 onClick={() => setIsEditingUser(true)}
-                                                className="px-3 py-1.5 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 text-[9px] font-medium uppercase tracking-[0.15em] transition-all cursor-pointer"
+                                                className="px-3 py-1.5 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 text-[9px] font-medium uppercase tracking-[0.15em] transition-all cursor-pointer self-start"
                                             >
                                                 Edit
                                             </button>
