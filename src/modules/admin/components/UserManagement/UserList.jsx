@@ -15,6 +15,7 @@ import GroupUserModal from "./GroupUserModal";
 import UserMenuAssignModal from "./UserMenuAssignModal";
 import RingLoader from "@/components/ui/RingLoader";
 import { cn } from "@/lib/utils";
+import UserService from "../../services/userService";
 
 const UserList = () => {
   const {
@@ -53,6 +54,8 @@ const UserList = () => {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isRemovingUser, setIsRemovingUser] = useState(null);
   const [isAddingUser, setIsAddingUser] = useState(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [isRemovingUsers, setIsRemovingUsers] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -238,6 +241,44 @@ const UserList = () => {
       console.error("Error adding user to group:", err);
     } finally {
       setIsAddingUser(null);
+    }
+  };
+
+  const handleAssignUsers = async (userIds) => {
+    setIsAssigning(true);
+    try {
+      // Fire all updates in parallel to avoid sequential re-fetches
+      await Promise.all(userIds.map(async (userId) => {
+        const user = users.find(u => u.id === userId);
+        if (user) {
+          const newDepartments = [...(user?.departments?.map(d => d.id) || []), selectedDepartment.id];
+          await UserService.updateUser(userId, { department_ids: newDepartments });
+        }
+      }));
+      // Single fetch after all updates are done
+      await fetchUsers(filters);
+    } catch (err) {
+      console.error("Error assigning users to group:", err);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRemoveUsers = async (userIds) => {
+    setIsRemovingUsers(true);
+    try {
+      await Promise.all(userIds.map(async (userId) => {
+        const user = users.find(u => u.id === userId);
+        if (user) {
+          const newDepartments = user?.departments?.filter(d => d.id !== selectedDepartment.id).map(d => d.id) || [];
+          await UserService.updateUser(userId, { department_ids: newDepartments });
+        }
+      }));
+      await fetchUsers(filters);
+    } catch (err) {
+      console.error("Error removing users from group:", err);
+    } finally {
+      setIsRemovingUsers(false);
     }
   };
 
@@ -548,6 +589,10 @@ const UserList = () => {
         isRemovingUser={isRemovingUser}
         onAddUser={handleAddUser}
         isAddingUser={isAddingUser}
+        onAssignUsers={handleAssignUsers}
+        isAssigning={isAssigning}
+        onRemoveUsers={handleRemoveUsers}
+        isRemovingUsers={isRemovingUsers}
         onDeleteDepartment={handleDeleteDepartment}
         isDeletingDepartment={isDeletingDepartment}
         onClose={() => setSelectedDepartment(null)}

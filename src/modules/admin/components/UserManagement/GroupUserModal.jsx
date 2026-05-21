@@ -13,8 +13,12 @@ const GroupUserModal = ({
   onViewDetails,
   onRemoveUser,
   isRemovingUser,
+  onRemoveUsers,
+  isRemovingUsers,
   onAddUser,
   isAddingUser,
+  onAssignUsers,
+  isAssigning,
   onDeleteDepartment,
   isDeletingDepartment,
   onClose,
@@ -27,6 +31,7 @@ const GroupUserModal = ({
   const [fetchedUsers, setFetchedUsers] = useState(initialUsers);
   const [isSearching, setIsSearching] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState(new Set());
 
   useEffect(() => {
     if (showDeleteConfirm && isDeletingDepartment === null) {
@@ -63,6 +68,11 @@ const GroupUserModal = ({
     setSearchQuery('');
     setSearchQueryChanged(false);
   }, [initialUsers]);
+
+  // Reset selection when switching tabs or searching
+  useEffect(() => {
+    setSelectedUserIds(new Set());
+  }, [activeTab, searchQuery]);
   
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -78,6 +88,55 @@ const GroupUserModal = ({
         ? fetchedUsers.filter(user => isUserInGroup(user))
         : fetchedUsers.filter(user => !isUserInGroup(user))
       );
+
+  const handleToggleSelectUser = (userId) => {
+    setSelectedUserIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const selectableUsers = displayUsers.filter(user => 
+      activeTab === 'users' ? isUserInGroup(user) : !isUserInGroup(user)
+    );
+    if (selectedUserIds.size === selectableUsers.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(selectableUsers.map(u => u.id)));
+    }
+  };
+
+  const handleAssignSelected = () => {
+    if (selectedUserIds.size > 0 && onAssignUsers) {
+      onAssignUsers(Array.from(selectedUserIds));
+    }
+  };
+
+  const handleRemoveSelected = () => {
+    if (selectedUserIds.size > 0 && onRemoveUsers) {
+      onRemoveUsers(Array.from(selectedUserIds));
+    }
+  };
+
+  // Clear selection after assignment completes
+  useEffect(() => {
+    if (!isAssigning && selectedUserIds.size > 0) {
+      setSelectedUserIds(new Set());
+    }
+  }, [isAssigning]);
+
+  // Clear selection after removal completes
+  useEffect(() => {
+    if (!isRemovingUsers && selectedUserIds.size > 0) {
+      setSelectedUserIds(new Set());
+    }
+  }, [isRemovingUsers]);
 
   return createPortal(
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
@@ -166,7 +225,24 @@ const GroupUserModal = ({
         {/* Table Header */}
         <div className="px-8 py-4 border-b border-zinc-800 bg-zinc-900/10 shrink-0">
           <div className="grid grid-cols-12 gap-4 items-center">
-            <div className="col-span-4">
+            <div className="col-span-1">
+              <button
+                onClick={handleSelectAll}
+                className="w-4 h-4 rounded border border-zinc-700 flex items-center justify-center transition-all hover:border-blue-500/50"
+                title="Select all available users"
+              >
+                {(() => {
+                  const selectableCount = displayUsers.filter(u => activeTab === 'users' ? isUserInGroup(u) : !isUserInGroup(u)).length;
+                  if (selectableCount > 0 && selectedUserIds.size === selectableCount) {
+                    return <div className="w-2 h-2 rounded-sm bg-blue-400" />;
+                  } else if (selectedUserIds.size > 0) {
+                    return <div className="w-2 h-2 rounded-sm bg-blue-400/50" />;
+                  }
+                  return null;
+                })()}
+              </button>
+            </div>
+            <div className="col-span-3">
               <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">User</span>
             </div>
             <div className="col-span-4">
@@ -194,13 +270,38 @@ const GroupUserModal = ({
               </p>
             </div>
           ) : (
-            <div className="max-h-[320px] overflow-y-auto custom-scrollbar divide-y divide-zinc-800/50">
-              {displayUsers.map((user) => (
+            <div className="divide-y divide-zinc-800/50">
+              {displayUsers.map((user) => {
+                const isSelectable = activeTab === 'users' ? isUserInGroup(user) : !isUserInGroup(user);
+                const isSelected = selectedUserIds.has(user.id);
+                return (
                 <div 
                   key={user.id} 
-                  className="px-8 py-4 grid grid-cols-12 gap-4 items-center hover:bg-white/[0.02] transition-colors"
+                  className={cn(
+                    "px-8 py-4 grid grid-cols-12 gap-4 items-center transition-colors",
+                    isSelectable
+                      ? activeTab === 'users'
+                        ? "hover:bg-red-500/[0.03]"
+                        : "hover:bg-blue-500/[0.03]"
+                      : "hover:bg-white/[0.02]"
+                  )}
                 >
-                  <div className="col-span-4 flex items-center gap-3 cursor-pointer" onClick={() => onViewDetails(user)}>
+                  {isSelectable && (
+                    <div className="col-span-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleSelectUser(user.id);
+                        }}
+                        className="w-4 h-4 rounded border border-zinc-700 flex items-center justify-center transition-all hover:border-red-500/50"
+                      >
+                        {isSelected ? (
+                          <div className="w-2 h-2 rounded-sm bg-blue-400" />
+                        ) : null}
+                      </button>
+                    </div>
+                  )}
+                  <div className={cn("flex items-center gap-3 cursor-pointer", isSelectable ? 'col-span-3' : 'col-span-4')} onClick={() => onViewDetails(user)}>
                     <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
                       <User size={14} className="text-white/40" />
                     </div>
@@ -260,7 +361,7 @@ const GroupUserModal = ({
                     )}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>
@@ -276,13 +377,48 @@ const GroupUserModal = ({
                   : `${fetchedUsers.filter(u => !isUserInGroup(u)).length} User${fetchedUsers.filter(u => !isUserInGroup(u)).length === 1 ? '' : 's'} available`
               }
             </span>
+            {selectedUserIds.size > 0 && (
+              <span className="text-[9px] text-blue-400 font-medium uppercase tracking-widest">
+                {selectedUserIds.size} selected
+              </span>
+            )}
           </div>
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 bg-zinc-900 border border-zinc-800 text-[9px] font-medium text-white/40 hover:text-white hover:bg-zinc-800 hover:border-zinc-700 uppercase tracking-widest transition-all rounded-md cursor-pointer"
-          >
-            Close
-          </button>
+          <div className="flex items-center gap-3">
+            {(selectedUserIds.size > 0 || isRemovingUsers) && activeTab === 'users' && (
+              <button
+                onClick={handleRemoveSelected}
+                disabled={isRemovingUsers}
+                className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-[9px] font-medium text-red-400 hover:bg-red-500/20 hover:border-red-500/30 uppercase tracking-widest transition-all rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isRemovingUsers ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Trash2 size={12} />
+                )}
+                Remove
+              </button>
+            )}
+            {(selectedUserIds.size > 0 || isAssigning) && activeTab === 'add-users' && (
+              <button
+                onClick={handleAssignSelected}
+                disabled={isAssigning}
+                className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-[9px] font-medium text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/30 uppercase tracking-widest transition-all rounded-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAssigning ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Plus size={12} />
+                )}
+                Assign
+              </button>
+            )}
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 bg-zinc-900 border border-zinc-800 text-[9px] font-medium text-white/40 hover:text-white hover:bg-zinc-800 hover:border-zinc-700 uppercase tracking-widest transition-all rounded-md cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
 
