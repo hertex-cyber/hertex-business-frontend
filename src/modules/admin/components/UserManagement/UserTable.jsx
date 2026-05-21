@@ -102,7 +102,7 @@ const UserTable = ({
                 </div>
 
                 <div className="col-span-1 flex items-center justify-end gap-1">
-                  {user.role !== 'Admin' && (
+                  {user.role !== 'Superadmin' && (
                     <button
                       className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-white/20 hover:text-emerald-400 transition-colors"
                       title="Assign Menus"
