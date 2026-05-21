@@ -45,6 +45,7 @@ const CreateGroupForm = ({ onSubmit, onCancel, users = [] }) => {
     try {
       await onSubmit(formData);
     } catch (err) {
+      console.error("Error creating group:", err);
       setError(err.message || "Error creating group");
     } finally {
       setLoading(false);

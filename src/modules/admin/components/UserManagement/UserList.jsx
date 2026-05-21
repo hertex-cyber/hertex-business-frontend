@@ -104,6 +104,7 @@ const UserList = () => {
     try {
       await createDepartment(groupData);
       setShowCreateGroupForm(false);
+      await fetchUsers(filters);
     } catch (err) {
       console.error("Error creating group:", err);
     }
@@ -218,6 +219,7 @@ const UserList = () => {
       const user = users.find(u => u.id === userId);
       const newDepartments = user?.departments?.filter(d => d.id !== selectedDepartment.id).map(d => d.id) || [];
       await updateUser(userId, { department_ids: newDepartments }, filters);
+      await fetchUsers(filters);
     } catch (err) {
       console.error("Error removing user from group:", err);
     } finally {
@@ -231,6 +233,7 @@ const UserList = () => {
       const user = users.find(u => u.id === userId);
       const newDepartments = [...(user?.departments?.map(d => d.id) || []), selectedDepartment.id];
       await updateUser(userId, { department_ids: newDepartments }, filters);
+      await fetchUsers(filters);
     } catch (err) {
       console.error("Error adding user to group:", err);
     } finally {
