@@ -17,10 +17,10 @@ const DepartmentList = ({
   const [deptToDelete, setDeptToDelete] = useState(null);
 
   useEffect(() => {
-    if (deptToDelete && !isDeletingDepartment) {
+    if (deptToDelete && isDeletingDepartment === null) {
       setDeptToDelete(null);
     }
-  }, [isDeletingDepartment, deptToDelete]);
+  }, [isDeletingDepartment]);
 
   if (loading) {
     return (

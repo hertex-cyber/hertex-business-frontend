@@ -29,10 +29,10 @@ const GroupUserModal = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    if (showDeleteConfirm && isDeletingDepartment !== department.id) {
+    if (showDeleteConfirm && isDeletingDepartment === null) {
       setShowDeleteConfirm(false);
     }
-  }, [isDeletingDepartment, showDeleteConfirm, department.id]);
+  }, [isDeletingDepartment]);
 
   const fetchUsersWithSearch = useCallback(async (query) => {
     setIsSearching(true);
