@@ -20,31 +20,16 @@ const UserMenuAssignModal = ({ user, onClose, onSuccess }) => {
 
     const fetchData = async () => {
       try {
-        const menusRes = await axios.get("/api/menus/");
+        const [menusRes, assignmentsRes] = await Promise.all([
+          axios.get("/api/menus/"),
+          axios.get(`/api/menus/user-assignments/?user_id=${user.id}`)
+        ]);
+
         const allMenus = Array.isArray(menusRes.data)
           ? menusRes.data
           : menusRes.data?.results || [];
 
-        const detailPromises = allMenus.map((menu) =>
-          axios
-            .get(`/api/menus/${menu.id}/`)
-            .then((res) => res.data)
-            .catch(() => null)
-        );
-
-        const details = await Promise.all(detailPromises);
-        const assignedIds = new Set();
-
-        details.forEach((detail) => {
-          if (detail && detail.user_assignments) {
-            const isAssigned = detail.user_assignments.some(
-              (ua) => ua.user === user.id
-            );
-            if (isAssigned) {
-              assignedIds.add(detail.id);
-            }
-          }
-        });
+        const assignedIds = new Set(assignmentsRes.data?.data || []);
 
         if (mounted) {
           originalIdsRef.current = new Set(assignedIds);
@@ -80,21 +65,11 @@ const UserMenuAssignModal = ({ user, onClose, onSuccess }) => {
     setSaving(true);
     setError(null);
 
-    const originalIds = originalIdsRef.current;
-    const toAdd = [...selectedMenuIds].filter((id) => !originalIds.has(id));
-    const toRemove = [...originalIds].filter((id) => !selectedMenuIds.has(id));
-
     try {
-      for (const menuId of toRemove) {
-        await axios.post(`/api/menus/${menuId}/remove-user/`, {
-          user_id: user.id,
-        });
-      }
-      for (const menuId of toAdd) {
-        await axios.post(`/api/menus/${menuId}/assign-user/`, {
-          user_id: user.id,
-        });
-      }
+      await axios.post("/api/menus/user-assignments/", {
+        user_id: user.id,
+        menu_ids: Array.from(selectedMenuIds)
+      });
       onSuccess?.();
       onClose?.();
     } catch (err) {

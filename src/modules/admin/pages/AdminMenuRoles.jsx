@@ -78,7 +78,9 @@ export default function AdminMenuRoles() {
       const endpoint = hasRole ? "remove-role" : "assign-role";
       const payload = {
         role,
-        organization: menu.type === "CUSTOM" ? user?.organization : null, // SYSTEM menus are global
+        organization: user?.role === "Superadmin" && menu.type === "SYSTEM" 
+            ? null 
+            : (user?.organization?.id || user?.organization || null),
       };
       await axios.post(`/api/menus/${menu.id}/${endpoint}/`, payload);
     } catch (err) {
@@ -96,9 +98,9 @@ export default function AdminMenuRoles() {
   );
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="h-full flex flex-col bg-black">
       {/* Header */}
-      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5">
+      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 shrink-0">
         <div className="space-y-1">
           <button
             onClick={() => navigate("/admin/menus")}
@@ -118,8 +120,8 @@ export default function AdminMenuRoles() {
       </header>
 
       {/* Content */}
-      <div className="px-10 py-8">
-        <div className="mb-6 relative w-72">
+      <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
+        <div className="mb-6 relative w-72 shrink-0">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"

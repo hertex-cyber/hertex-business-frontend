@@ -113,9 +113,9 @@ export default function AdminMenus() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="h-full flex flex-col bg-black">
       {/* Header */}
-      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5">
+      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 shrink-0">
         <div className="space-y-1">
           <button
             onClick={() => navigate("/admin")}
@@ -154,7 +154,7 @@ export default function AdminMenus() {
       </header>
 
       {/* Filters */}
-      <div className="px-10 py-6 border-b border-white/5 space-y-4">
+      <div className="px-10 py-6 border-b border-white/5 space-y-4 shrink-0">
         <div className="flex gap-4 items-center flex-wrap">
           {/* Search */}
           <div className="flex-1 min-w-[200px] relative">
@@ -207,7 +207,7 @@ export default function AdminMenus() {
       </div>
 
       {/* Content */}
-      <div className="px-10 py-8">
+      <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
         {loading && (
           <div className="flex items-center justify-center py-12">
             <Loader className="text-white/40 animate-spin mr-2" />
