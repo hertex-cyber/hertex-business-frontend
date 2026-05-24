@@ -154,24 +154,29 @@ const CRM = () => {
     try {
       setIsLoading(true);
 
-      const promises = stages.map(stage =>
-        axios.get("/api/crm/pipeline/", {
-          params: { pipeline: selectedPipeline.id, stage: stage.id, page: 1 }
-        })
-      );
+      // Single API call to get all deals for the pipeline
+      const response = await axios.get("/api/crm/pipeline/", {
+        params: { pipeline: selectedPipeline.id, page: 1, page_size: 1000 }
+      });
 
-      const results = await Promise.all(promises);
+      // Group deals by stage
       const newDeals = {};
-
-      results.forEach((res, idx) => {
-        const stageId = stages[idx].id;
-        newDeals[stageId] = {
-          items: (res.data.results || []).map(transformDeal),
-          nextPage: res.data.next ? 2 : null,
-          hasMore: !!res.data.next,
-          count: res.data.count || 0,
+      stages.forEach(stage => {
+        newDeals[stage.id] = {
+          items: [],
+          nextPage: null,
+          hasMore: false,
+          count: 0,
           isLoadingMore: false
         };
+      });
+
+      (response.data.results || []).forEach(deal => {
+        const stageId = deal.stage;
+        if (stageId && newDeals[stageId]) {
+          newDeals[stageId].items.push(transformDeal(deal));
+          newDeals[stageId].count += 1;
+        }
       });
 
       setDeals(newDeals);
