@@ -87,6 +87,7 @@ export const companyProfileApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 
+  removeLogo: () => axios.delete(`${PROFILE_BASE}/remove-logo/`),
   removeSignature: () => axios.delete(`${PROFILE_BASE}/remove-signature/`),
   removeSeal: () => axios.delete(`${PROFILE_BASE}/remove-seal/`),
 };

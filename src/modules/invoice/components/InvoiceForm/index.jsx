@@ -10,7 +10,7 @@ const GST_RATES = [0, 5, 12, 18, 28];
 const PAYMENT_METHODS = ['Cash', 'UPI', 'Card', 'Bank Transfer', 'Cheque', 'Other'];
 
 const DEFAULT_FORM = {
-  domain: '',
+  domain: 'travel_agency',
   schema: '',
   client_name: '',
   client_email: '',
@@ -67,7 +67,7 @@ const InvoiceForm = ({ invoice = null, onSuccess, onLoadingChange }) => {
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
-    if (!form.domain && schemas.length > 0) {
+    if (schemas.length > 0 && !form.schema) {
       const ta = schemas.find((s) => s.domain === 'travel_agency') || schemas[0];
       setForm((f) => ({ ...f, domain: ta.domain, schema: ta.id }));
     }
@@ -98,8 +98,10 @@ const InvoiceForm = ({ invoice = null, onSuccess, onLoadingChange }) => {
 
   // ---- Live computed values ----
   const adults       = parseInt(form.extra_data.adults) || 0;
+  const children     = parseInt(form.extra_data.children) || 0;
+  const totalGuests  = adults + children;
   const costPerAdult = parseFloat(form.extra_data.cost_per_adult) || 0;
-  const packageCost  = adults * costPerAdult;
+  const packageCost  = totalGuests * costPerAdult;
 
   const additionalTotal = (form.extra_data.additional_services || []).reduce(
     (sum, s) => sum + (parseFloat(s.amount) || 0),
@@ -123,9 +125,9 @@ const InvoiceForm = ({ invoice = null, onSuccess, onLoadingChange }) => {
     const lineItems = [];
     if (costPerAdult > 0) {
       lineItems.push({
-        description: 'Tour Package Cost per Adult',
+        description: 'Tour Package Cost',
         hsn_sac_code: '',
-        quantity: adults || 1,
+        quantity: totalGuests || 1,
         unit_price: costPerAdult,
         gst_rate: gstRate,
         order: 0,
@@ -145,7 +147,7 @@ const InvoiceForm = ({ invoice = null, onSuccess, onLoadingChange }) => {
     });
 
     if (lineItems.length === 0) {
-      setSubmitError('Please enter at least a cost per adult.');
+      setSubmitError('Please enter at least a cost per person.');
       return;
     }
 
@@ -333,9 +335,9 @@ const InvoiceForm = ({ invoice = null, onSuccess, onLoadingChange }) => {
 
               {/* Tour Package Cost per Adult */}
               <tr>
-                <td className="py-3 pr-4">Tour Package Cost per Adult</td>
+                <td className="py-3 pr-4">Tour Package Cost</td>
                 <td className="py-3 px-3 text-center text-white/50">
-                  {adults || <span className="text-white/20">—</span>}
+                  {totalGuests || <span className="text-white/20">—</span>}
                 </td>
                 <td className="py-3 px-3">
                   <input

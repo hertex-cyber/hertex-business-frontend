@@ -23,10 +23,11 @@ const Settings = () => {
               <p className="text-xs text-white/30 mt-1">Branding assets are embedded in approved invoice PDFs.</p>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 space-y-4">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 space-y-6">
+              {/* Company Logo */}
               <div>
-                <h4 className="text-sm font-medium text-white">Digital Signature</h4>
-                <p className="text-xs text-white/35 mt-0.5">Printed in the authorised signatory block of each invoice</p>
+                <h4 className="text-sm font-medium text-white">Company Logo</h4>
+                <p className="text-xs text-white/35 mt-0.5">Shown in the header of every invoice PDF</p>
               </div>
 
               {loading ? (
@@ -36,9 +37,28 @@ const Settings = () => {
                 </div>
               ) : !profile ? (
                 <p className="text-xs text-white/30 py-4">
-                  Set up a Company Profile first before uploading a signature.
+                  Set up a Company Profile first before uploading assets.
                 </p>
               ) : (
+                <ImageUploadField
+                  label="Logo"
+                  hint="Recommended: 300×100 px, transparent PNG · Max 500 KB"
+                  currentUrl={profile?.logo_url}
+                  onUpload={(file) => uploadAsset('logo', file)}
+                  onRemove={() => removeAsset('logo')}
+                  showWarning={false}
+                />
+              )}
+
+              <hr className="border-white/5" />
+
+              {/* Digital Signature */}
+              <div>
+                <h4 className="text-sm font-medium text-white">Digital Signature</h4>
+                <p className="text-xs text-white/35 mt-0.5">Printed in the authorised signatory block of each invoice</p>
+              </div>
+
+              {!loading && profile && (
                 <ImageUploadField
                   label="Signature"
                   hint="Recommended: 150×60 px, transparent PNG · Max 500 KB"
@@ -47,6 +67,37 @@ const Settings = () => {
                   onRemove={() => removeAsset('signature')}
                   showWarning={false}
                 />
+              )}
+
+              {!loading && !profile && (
+                <p className="text-xs text-white/30 py-2">
+                  Set up a Company Profile first before uploading a signature.
+                </p>
+              )}
+
+              <hr className="border-white/5" />
+
+              {/* Company Seal */}
+              <div>
+                <h4 className="text-sm font-medium text-white">Company Seal</h4>
+                <p className="text-xs text-white/35 mt-0.5">Circular stamp shown next to the signature on the invoice</p>
+              </div>
+
+              {!loading && profile && (
+                <ImageUploadField
+                  label="Seal"
+                  hint="Recommended: 100×100 px, transparent PNG · Max 500 KB"
+                  currentUrl={profile?.seal_url}
+                  onUpload={(file) => uploadAsset('seal', file)}
+                  onRemove={() => removeAsset('seal')}
+                  showWarning={false}
+                />
+              )}
+
+              {!loading && !profile && (
+                <p className="text-xs text-white/30 py-2">
+                  Set up a Company Profile first before uploading a seal.
+                </p>
               )}
             </div>
           </div>

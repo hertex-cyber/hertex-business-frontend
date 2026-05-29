@@ -55,7 +55,8 @@ export function useCompanyProfile() {
 
   const removeAsset = async (type) => {
     try {
-      if (type === 'signature') await companyProfileApi.removeSignature();
+      if (type === 'logo') await companyProfileApi.removeLogo();
+      else if (type === 'signature') await companyProfileApi.removeSignature();
       else await companyProfileApi.removeSeal();
       await fetchProfile();
       return { success: true };
