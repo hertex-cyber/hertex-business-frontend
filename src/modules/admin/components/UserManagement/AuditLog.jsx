@@ -3,7 +3,7 @@
  * Display user activities and audit log in table format
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useAuditLog } from "../../hooks/useUsers";
 import {
   Activity,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import RingLoader from "@/components/ui/RingLoader";
 
 const getActionIcon = (action) => {
   const icons = {
@@ -78,6 +79,7 @@ const AuditLog = ({ userId = null }) => {
   } = useAuditLog();
 
   const [expandedRow, setExpandedRow] = useState(null);
+  const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     if (userId) {
@@ -90,6 +92,16 @@ const AuditLog = ({ userId = null }) => {
   const handlePageChange = (newPage) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
     setExpandedRow(null);
+    // Reset scroll to top immediately before loading new page
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+    // Fetch new page
+    if (userId) {
+      fetchUserActivities(userId, { page: newPage, page_size: pagination.pageSize });
+    } else {
+      fetchAllActivities({ page: newPage, page_size: pagination.pageSize });
+    }
   };
 
   const toggleExpand = (id) => {
@@ -99,10 +111,10 @@ const AuditLog = ({ userId = null }) => {
   const currentPage = pagination.page;
   const totalPages = Math.ceil(pagination.count / pagination.pageSize);
 
-  if (loading) {
+  if (loading && activities.length === 0) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-sm text-white/40">Loading activities...</div>
+      <div className="bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden shadow-xl flex items-center justify-center min-h-[400px]">
+        <RingLoader />
       </div>
     );
   }
@@ -131,16 +143,17 @@ const AuditLog = ({ userId = null }) => {
       </div>
 
       {/* Content */}
-      {activities.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-          <div className="w-14 h-14 rounded-full bg-white/[0.02] border border-zinc-800 flex items-center justify-center text-white/10 mb-4">
-            <Activity size={28} />
+      <div className="relative min-h-[200px] flex-1 flex flex-col">
+        {activities.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
+            <div className="w-14 h-14 rounded-full bg-white/[0.02] border border-zinc-800 flex items-center justify-center text-white/10 mb-4">
+              <Activity size={28} />
+            </div>
+            <p className="text-sm text-white/20">No audit logs found</p>
           </div>
-          <p className="text-sm text-white/20">No audit logs found</p>
-        </div>
-      ) : (
-        <div className="divide-y divide-zinc-800 overflow-y-auto custom-scrollbar flex-1">
-          {activities.map((activity) => {
+        ) : (
+          <div ref={scrollContainerRef} className="divide-y divide-zinc-800 overflow-y-auto custom-scrollbar flex-1">
+            {activities.map((activity) => {
             const hasChanges =
               activity.target_changes &&
               Object.keys(activity.target_changes).length > 0;
@@ -271,7 +284,15 @@ const AuditLog = ({ userId = null }) => {
             );
           })}
         </div>
-      )}
+        )}
+
+        {/* Page transition overlay */}
+        {loading && activities.length > 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-[1px] z-10">
+            <RingLoader />
+          </div>
+        )}
+      </div>
 
       {/* Pagination */}
       <div className="px-6 py-3 bg-white/[0.02] flex items-center justify-between shrink-0">

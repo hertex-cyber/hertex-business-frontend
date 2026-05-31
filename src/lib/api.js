@@ -9,7 +9,7 @@ class API {
   constructor() {
     this.instance = axios.create({
       baseURL: import.meta.env.VITE_API_URL || "/api/auth",
-      timeout: 10000,
+      timeout: 30000,
       headers: {
         "Content-Type": "application/json",
       },
@@ -54,7 +54,7 @@ class API {
             // Redirect to login if refresh fails
             localStorage.removeItem("access_token");
             localStorage.removeItem("refresh_token");
-            window.location.href = "/auth/login";
+            window.location.href = "/login";
           }
         }
 

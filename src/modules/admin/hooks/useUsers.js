@@ -179,6 +179,7 @@ export const useAuditLog = () => {
   const fetchUserActivities = useCallback(
     async (userId, params = {}) => {
       setLoading(true);
+      setActivities([]); // Clear immediately so stale data doesn't linger
       setError(null);
       try {
         const result = await UserService.getUserActivities(userId, {
@@ -209,6 +210,7 @@ export const useAuditLog = () => {
   const fetchAllActivities = useCallback(
     async (params = {}) => {
       setLoading(true);
+      setActivities([]); // Clear immediately so stale data doesn't linger
       setError(null);
       try {
         const result = await UserService.getAllActivities({
