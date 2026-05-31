@@ -166,7 +166,7 @@ export const useUsers = () => {
  */
 export const useAuditLog = () => {
   const [activities, setActivities] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({
     count: 0,

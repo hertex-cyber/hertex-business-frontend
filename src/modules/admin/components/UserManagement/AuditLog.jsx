@@ -111,14 +111,6 @@ const AuditLog = ({ userId = null }) => {
   const currentPage = pagination.page;
   const totalPages = Math.ceil(pagination.count / pagination.pageSize);
 
-  if (loading && activities.length === 0) {
-    return (
-      <div className="bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden shadow-xl flex items-center justify-center min-h-[400px]">
-        <RingLoader />
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -129,6 +121,13 @@ const AuditLog = ({ userId = null }) => {
 
   return (
     <div className="bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-800 shadow-xl relative flex flex-col min-h-0 flex-1">
+
+      {/* Loading overlay — covers entire table like ContactsTable */}
+      {loading && (
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-[4px] z-50 flex items-center justify-center">
+          <RingLoader />
+        </div>
+      )}
 
       {/* Header */}
       <div className="px-8 py-3 bg-zinc-900/20 border-b border-zinc-800 shrink-0 select-none">
@@ -143,8 +142,8 @@ const AuditLog = ({ userId = null }) => {
       </div>
 
       {/* Content */}
-      <div className="relative min-h-[200px] flex-1 flex flex-col">
-        {activities.length === 0 ? (
+      <div className="min-h-[200px] flex-1 flex flex-col">
+        {activities.length === 0 && !loading ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
             <div className="w-14 h-14 rounded-full bg-white/[0.02] border border-zinc-800 flex items-center justify-center text-white/10 mb-4">
               <Activity size={28} />
@@ -285,13 +284,6 @@ const AuditLog = ({ userId = null }) => {
           })}
         </div>
         )}
-
-        {/* Page transition overlay */}
-        {loading && activities.length > 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/40 backdrop-blur-[1px] z-10">
-            <RingLoader />
-          </div>
-        )}
       </div>
 
       {/* Pagination */}
@@ -301,7 +293,7 @@ const AuditLog = ({ userId = null }) => {
         </p>
         <div className="flex items-center gap-1.5">
           <button
-            disabled={currentPage === 1 || !pagination.previous}
+            disabled={currentPage === 1 || !pagination.previous || loading}
             onClick={() => handlePageChange(currentPage - 1)}
             className="p-2 rounded-xs bg-white/5 border border-white/5 text-white disabled:opacity-20 hover:bg-white/10 transition-all"
           >
@@ -333,7 +325,7 @@ const AuditLog = ({ userId = null }) => {
           </div>
           <button
             disabled={
-              currentPage === totalPages || totalPages === 0 || !pagination.next
+              currentPage === totalPages || totalPages === 0 || !pagination.next || loading
             }
             onClick={() => handlePageChange(currentPage + 1)}
             className="p-2 rounded-xs bg-white/5 border border-white/5 text-white disabled:opacity-20 hover:bg-white/10 transition-all"
