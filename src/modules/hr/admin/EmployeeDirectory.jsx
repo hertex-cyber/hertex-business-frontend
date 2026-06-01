@@ -121,7 +121,7 @@ export default function EmployeeDirectory() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
-                        <button className="p-2 hover:bg-white/10 rounded transition-colors text-white/40 hover:text-white" title="View Profile">
+                        <button onClick={() => navigate(`/hr/admin/employees/${emp.id}`)} className="p-2 hover:bg-white/10 rounded transition-colors text-white/40 hover:text-white" title="View Profile">
                           <Eye size={16} />
                         </button>
                         <button className="p-2 hover:bg-white/10 rounded transition-colors text-white/40 hover:text-white" title="Edit Employee">

@@ -123,7 +123,7 @@ function App() {
               }
             />
             <Route
-              path="/hr"
+              path="/hr/*"
               element={
                 <ProtectedRoute>
                   <HR />

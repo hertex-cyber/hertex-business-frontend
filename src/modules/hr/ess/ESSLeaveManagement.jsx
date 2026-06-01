@@ -2,22 +2,15 @@ import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Plus,
-  Search,
   Loader,
   AlertCircle,
   CheckCircle2,
-  Clock,
-  XCircle,
+  Calendar,
+  FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useHR } from "../context/HRContext";
 import { leaveAPI } from "../services/hrAPI";
-import {
-  StatusBadge,
-  LeaveApplicationCard,
-  LeaveStatusCard,
-  EmptyState,
-} from "../shared/components";
 
 export const ESSLeaveManagement = () => {
   const navigate = useNavigate();
@@ -42,9 +35,9 @@ export const ESSLeaveManagement = () => {
     setLoadingState(true);
     try {
       const [typesRes, appsRes, balancesRes] = await Promise.all([
-        leaveAPI.getLeaveTypes(),
-        leaveAPI.getLeaveApplications(),
-        leaveAPI.getCurrentYearBalance(),
+        leaveAPI.getLeaveTypes().catch(() => ({ data: [] })),
+        leaveAPI.getLeaveApplications().catch(() => ({ data: [] })),
+        leaveAPI.getCurrentYearBalance().catch(() => ({ data: [] })),
       ]);
 
       setLeaveTypes(typesRes.data || []);
@@ -59,26 +52,15 @@ export const ESSLeaveManagement = () => {
 
   const handleSubmitLeave = async (e) => {
     e.preventDefault();
-    if (
-      !formData.leave_type ||
-      !formData.date_from ||
-      !formData.date_to ||
-      !formData.reason
-    ) {
+    if (!formData.leave_type || !formData.date_from || !formData.date_to || !formData.reason) {
       setErrorState("All fields are required");
       return;
     }
-
     try {
       setLoadingState(true);
       await leaveAPI.applyLeave(formData);
       setShowForm(false);
-      setFormData({
-        leave_type: "",
-        date_from: "",
-        date_to: "",
-        reason: "",
-      });
+      setFormData({ leave_type: "", date_from: "", date_to: "", reason: "" });
       fetchData();
     } catch (err) {
       setErrorState(err.response?.data?.detail || err.message);
@@ -88,220 +70,259 @@ export const ESSLeaveManagement = () => {
   };
 
   const handleCancelLeave = async (applicationId) => {
-    if (window.confirm("Are you sure you want to cancel this leave?")) {
-      try {
-        setLoadingState(true);
-        await leaveAPI.cancelLeave(applicationId, "Cancelled by employee");
-        fetchData();
-      } catch (err) {
-        setErrorState(err.message);
-      } finally {
-        setLoadingState(false);
-      }
+    try {
+      setLoadingState(true);
+      await leaveAPI.cancelLeave(applicationId, "Cancelled by employee");
+      fetchData();
+    } catch (err) {
+      setErrorState(err.message);
+    } finally {
+      setLoadingState(false);
     }
   };
 
   const filteredApplications = applications.filter((app) =>
-    filter === "ALL" ? true : app.approval_status === filter,
+    filter === "ALL" ? true : app.approval_status === filter
   );
 
+  const getStatusStyle = (status) => {
+    switch (status?.toUpperCase()) {
+      case "PENDING": return "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20";
+      case "APPROVED": return "bg-green-500/10 text-green-400 border border-green-500/20";
+      case "REJECTED": return "bg-red-500/10 text-red-400 border border-red-500/20";
+      case "CANCELLED": return "bg-white/10 text-white/40 border border-white/10";
+      default: return "bg-white/10 text-white/40";
+    }
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="h-full flex flex-col bg-black">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 hover:bg-gray-100 rounded-full"
-        >
-          <ArrowLeft className="w-6 h-6 text-gray-600" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Leave Management</h1>
-          <p className="text-gray-600 mt-1">
-            Apply and track your leave requests
+      <header className="px-10 py-8 flex justify-between items-end border-b border-white/5 shrink-0 bg-black/50 backdrop-blur-xl z-10 sticky top-0">
+        <div className="space-y-1">
+          <button onClick={() => navigate('/hr/ess')} className="flex items-center gap-2 text-white/40 hover:text-white mb-4 transition-colors text-sm">
+            <ArrowLeft size={16} /> Back to Dashboard
+          </button>
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-4">
+            <Calendar size={10} className="text-green-400" />
+            Employee Self-Service
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-white flex items-center gap-3">
+            <Calendar size={32} className="text-green-500" />
+            Leave Management
+          </h1>
+          <p className="text-sm text-white/40 font-medium">
+            Apply and track your leave requests.
           </p>
         </div>
-      </div>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg hover:bg-green-500/20 transition-colors font-medium text-sm"
+          >
+            <Plus size={18} /> Apply for Leave
+          </button>
+        )}
+      </header>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-red-800 text-sm">{error}</p>
-        </div>
-      )}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
+        {error && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
 
-      {/* Leave Balances */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          Your Leave Balances
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {balances.length > 0 ? (
-            balances.map((balance) => (
-              <LeaveStatusCard key={balance.id} leaveData={balance} />
-            ))
-          ) : (
-            <EmptyState
-              title="No leave data"
-              description="Your leave balances will appear here"
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Apply Leave Form */}
-      {showForm && (
-        <div className="mb-8 bg-white rounded-lg shadow p -6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">
-            Apply for Leave
+        {/* Leave Balances */}
+        <div className="mb-8">
+          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <FileText size={18} className="text-blue-400" />
+            Your Leave Balances
           </h2>
-          <form onSubmit={handleSubmitLeave} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Leave Type *
-                </label>
-                <select
-                  required
-                  value={formData.leave_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, leave_type: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Select Leave Type</option>
-                  {leaveTypes.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {balances.length > 0 ? (
+              balances.map((balance) => (
+                <div key={balance.id} className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
+                  <h3 className="font-semibold text-white mb-4">{balance.leaf_type_name}</h3>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Available</span>
+                      <span className="font-bold text-green-400">{balance.current_balance}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Used</span>
+                      <span className="font-bold text-orange-400">{balance.used_days}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/50">Pending</span>
+                      <span className="font-bold text-blue-400">{balance.pending_days}</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-white/5 rounded-full h-1.5">
+                    <div
+                      className="bg-blue-500 h-1.5 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min((balance.used_days / (balance.current_balance + balance.used_days || 1)) * 100, 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full p-8 rounded-xl border border-dashed border-white/10 text-center">
+                <p className="text-white/40 text-sm">No leave balances available.</p>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  From Date *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.date_from}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date_from: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  To Date *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.date_to}
-                  onChange={(e) =>
-                    setFormData({ ...formData, date_to: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Reason *
-              </label>
-              <textarea
-                required
-                value={formData.reason}
-                onChange={(e) =>
-                  setFormData({ ...formData, reason: e.target.value })
-                }
-                rows="3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter reason for leave"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:bg-gray-400"
-              >
-                {loading ? "Submitting..." : "Submit Request"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+            )}
+          </div>
         </div>
-      )}
 
-      {!showForm && (
-        <button
-          onClick={() => setShowForm(true)}
-          className="mb-8 flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          Apply for Leave
-        </button>
-      )}
+        {/* Apply Leave Form */}
+        {showForm && (
+          <div className="mb-8 p-8 rounded-2xl bg-white/[0.02] border border-white/5">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Apply for Leave</h2>
+              <button onClick={() => setShowForm(false)} className="text-white/40 hover:text-white text-sm">Cancel</button>
+            </div>
+            <form onSubmit={handleSubmitLeave} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-white/60 mb-2">Leave Type *</label>
+                  <select
+                    required
+                    value={formData.leave_type}
+                    onChange={(e) => setFormData({ ...formData, leave_type: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
+                  >
+                    <option value="">Select Leave Type</option>
+                    {leaveTypes.map((type) => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/60 mb-2">From Date *</label>
+                  <input
+                    type="date" required value={formData.date_from}
+                    onChange={(e) => setFormData({ ...formData, date_from: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 [color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/60 mb-2">To Date *</label>
+                  <input
+                    type="date" required value={formData.date_to}
+                    onChange={(e) => setFormData({ ...formData, date_to: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 [color-scheme:dark]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/60 mb-2">Reason *</label>
+                <textarea
+                  required value={formData.reason}
+                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 placeholder:text-white/30"
+                  placeholder="Enter reason for leave"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={loading}
+                  className="px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-green-500/20 disabled:opacity-50"
+                >
+                  {loading ? "Submitting..." : "Submit Request"}
+                </button>
+                <button type="button" onClick={() => setShowForm(false)}
+                  className="px-6 py-2.5 bg-white/5 border border-white/10 text-white/60 rounded-xl hover:bg-white/10 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
-      {/* Leave Applications */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">
-          Your Applications
-        </h2>
+        {/* Leave Applications */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <FileText size={18} className="text-white/50" />
+              Your Applications
+            </h2>
+            <span className="text-xs text-white/40 bg-white/5 px-3 py-1 rounded-full">
+              {filteredApplications.length} {filteredApplications.length === 1 ? "request" : "requests"}
+            </span>
+          </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6">
-          {["PENDING", "APPROVED", "REJECTED", "CANCELLED", "ALL"].map(
-            (status) => (
+          {/* Filter Tabs */}
+          <div className="flex gap-1 mb-6 p-1 rounded-xl bg-white/[0.03] border border-white/5 w-fit">
+            {["PENDING", "APPROVED", "REJECTED", "CANCELLED", "ALL"].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   filter === status
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                    : "text-white/50 hover:text-white hover:bg-white/5"
                 }`}
               >
-                {status === "ALL" ? "All" : status}
+                {status === "ALL" ? "All" : status.charAt(0) + status.slice(1).toLowerCase()}
               </button>
-            ),
-          )}
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader className="w-8 h-8 animate-spin text-blue-600" />
-          </div>
-        ) : filteredApplications.length > 0 ? (
-          <div className="space-y-3">
-            {filteredApplications.map((application) => (
-              <LeaveApplicationCard
-                key={application.id}
-                application={application}
-                onCancel={handleCancelLeave}
-                showActions={true}
-              />
             ))}
           </div>
-        ) : (
-          <EmptyState
-            title="No leave applications"
-            description={`You have no ${filter.toLowerCase()} leave applications`}
-            icon={Calendar}
-          />
-        )}
+
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <Loader className="w-8 h-8 animate-spin text-blue-500" />
+            </div>
+          ) : filteredApplications.length > 0 ? (
+            <div className="space-y-3">
+              {filteredApplications.map((application) => (
+                <div key={application.id} className="p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <p className="font-semibold text-white">{application.leave_type_name}</p>
+                      <p className="text-xs text-white/50 mt-0.5">{application.employee_name}</p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusStyle(application.approval_status)}`}>
+                      {application.approval_status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-white/60 mb-2">
+                    <Calendar size={14} />
+                    <span>{application.date_from} → {application.date_to}</span>
+                    <span className="text-white/30">({application.number_of_days} days)</span>
+                  </div>
+                  {application.reason && (
+                    <p className="text-xs text-white/40 italic mb-3">"{application.reason.slice(0, 120)}"</p>
+                  )}
+                  {application.approval_status === "APPROVED" && !application.is_cancelled && (
+                    <button
+                      onClick={() => handleCancelLeave(application.id)}
+                      className="px-4 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
+                    >
+                      Cancel Request
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 rounded-xl border border-dashed border-white/10 text-center">
+              <CheckCircle2 size={40} className="text-white/20 mx-auto mb-3" />
+              <p className="text-white/60 text-sm mb-1">No {filter.toLowerCase()} leave applications</p>
+              <p className="text-white/30 text-xs">Apply for leave to see your requests here.</p>
+              {!showForm && (
+                <button onClick={() => setShowForm(true)}
+                  className="mt-4 px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-colors inline-flex items-center gap-2"
+                >
+                  <Plus size={16} /> Apply Now
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

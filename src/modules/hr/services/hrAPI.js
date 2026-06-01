@@ -217,4 +217,155 @@ export const compOffAPI = {
   createCompOff: (data) => hrClient.post("/comp-offs/", data),
 };
 
+// ============================================================================
+// RECRUITMENT ENDPOINTS
+// ============================================================================
+
+export const recruitmentAPI = {
+  // Job Requisitions
+  getRequisitions: (filters = {}) =>
+    hrClient.get("/job-requisitions/", { params: filters }),
+  createRequisition: (data) => hrClient.post("/job-requisitions/", data),
+  updateRequisition: (id, data) => hrClient.patch(`/job-requisitions/${id}/`, data),
+
+  // Candidates
+  getCandidates: (filters = {}) =>
+    hrClient.get("/candidates/", { params: filters }),
+  createCandidate: (data) => hrClient.post("/candidates/", data),
+
+  // Job Applications (ATS Pipeline)
+  getJobApplications: (filters = {}) =>
+    hrClient.get("/job-applications/", { params: filters }),
+  createJobApplication: (data) => hrClient.post("/job-applications/", data),
+  updateApplicationStage: (id, stage) =>
+    hrClient.patch(`/job-applications/${id}/`, { stage }),
+};
+
+// ============================================================================
+// PERFORMANCE MANAGEMENT ENDPOINTS
+// ============================================================================
+
+export const performanceAPI = {
+  // Appraisal Cycles
+  getAppraisalCycles: () => hrClient.get("/appraisal-cycles/"),
+  createAppraisalCycle: (data) => hrClient.post("/appraisal-cycles/", data),
+
+  // Performance Goals
+  getGoals: (filters = {}) =>
+    hrClient.get("/performance-goals/", { params: filters }),
+  createGoal: (data) => hrClient.post("/performance-goals/", data),
+
+  // Performance Reviews
+  getReviews: (filters = {}) =>
+    hrClient.get("/performance-reviews/", { params: filters }),
+  createReview: (data) => hrClient.post("/performance-reviews/", data),
+};
+
+// ============================================================================
+// TRAINING ENDPOINTS
+// ============================================================================
+
+export const trainingAPI = {
+  // Training Programs
+  getPrograms: (filters = {}) =>
+    hrClient.get("/training-programs/", { params: filters }),
+  createProgram: (data) => hrClient.post("/training-programs/", data),
+
+  // Training Nominations
+  getNominations: (filters = {}) =>
+    hrClient.get("/training-nominations/", { params: filters }),
+  createNomination: (data) => hrClient.post("/training-nominations/", data),
+};
+
+// ============================================================================
+// EXIT MANAGEMENT ENDPOINTS
+// ============================================================================
+
+export const exitAPI = {
+  // Resignations
+  getResignations: (filters = {}) =>
+    hrClient.get("/resignations/", { params: filters }),
+  createResignation: (data) => hrClient.post("/resignations/", data),
+
+  // Exit Clearances
+  getExitClearances: (filters = {}) =>
+    hrClient.get("/exit-clearances/", { params: filters }),
+  updateClearance: (id, data) => hrClient.patch(`/exit-clearances/${id}/`, data),
+};
+
+// ============================================================================
+// STATUTORY COMPLIANCE ENDPOINTS
+// ============================================================================
+
+export const complianceAPI = {
+  // PF Configuration
+  getPFConfigs: () => hrClient.get("/pf-configurations/"),
+  createPFConfig: (data) => hrClient.post("/pf-configurations/", data),
+  updatePFConfig: (id, data) => hrClient.patch(`/pf-configurations/${id}/`, data),
+
+  // PF Contributions
+  getPFContributions: (filters = {}) =>
+    hrClient.get("/pf-contributions/", { params: filters }),
+
+  // ESI Configuration
+  getESIConfigs: () => hrClient.get("/esi-configurations/"),
+  createESIConfig: (data) => hrClient.post("/esi-configurations/", data),
+  updateESIConfig: (id, data) => hrClient.patch(`/esi-configurations/${id}/`, data),
+
+  // ESI Contributions
+  getESIContributions: (filters = {}) =>
+    hrClient.get("/esi-contributions/", { params: filters }),
+
+  // Professional Tax Slabs
+  getPTSlabs: (filters = {}) =>
+    hrClient.get("/professional-tax-slabs/", { params: filters }),
+  createPTSlab: (data) => hrClient.post("/professional-tax-slabs/", data),
+  updatePTSlab: (id, data) => hrClient.patch(`/professional-tax-slabs/${id}/`, data),
+
+  // PT Deductions
+  getPTDeductions: (filters = {}) =>
+    hrClient.get("/pt-deductions/", { params: filters }),
+
+  // TDS Configuration
+  getTDSConfigs: () => hrClient.get("/tds-configurations/"),
+  createTDSConfig: (data) => hrClient.post("/tds-configurations/", data),
+  updateTDSConfig: (id, data) => hrClient.patch(`/tds-configurations/${id}/`, data),
+
+  // Investment Declarations
+  getInvestmentDeclarations: (filters = {}) =>
+    hrClient.get("/investment-declarations/", { params: filters }),
+  createInvestmentDeclaration: (data) => hrClient.post("/investment-declarations/", data),
+  approveInvestmentDeclaration: (id) =>
+    hrClient.post(`/investment-declarations/${id}/approve/`),
+
+  // TDS Calculations
+  getTDSCalculations: (filters = {}) =>
+    hrClient.get("/tds-calculations/", { params: filters }),
+
+  // Gratuity Configuration
+  getGratuityConfigs: () => hrClient.get("/gratuity-configurations/"),
+
+  // Gratuity Calculations
+  getGratuityCalculations: (filters = {}) =>
+    hrClient.get("/gratuity-calculations/", { params: filters }),
+
+  // Bonus Configuration
+  getBonusConfigs: () => hrClient.get("/bonus-configurations/"),
+
+  // Bonus Calculations
+  getBonusCalculations: (filters = {}) =>
+    hrClient.get("/bonus-calculations/", { params: filters }),
+
+  // Compliance Calendar
+  getComplianceCalendar: (filters = {}) =>
+    hrClient.get("/compliance-calendar/", { params: filters }),
+  getUpcomingCompliance: (days = 30) =>
+    hrClient.get("/compliance-calendar/upcoming/", { params: { days } }),
+  getOverdueCompliance: () =>
+    hrClient.get("/compliance-calendar/overdue/"),
+  markComplianceCompleted: (id, reference = "") =>
+    hrClient.post(`/compliance-calendar/${id}/mark_completed/`, { reference_number: reference }),
+  createComplianceEntry: (data) => hrClient.post("/compliance-calendar/", data),
+};
+
 export default hrClient;
