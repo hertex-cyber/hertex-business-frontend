@@ -207,10 +207,7 @@ const MainHRDashboard = () => {
       {/* === UNIFIED HEADER === */}
       <header className="px-10 py-8 flex justify-between items-end border-b border-zinc-800 shrink-0 bg-black/50 backdrop-blur-xl z-10">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">
-            <Briefcase size={10} className="text-blue-400" />
-            Human Resources
-          </div>
+          
           <h1 className="text-3xl font-bold tracking-tight text-white">HR Dashboard</h1>
           <p className="text-sm text-white/40 font-medium">
             Enterprise HR management at a glance
