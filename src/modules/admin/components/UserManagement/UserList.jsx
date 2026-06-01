@@ -550,6 +550,9 @@ const UserList = () => {
             }}
             onToggleActive={handleToggleActive}
             onSave={handleSaveUser}
+            onOpenAssignModal={() => {
+              setMenuAssignUser(selectedUser);
+            }}
             isToggling={isTogglingActive}
             isSaving={isSavingEdit}
           />

@@ -20,6 +20,7 @@ import {
 import { formatISO, parseISO, format } from "date-fns";
 import { TbEdit } from "react-icons/tb";
 import { Trash2 } from "lucide-react";
+import UserMenusPanel from "./UserMenusPanel";
 
 const ROLE_STYLES = {
   Superadmin: "bg-purple-500/10 text-purple-400 border-purple-500/20",
@@ -138,7 +139,7 @@ const CopyButton = ({ text }) => {
   );
 };
 
-const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, onDelete, onToggleActive, onSave, isToggling = false, isSaving = false }) => {
+const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, onDelete, onToggleActive, onSave, onOpenAssignModal, isToggling = false, isSaving = false }) => {
   const [isEditing, setIsEditing] = useState(initialEditMode);
   const [editedUser, setEditedUser] = useState(user);
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
@@ -560,10 +561,16 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
             />
           </div>
 
-          <div className="px-8 py-6 border-t border-white/5">
-            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-6">Verification Status</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-3 border-b border-white/5">
+          {/* ── Menu Access Summary ─────────────────────────────── */}
+          <UserMenusPanel
+            user={user}
+            onOpenAssignModal={onOpenAssignModal}
+          />
+
+          <div className="px-8 py-5 border-t border-white/5">
+            <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-4">Verification Status</h3>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between py-2.5 border-b border-white/5">
                 <div className="flex items-center gap-3">
                   <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0">
                     <CheckCircle size={13} className={user.email_verified ? "text-green-400" : "text-white/20"} />
@@ -574,7 +581,7 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
                   {user.email_verified ? "Yes" : "No"}
                 </span>
               </div>
-              <div className="flex items-center justify-between py-3">
+              <div className="flex items-center justify-between py-2.5">
                 <div className="flex items-center gap-3">
                   <div className="w-7 h-7 rounded-md bg-white/5 flex items-center justify-center text-white/30 shrink-0">
                     <CheckCircle size={13} className={user.mobile_verified ? "text-green-400" : "text-white/20"} />

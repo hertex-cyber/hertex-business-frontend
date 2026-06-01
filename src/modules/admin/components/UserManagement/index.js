@@ -11,3 +11,5 @@ export { default as UserDetail } from "./UserDetail";
 export { default as AuditLog } from "./AuditLog";
 export { default as UserFilters } from "./UserFilters";
 export { default as BulkActions } from "./BulkActions";
+export { default as UserMenuAssignModal } from "./UserMenuAssignModal";
+export { default as UserMenusPanel } from "./UserMenusPanel";

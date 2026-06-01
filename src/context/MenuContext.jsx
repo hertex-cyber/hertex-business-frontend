@@ -39,75 +39,83 @@ export function MenuProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refreshMenus = useCallback(async (force = false) => {
-    if (!user) {
-      setMenus([]);
-      setSections({});
-      setLoading(false);
-      return;
-    }
+  const refreshMenus = useCallback(
+    async (force = false) => {
+      if (!user) {
+        setMenus([]);
+        setSections({});
+        setLoading(false);
+        return;
+      }
 
-    // Use cached data if available and not forcing refresh
-    const cacheKey = `menus_${CACHE_VERSION}_${user.id || user.username}`;
-    if (!force) {
-      try {
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-          const { data, ts } = JSON.parse(cached);
-          // Cache valid for 5 minutes
-          if (Date.now() - ts < 5 * 60 * 1000) {
-            setMenus(data.all_menus || []);
-            setSections(data.sections || {});
-            setLoading(false);
-            return;
-          }
-        }
-      } catch (_) {}
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await axios.get("/api/menus/my_menus/");
-
-      if (response.data?.success) {
-        const data = response.data.data;
-        const allMenus = data.all_menus || [];
-        const sectionData = data.sections || {};
-
-        // Warn developer if no menus returned — likely unseeded DB
-        if (allMenus.length === 0) {
-          console.warn(
-            "[MenuContext] No menus returned from API. " +
-            "Run `python manage.py seed_menus` on the backend to populate default menus."
-          );
-        }
-
-        setMenus(allMenus);
-        setSections(sectionData);
-
-        // Cache the result in sessionStorage (per-user, per-tab, 5-min TTL)
+      // Use cached data if available and not forcing refresh
+      const cacheKey = `menus_${CACHE_VERSION}_${user.id || user.username}`;
+      if (!force) {
         try {
-          sessionStorage.setItem(
-            cacheKey,
-            JSON.stringify({ data: { all_menus: allMenus, sections: sectionData }, ts: Date.now() })
-          );
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            const { data, ts } = JSON.parse(cached);
+            // Cache valid for 30 seconds to avoid stale menu assignments
+            if (Date.now() - ts < 30 * 1000) {
+              setMenus(data.all_menus || []);
+              setSections(data.sections || {});
+              setLoading(false);
+              return;
+            }
+          }
         } catch (_) {}
-      } else {
-        throw new Error("Invalid response format from server");
       }
-    } catch (err) {
-      if (err.response?.status !== 404) {
-        console.error("[MenuContext] Failed to load menus:", err);
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await axios.get("/api/menus/my_menus/");
+
+        if (response.data?.success) {
+          const data = response.data.data;
+          const allMenus = data.all_menus || [];
+          const sectionData = data.sections || {};
+
+          // Warn developer if no menus returned — likely unseeded DB
+          if (allMenus.length === 0) {
+            console.warn(
+              "[MenuContext] No menus returned from API. " +
+                "Run `python manage.py seed_menus` on the backend to populate default menus.",
+            );
+          }
+
+          setMenus(allMenus);
+          setSections(sectionData);
+
+          // Cache the result in sessionStorage (per-user, per-tab, 5-min TTL)
+          try {
+            sessionStorage.setItem(
+              cacheKey,
+              JSON.stringify({
+                data: { all_menus: allMenus, sections: sectionData },
+                ts: Date.now(),
+              }),
+            );
+          } catch (_) {}
+        } else {
+          throw new Error("Invalid response format from server");
+        }
+      } catch (err) {
+        if (err.response?.status !== 404) {
+          console.error("[MenuContext] Failed to load menus:", err);
+        }
+        setError(
+          err.response?.data?.error || err.message || "Failed to load menus",
+        );
+        setMenus([]);
+        setSections({});
+      } finally {
+        setLoading(false);
       }
-      setError(err.response?.data?.error || err.message || "Failed to load menus");
-      setMenus([]);
-      setSections({});
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
   // Re-fetch menus when the logged-in user changes (login / logout / switch account)
   useEffect(() => {
