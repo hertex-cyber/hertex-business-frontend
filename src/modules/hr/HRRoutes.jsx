@@ -16,7 +16,6 @@ import ESSProfile from "./ess/ESSProfile";
 import MSSDashboard from "./mss/MSSDashboard";
 
 // Admin Pages
-import HRAdminDashboard from './admin/HRAdminDashboard';
 import EmployeeDirectory from './admin/EmployeeDirectory';
 import EmployeeDetail from './admin/EmployeeDetail';
 import EmployeeOnboarding from './admin/EmployeeOnboarding';
@@ -43,7 +42,6 @@ export const HRRoutes = () => {
         <Route path="/mss" element={<MSSDashboard />} />
 
         {/* Admin Routes */}
-        <Route path="/admin" element={<HRAdminDashboard />} />
         <Route path="/admin/employees" element={<EmployeeDirectory />} />
         <Route path="/admin/employees/new" element={<EmployeeOnboarding />} />
         <Route path="/admin/employees/:id" element={<EmployeeDetail />} />
@@ -53,12 +51,13 @@ export const HRRoutes = () => {
         <Route path="/admin/compliance" element={<ComplianceDashboard />} />
 
         {/* Placeholder redirects for other admin modules */}
-        <Route path="/admin/payroll" element={<Navigate to="/admin" />} />
-        <Route path="/admin/attendance" element={<Navigate to="/admin" />} />
-        <Route path="/admin/leaves" element={<Navigate to="/admin" />} />
-        <Route path="/admin/training" element={<Navigate to="/admin" />} />
-        <Route path="/admin/settings" element={<Navigate to="/admin" />} />
+        <Route path="/admin/payroll" element={<Navigate to="/" />} />
+        <Route path="/admin/attendance" element={<Navigate to="/" />} />
+        <Route path="/admin/leaves" element={<Navigate to="/" />} />
+        <Route path="/admin/training" element={<Navigate to="/" />} />
+        <Route path="/admin/settings" element={<Navigate to="/" />} />
         <Route path="/admin/compliance/calendar" element={<Navigate to="/admin/compliance" />} />
+        <Route path="/admin" element={<Navigate to="/" replace />} />
       </Routes>
     </HRProvider>
   );
