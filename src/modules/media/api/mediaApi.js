@@ -1,51 +1,103 @@
 /**
- * Media API layer — CRUD for dynamic collections and asset uploads.
+ * Media API layer — all HTTP calls go through axios.
+ * Proxy is configured in vite.config.js to forward /api to the Django backend.
  */
 import axios from 'axios';
 
-const BASE = '/api/media';
+const COLLECTIONS_BASE = '/api/media/collections';
+const ASSETS_BASE = '/api/media/assets';
 
 export const mediaApi = {
   // -----------------------------------------------------------------------
   // Collections
   // -----------------------------------------------------------------------
-  collections: {
-    /** List all collections for current user */
-    list: () => axios.get(`${BASE}/collections/`),
 
-    /** Get single collection */
-    get: (id) => axios.get(`${BASE}/collections/${id}/`),
+  /** List all collections for the current user */
+  listCollections: (params = {}) => axios.get(`${COLLECTIONS_BASE}/`, { params }),
 
-    /** Create a new collection */
-    create: (data) => axios.post(`${BASE}/collections/`, data),
+  /** Get a single collection by ID */
+  getCollection: (id) => axios.get(`${COLLECTIONS_BASE}/${id}/`),
 
-    /** Full update */
-    update: (id, data) => axios.put(`${BASE}/collections/${id}/`, data),
+  /** Create a new collection */
+  createCollection: (data) => axios.post(`${COLLECTIONS_BASE}/`, data),
 
-    /** Partial update (rename, etc.) */
-    patch: (id, data) => axios.patch(`${BASE}/collections/${id}/`, data),
+  /** Update a collection (full or partial) */
+  updateCollection: (id, data, partial = true) =>
+    partial
+      ? axios.patch(`${COLLECTIONS_BASE}/${id}/`, data)
+      : axios.put(`${COLLECTIONS_BASE}/${id}/`, data),
 
-    /** Delete collection and all its assets */
-    remove: (id) => axios.delete(`${BASE}/collections/${id}/`),
-  },
+  /** Toggle pin/unpin a collection */
+  togglePin: (id, isPinned) =>
+    axios.patch(`${COLLECTIONS_BASE}/${id}/`, { is_pinned: isPinned }),
+
+  /** Delete a collection (soft delete — returns { id, restore_url }) */
+  deleteCollection: (id) => axios.delete(`${COLLECTIONS_BASE}/${id}/`),
+
+  /** Restore a soft-deleted collection */
+  restoreCollection: (id) => axios.post(`${COLLECTIONS_BASE}/${id}/restore/`),
 
   // -----------------------------------------------------------------------
   // Assets
   // -----------------------------------------------------------------------
-  assets: {
-    /** List assets, optionally filtered by collection_id and file_type */
-    list: (params = {}) => axios.get(`${BASE}/assets/`, { params }),
 
-    /** Get single asset details */
-    get: (id) => axios.get(`${BASE}/assets/${id}/`),
+  /** List assets, optionally filtered by collection_id and/or file_type */
+  listAssets: (params = {}) => axios.get(`${ASSETS_BASE}/`, { params }),
 
-    /** Upload a file to a collection (multipart/form-data) */
-    upload: (formData) =>
-      axios.post(`${BASE}/assets/upload/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }),
+  /**
+   * Upload a file to a collection with progress tracking.
+   * @param {FormData} formData - multipart form with file + collection_id
+   * @param {Function} onProgress - callback(percentComplete: number)
+   */
+  uploadAsset: (formData, onProgress) =>
+    axios.post(`${ASSETS_BASE}/upload/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percent);
+        }
+      },
+    }),
 
-    /** Delete an asset */
-    remove: (id) => axios.delete(`${BASE}/assets/${id}/`),
+  /** Get a single asset by ID */
+  getAsset: (id) => axios.get(`${ASSETS_BASE}/${id}/`),
+
+  /** Delete an asset (soft delete — returns { id, restore_url }) */
+  deleteAsset: (id) => axios.delete(`${ASSETS_BASE}/${id}/`),
+
+  /** Restore a soft-deleted asset */
+  restoreAsset: (id) => axios.post(`${ASSETS_BASE}/${id}/restore/`),
+
+  /** Batch soft-delete multiple assets */
+  batchDeleteAssets: (ids) => axios.post(`${ASSETS_BASE}/batch-delete/`, { ids }),
+
+  /**
+   * Download an asset by fetching it as a blob via fetch() with the JWT
+   * token in the query string. Then triggers a browser download via a
+   * temporary <a> element so the user stays on the same page.
+   */
+  downloadAsset: async (id, fileName) => {
+    const token = localStorage.getItem('access_token');
+    const url = `${ASSETS_BASE}/${id}/download/` + (token ? '?token=' + encodeURIComponent(token) : '');
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error('Download failed:', res.status, res.statusText);
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Delay revoke so Chrome has time to start the download
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
+    } catch (err) {
+      console.error('Download failed:', err);
+    }
   },
 };
