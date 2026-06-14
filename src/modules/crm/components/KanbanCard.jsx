@@ -84,7 +84,7 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
             style={{ pointerEvents: 'auto', cursor: 'pointer', zIndex: 100 }}
             className="px-3 py-1 rounded-sm bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white transition-all border border-white/20 active:scale-95 cursor-pointer relative"
           >
-            View Details
+            View
           </button>
         </div>
       </div>

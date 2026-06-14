@@ -664,7 +664,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                     className="flex-1 flex items-center justify-center gap-2 px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all cursor-pointer"
                                                 >
                                                     {isSaving ? <Clock size={12} className="animate-spin" /> : <Save size={12} />}
-                                                    Update Assignment
+                                                    Update
                                                 </button>
                                                 <button
                                                     onClick={() => {
@@ -686,7 +686,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                 <div className="min-w-0">
                                                     <p className="text-[11px] text-white uppercase tracking-wider font-semibold truncate">{getAssignedUserName()}</p>
                                                     {localDeal?.assigned_user_details?.email && (
-                                                        <div className="flex items-center gap-1.5 mt-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-0.5 group-hover:translate-y-0">
+                                                        <div className="flex items-center gap-1.5 mt-1.5 opacity-100 transition-all duration-200">
                                                             <Mail size={8} className="text-blue-400 shrink-0" />
                                                             <span className="text-[9px] text-white/50 tracking-wider truncate">{localDeal.assigned_user_details.email}</span>
                                                         </div>
@@ -922,7 +922,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
 
                                     {/* Sub-tab Content */}
                                     {paymentSubTab === 'pay' ? (
-                                        <div className="flex-1 space-y-4 mt-2">
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4 mt-2 pb-4">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <Plus size={14} className="text-emerald-400" />
                                                 <h3 className="text-[10px] font-semibold text-white uppercase tracking-widest">New Payment</h3>
@@ -1046,7 +1046,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                             </form>
                                         </div>
                                     ) : (
-                                        <div className="flex-1 space-y-4 mt-2 flex flex-col">
+                                        <div className="flex-1 space-y-4 mt-2 flex flex-col overflow-hidden">
                                             <div className="flex items-center justify-between shrink-0">
                                                 <div className="flex items-center gap-2">
                                                     <Wallet size={14} className="text-emerald-400" />
@@ -1060,7 +1060,8 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                     <Loader2 className="animate-spin text-emerald-400" size={20} />
                                                 </div>
                                             ) : payments.length > 0 ? (
-                                                <div className="space-y-2 overflow-y-auto pr-3 custom-scrollbar max-h-[380px] shrink-0">
+                                                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                                                    <div className="space-y-2">
                                                     {payments.map(payment => {
                                                         const isExpanded = !!expandedPayments[payment.id];
                                                         return (
@@ -1164,6 +1165,7 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                             </div>
                                                         );
                                                     })}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div className="flex-1 min-h-[250px] rounded-lg border border-dashed border-zinc-900 flex flex-col items-center justify-center gap-3 bg-white/[0.005]">
@@ -1175,8 +1177,8 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                     )}
                                 </div>
                             ) : (
-                                <div className="flex-1 flex flex-col min-h-[300px] mt-2">
-                                    <div className="flex items-center gap-2 mb-4">
+                                <div className="flex-1 flex flex-col min-h-[300px] mt-2 overflow-hidden">
+                                    <div className="flex items-center gap-2 mb-4 shrink-0">
                                         <Clock size={14} className="text-white/40" />
                                         <h3 className="text-[10px] font-semibold text-white uppercase tracking-widest">Activity History</h3>
                                     </div>
@@ -1186,53 +1188,55 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                             <Loader2 className="w-5 h-5 animate-spin text-white/20" />
                                         </div>
                                     ) : logs && logs.length > 0 ? (
-                                        <div className="relative pl-5 border-l border-zinc-900 space-y-6 py-2 ml-2">
-                                            {logs.map((log) => {
-                                                const date = new Date(log.created_at);
-                                                const formattedDate = date.toLocaleDateString('en-US', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    year: 'numeric'
-                                                });
-                                                const formattedTime = date.toLocaleTimeString('en-US', {
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                });
+                                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                                            <div className="relative pl-5 border-l border-zinc-900 space-y-6 py-2 ml-2">
+                                                {logs.map((log) => {
+                                                    const date = new Date(log.created_at);
+                                                    const formattedDate = date.toLocaleDateString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        year: 'numeric'
+                                                    });
+                                                    const formattedTime = date.toLocaleTimeString('en-US', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    });
 
-                                                return (
-                                                    <div key={log.id} className="relative group">
-                                                        {/* Timeline node */}
-                                                        <div className="absolute -left-[25px] top-1 w-2 h-2 rounded-full bg-zinc-950 border border-zinc-800 group-hover:border-emerald-500/50 transition-colors" />
+                                                    return (
+                                                        <div key={log.id} className="relative group">
+                                                            {/* Timeline node */}
+                                                            <div className="absolute -left-[25px] top-1 w-2 h-2 rounded-full bg-zinc-950 border border-zinc-800 group-hover:border-emerald-500/50 transition-colors" />
 
-                                                        <div className="flex flex-col space-y-1.5 bg-zinc-950/20 border border-zinc-900 rounded p-3.5 hover:bg-zinc-950/40 hover:border-zinc-800/80 transition-all duration-300">
-                                                            <div className="flex items-start justify-between gap-4">
-                                                                <span className="text-[9.5px] font-medium text-white/80 uppercase tracking-wide leading-relaxed">
-                                                                    {log.description}
-                                                                </span>
-                                                                <span className="text-[8px] font-mono text-white/30 uppercase shrink-0 mt-0.5">
-                                                                    {formattedDate} • {formattedTime}
-                                                                </span>
-                                                            </div>
-
-                                                            <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                                                                <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">
-                                                                    Event Type: <span className="text-white/40">{log.activity_type}</span>
-                                                                </span>
-                                                                
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">Actor</span>
-                                                                    <span className="text-[8.5px] font-mono text-white/50 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded leading-none">
-                                                                        {log.user_details 
-                                                                            ? `${log.user_details.first_name || ''} ${log.user_details.last_name || ''}`.trim() || log.user_details.email
-                                                                            : 'System'
-                                                                        }
+                                                            <div className="flex flex-col space-y-1.5 bg-zinc-950/20 border border-zinc-900 rounded p-3.5 hover:bg-zinc-950/40 hover:border-zinc-800/80 transition-all duration-300">
+                                                                <div className="flex items-start justify-between gap-4">
+                                                                    <span className="text-[9.5px] font-medium text-white/80 uppercase tracking-wide leading-relaxed">
+                                                                        {log.description}
                                                                     </span>
+                                                                    <span className="text-[8px] font-mono text-white/30 uppercase shrink-0 mt-0.5">
+                                                                        {formattedDate} • {formattedTime}
+                                                                    </span>
+                                                                </div>
+
+                                                                <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                                                                    <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">
+                                                                        Event Type: <span className="text-white/40">{log.activity_type}</span>
+                                                                    </span>
+                                                                    
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">Actor</span>
+                                                                        <span className="text-[8.5px] font-mono text-white/50 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded leading-none">
+                                                                            {log.user_details 
+                                                                                ? `${log.user_details.first_name || ''} ${log.user_details.last_name || ''}`.trim() || log.user_details.email
+                                                                                : 'System'
+                                                                            }
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[250px] rounded-lg border border-dashed border-zinc-900 bg-white/[0.005]">

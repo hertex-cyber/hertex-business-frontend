@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -81,6 +81,25 @@ const CRM = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dealToDelete, setDealToDelete] = useState(null);
+  const scrollContainerRef = useRef(null);
+
+  const handleScrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: -300,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: 300,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   const getEligibleUsersForPipeline = () => {
     if (!selectedPipeline || !users) return [];
@@ -446,6 +465,24 @@ const CRM = () => {
                 onCreateNew={() => setIsCreateModalOpen(true)}
               />
             </div>
+
+            {/* Scroll Navigation Buttons */}
+            <div className={cn("flex items-center gap-2 transition-all duration-500", activeTab !== 'pipeline' && "opacity-0 pointer-events-none")}>
+              <button 
+                onClick={handleScrollLeft}
+                className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Scroll Left"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button 
+                onClick={handleScrollRight}
+                className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
+                title="Scroll Right"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -483,7 +520,7 @@ const CRM = () => {
                 </div>
               </div>
             ) : (
-              <div className="h-full overflow-auto custom-scrollbar">
+              <div ref={scrollContainerRef} className="h-full overflow-auto custom-scrollbar">
                 <DndContext
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
