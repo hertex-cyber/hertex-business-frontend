@@ -438,8 +438,13 @@ const CRM = () => {
           </div>
 
           {/* Right: Operational Tools */}
-          <div className="flex items-center gap-4">
-            <div className={cn("flex items-center gap-2 transition-all duration-500", activeTab !== 'pipeline' && "opacity-0 pointer-events-none")}>
+          <div className={cn("flex items-center transition-all duration-500 ease-out", activeTab === 'pipeline' ? "gap-4" : "gap-0")}>
+            <div className={cn(
+              "flex items-center gap-2 transition-all duration-500 ease-out overflow-hidden",
+              activeTab === 'pipeline' 
+                ? "opacity-100 w-[88px] pointer-events-auto" 
+                : "opacity-0 w-0 pointer-events-none"
+            )}>
               <button 
                 onClick={() => setIsSearchDialogOpen(true)}
                 className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
@@ -457,7 +462,7 @@ const CRM = () => {
               </button>
             </div>
 
-            <div className="w-48 transition-all duration-500">
+            <div className="w-48 transition-all duration-500 ease-out">
               <PipelineSelector 
                 pipelines={pipelines}
                 selectedPipeline={selectedPipeline}
@@ -467,7 +472,12 @@ const CRM = () => {
             </div>
 
             {/* Scroll Navigation Buttons */}
-            <div className={cn("flex items-center gap-2 transition-all duration-500", activeTab !== 'pipeline' && "opacity-0 pointer-events-none")}>
+            <div className={cn(
+              "flex items-center gap-2 transition-all duration-500 ease-out overflow-hidden",
+              activeTab === 'pipeline' 
+                ? "opacity-100 w-[88px] pointer-events-auto" 
+                : "opacity-0 w-0 pointer-events-none"
+            )}>
               <button 
                 onClick={handleScrollLeft}
                 className="h-9 w-9 rounded-md bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all flex items-center justify-center group"
