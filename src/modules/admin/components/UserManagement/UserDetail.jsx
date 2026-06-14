@@ -596,6 +596,19 @@ const UserDetail = ({ user, departments = [], initialEditMode = false, onClose, 
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="px-8 py-6 border-t border-white/5 bg-white/[0.005] shrink-0 flex items-center justify-between">
+        <div className="text-[10px] text-white/20 font-mono uppercase tracking-widest">
+          Account ID: {user.account_id}
+        </div>
+        <button
+          onClick={onClose}
+          className="px-6 py-2 rounded-md bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-all text-xs uppercase tracking-widest"
+        >
+          Close
+        </button>
+      </div>
     </div>
   );
 };
