@@ -147,6 +147,7 @@ const Media = () => {
     totalItems,
     completedItems,
     overallProgress,
+    sizeErrors,
   } = useAssetUpload();
 
   // Undo toast state
@@ -517,6 +518,7 @@ const Media = () => {
                   )}
                   {uploading ? 'Uploading...' : `Upload ${activeTab ? activeTab.charAt(0).toUpperCase() + activeTab.slice(1) + 's' : 'Assets'}`}
                 </Button>
+                <span className="text-[9px] text-white/20 font-medium">Max 10 MB per file</span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -570,6 +572,20 @@ const Media = () => {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Size exceeded errors */}
+        {sizeErrors.length > 0 && (
+          <div className="fixed top-6 right-6 z-[60] space-y-2">
+            {sizeErrors.map((err, i) => (
+              <div
+                key={i}
+                className="px-5 py-3 rounded-xl shadow-2xl text-xs font-semibold bg-red-500/20 border border-red-500/30 text-red-300 transition-all duration-300"
+              >
+                {err.message}
+              </div>
+            ))}
           </div>
         )}
 
@@ -656,6 +672,7 @@ const Media = () => {
                       <Upload size={14} className="mr-2" />
                       Upload {activeTab ? activeTab.charAt(0).toUpperCase() + activeTab.slice(1) + 's' : 'Assets'}
                     </Button>
+                    <p className="text-[10px] text-white/20 font-medium">Max 10 MB per file</p>
                     <input
                       ref={emptyFileInputRef}
                       type="file"

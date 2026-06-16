@@ -134,6 +134,9 @@ export function useAssets(filters = {}) {
   return { assets, count, loading, error, refetch: fetchAssets };
 }
 
+/** Max allowed file size in bytes (10 MB) */
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 /**
  * Upload queue state for a single file.
  * @typedef {{ id: string, file: File, progress: number, status: 'queued'|'uploading'|'done'|'failed', error?: string, asset?: object }} QueueItem
@@ -144,15 +147,50 @@ export function useAssets(filters = {}) {
  * Provides a queue that processes files one at a time.
  */
 export function useAssetUpload() {
+  const [sizeErrors, setSizeErrors] = useState([]);
+  const sizeErrorTimerRef = useRef(null);
   const [queue, setQueue] = useState([]);
   const [active, setActive] = useState(false);
   const processingRef = useRef(false);
   // Tick counter to force a re-render after each file completes
   const [tick, setTick] = useState(0);
 
-  /** Add one or more files to the upload queue */
+  // Clean up size error timer on unmount
+  useEffect(() => {
+    return () => {
+      if (sizeErrorTimerRef.current) clearTimeout(sizeErrorTimerRef.current);
+    };
+  }, []);
+
+  /** Add one or more files to the upload queue (validates size) */
   const enqueue = useCallback((files, collectionId) => {
-    const newItems = Array.from(files).map((file) => ({
+    const oversizedFiles = [];
+    const validFiles = [];
+
+    Array.from(files).forEach((file) => {
+      if (file.size > MAX_FILE_SIZE) {
+        oversizedFiles.push(file.name);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (oversizedFiles.length > 0) {
+      // Show the user-friendly message via a state that other components can read
+      setSizeErrors((prev) => [
+        ...prev,
+        ...oversizedFiles.map((name) => ({
+          name,
+          message: `"${name}" exceeds the 10 MB size limit.`,
+        })),
+      ]);
+
+      // Auto-clear size errors after 6 seconds (reset timer on each new oversized batch)
+      if (sizeErrorTimerRef.current) clearTimeout(sizeErrorTimerRef.current);
+      sizeErrorTimerRef.current = setTimeout(() => setSizeErrors([]), 6000);
+    }
+
+    const newItems = validFiles.map((file) => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       file,
       collectionId,
@@ -244,5 +282,6 @@ export function useAssetUpload() {
     completedItems,
     failedItems,
     overallProgress,
+    sizeErrors,
   };
 }
