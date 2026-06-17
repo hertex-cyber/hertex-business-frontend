@@ -51,6 +51,8 @@ import {
   X,
   Loader,
   AlertTriangle,
+  Target,
+  Crosshair,
   Contact,
 } from "lucide-react";
 
@@ -117,6 +119,10 @@ const ICON_MAP = {
   // Visibility
   Eye,
   EyeOff,
+
+  // Sales Task Manager
+  Target,
+  Crosshair,
 
   // Contact
   Mail,
