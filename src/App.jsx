@@ -17,7 +17,8 @@ import HR from "./modules/hr/pages/HR";
 import Accounts from "./modules/accounts/pages/Accounts";
 import Media from "./modules/media/pages/Media";
 import LMS from "./modules/lms/pages/LMS";
-import Sales from "./modules/sales/pages/Sales";
+
+import SalesTaskManager from "./modules/sales-task-manager/SalesTaskRoutes";
 import Admin from "./modules/admin/pages/Admin";
 import AdminUsers from "./modules/admin/pages/AdminUsers";
 import AdminMenus from "./modules/admin/pages/AdminMenus";
@@ -154,14 +155,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/sales"
-              element={
-                <ProtectedRoute>
-                  <Sales />
-                </ProtectedRoute>
-              }
-            />
+
 
             {/* Invoice routes */}
             <Route
@@ -300,6 +294,14 @@ function App() {
               }
             />
 
+            <Route
+              path="/sales/*"
+              element={
+                <ProtectedRoute>
+                  <SalesTaskManager />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/settings"
               element={
