@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Eye,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 
 const TYPE_ICONS = {
@@ -174,10 +175,21 @@ const AssetCard = ({ asset, onPreview, onDelete, selected, onToggleSelect }) => 
       </div>
 
       {/* Info */}
-      <div className="p-4 space-y-1">
+      <div className="p-4 space-y-1.5">
         <p className="text-sm font-bold text-white truncate group-hover:text-white/90 transition-colors">
           {asset.file_name}
         </p>
+
+        {/* Source badge — shows where this file came from */}
+        {asset.source_display && (
+          <div className="flex items-center gap-1">
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[9px] font-semibold text-blue-300/80 truncate max-w-full">
+              <ExternalLink size={9} className="shrink-0" />
+              <span className="truncate">{asset.source_display}</span>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
           <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">
             {asset.dimensions_display || asset.file_type}

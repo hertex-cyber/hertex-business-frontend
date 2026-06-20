@@ -12,6 +12,7 @@ import {
   HardDrive,
   Maximize2,
   User,
+  ExternalLink,
 } from 'lucide-react';
 
 const TYPE_ICONS = {
@@ -157,10 +158,29 @@ const AssetPreviewDialog = ({ isOpen, onClose, asset, onDelete }) => {
                 Uploaded By
               </div>
               <p className="text-sm font-semibold text-white truncate">
-                {asset.uploaded_by || '—'}
+                {asset.uploaded_by_name || '—'}
               </p>
             </div>
           </div>
+
+          {/* Source info row */}
+          {asset.source_display && (
+            <div className="mt-4 pt-4 border-t border-white/5">
+              <div className="flex items-start gap-3">
+                <div className="p-1.5 rounded-lg bg-blue-500/10 shrink-0">
+                  <ExternalLink size={13} className="text-blue-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">
+                    Source
+                  </p>
+                  <p className="text-sm font-semibold text-blue-300 truncate">
+                    {asset.source_display}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

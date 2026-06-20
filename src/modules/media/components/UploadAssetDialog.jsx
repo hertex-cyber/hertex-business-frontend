@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { X, Upload, File, Image, Video, Music, FileText, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, Upload, File, Image, Video, Music, FileText, Loader2, CheckCircle2, AlertCircle, Search, User, Users } from 'lucide-react';
+import { mediaApi } from '../api/mediaApi';
 
 const FILE_ICONS = {
   image: Image,
@@ -9,12 +10,49 @@ const FILE_ICONS = {
   other: File,
 };
 
-const UploadAssetDialog = ({ isOpen, onClose, onUpload, collectionName }) => {
+const UploadAssetDialog = ({ isOpen, onClose, onUpload, collection }) => {
+  const collectionName = collection?.name || '';
+  const entityType = collection?.entity_type || 'generic';
+
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState([]);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
+
+  // Entity search state
+  const [entityQuery, setEntityQuery] = useState('');
+  const [entityResults, setEntityResults] = useState([]);
+  const [entitySearching, setEntitySearching] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState(null);
+  const searchTimerRef = useRef(null);
+
+  const handleEntitySearch = useCallback((query) => {
+    setEntityQuery(query);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    if (!query.trim()) {
+      setEntityResults([]);
+      return;
+    }
+
+    searchTimerRef.current = setTimeout(async () => {
+      setEntitySearching(true);
+      try {
+        if (entityType === 'contact') {
+          const res = await mediaApi.searchContacts(query);
+          setEntityResults(res.data?.data || []);
+        } else if (entityType === 'staff') {
+          const res = await mediaApi.searchEmployees(query);
+          setEntityResults(res.data?.data || []);
+        }
+      } catch {
+        setEntityResults([]);
+      } finally {
+        setEntitySearching(false);
+      }
+    }, 300);
+  }, [entityType]);
 
   const handleFileSelect = useCallback((e) => {
     const selected = Array.from(e.target.files || []);
@@ -32,12 +70,16 @@ const UploadAssetDialog = ({ isOpen, onClose, onUpload, collectionName }) => {
       setError('Please select at least one file');
       return;
     }
+    if (entityType !== 'generic' && !selectedEntity) {
+      setError('Please select a ' + (entityType === 'contact' ? 'contact' : 'staff member') + ' first.');
+      return;
+    }
     try {
       setUploading(true);
       setError('');
       const results = [];
       for (const file of files) {
-        await onUpload(file);
+        await onUpload(file, selectedEntity?.id);
         results.push(file.name);
       }
       setUploaded(results);
@@ -46,6 +88,9 @@ const UploadAssetDialog = ({ isOpen, onClose, onUpload, collectionName }) => {
       setTimeout(() => {
         onClose();
         setUploaded([]);
+        setSelectedEntity(null);
+        setEntityQuery('');
+        setEntityResults([]);
       }, 1200);
     } catch (err) {
       setError(err.response?.data?.message || 'Upload failed');
@@ -92,6 +137,73 @@ const UploadAssetDialog = ({ isOpen, onClose, onUpload, collectionName }) => {
         </div>
 
         <div className="p-6 space-y-4">
+          {/* Entity search — only shown when collection has an entity type */}
+          {entityType !== 'generic' && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1.5">
+                {entityType === 'contact' ? 'Link to Contact' : 'Link to Staff Member'}
+              </label>
+              {selectedEntity ? (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                  <div className="p-1 rounded-lg bg-blue-500/20">
+                    {entityType === 'contact' ? <User size={14} className="text-blue-400" /> : <Users size={14} className="text-blue-400" />}
+                  </div>
+                  <span className="flex-1 text-sm font-semibold text-blue-200 truncate">
+                    {selectedEntity.name || selectedEntity.full_name || selectedEntity.label}
+                  </span>
+                  <button
+                    onClick={() => { setSelectedEntity(null); setEntityQuery(''); setEntityResults([]); }}
+                    className="p-1 rounded-lg hover:bg-blue-500/20 text-blue-300/50 hover:text-blue-300 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={entityQuery}
+                    onChange={(e) => handleEntitySearch(e.target.value)}
+                    placeholder={entityType === 'contact' ? 'Search by name, email, or phone...' : 'Search by name, ID, or email...'}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/20 focus:bg-white/[0.06] transition-all"
+                  />
+                  {entitySearching && (
+                    <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 animate-spin" />
+                  )}
+                  {entityResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-white/10 rounded-xl shadow-xl overflow-hidden z-30 max-h-44 overflow-y-auto custom-scrollbar">
+                      {entityResults.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedEntity(item);
+                            setEntityQuery('');
+                            setEntityResults([]);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-xs text-white/70 hover:text-white hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0"
+                        >
+                          <div className="p-1 rounded-lg bg-white/5 shrink-0">
+                            {entityType === 'contact' ? <User size={12} /> : <Users size={12} />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold truncate">
+                              {item.name || item.full_name || `${item.first_name} ${item.last_name}`}
+                            </p>
+                            <p className="text-[10px] text-white/30 truncate">
+                              {item.contact_id || item.employee_id || item.email || item.personal_email}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Drop zone */}
           {files.length === 0 && !uploading && (
             <div

@@ -20,11 +20,21 @@ import {
   Maximize2,
   RotateCcw,
   CheckSquare,
+  Search,
+  User,
+  Users,
+  ExternalLink,
+  UserCheck,
 } from 'lucide-react';
 import Button from '@/components/Button';
 import ConfirmModal from '@/components/ui/confirm-modal';
 import UploadQueuePanel from '../components/UploadQueuePanel';
 import UndoToast from '../components/UndoToast';
+import CollectionGroupPanel from '../components/CollectionGroupPanel';
+import CreateCollectionDialog from '../components/CreateCollectionDialog';
+import UploadAssetDialog from '../components/UploadAssetDialog';
+import CreatorGroupPanel from '../components/CreatorGroupPanel';
+import { useAuth } from '@/context/AuthContext';
 import { useCollections, useCollectionActions, useAssets, useAssetUpload } from '../hooks/useMedia';
 import { mediaApi } from '../api/mediaApi';
 
@@ -59,15 +69,38 @@ const TAB_ACCEPT = {
 };
 
 const Media = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'Superadmin' || user?.role === 'Admin' || user?.is_superuser;
+
   const [selectedCollection, setSelectedCollection] = useState(null);
-  const [showCreateInput, setShowCreateInput] = useState(false);
-  const [newCollectionName, setNewCollectionName] = useState('');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showCreatorPanel, setShowCreatorPanel] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
   const [feedback, setFeedback] = useState(null);
   const feedbackTimer = useRef(null);
   const fileInputRef = useRef(null);
   const emptyFileInputRef = useRef(null);
+
+  // Search & filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const searchTimerRef = useRef(null);
+
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchInput]);
+
+  // Group permissions panel state
+  const [groupPanelCollection, setGroupPanelCollection] = useState(null);
 
   // Tabs & preview state
   const [activeTab, setActiveTab] = useState(null);
@@ -104,7 +137,6 @@ const Media = () => {
 
   const handleConfirmClose = () => {
     setConfirmDialog((prev) => ({ ...prev, open: false }));
-    // Clear after animation
     setTimeout(() => {
       setConfirmDialog({ open: false, type: null, title: '', message: '', data: null });
     }, 200);
@@ -132,10 +164,12 @@ const Media = () => {
     feedbackTimer.current = setTimeout(() => setFeedback(null), 3000);
   };
 
-  const { collections, loading: collectionsLoading, refetch: refetchCollections } = useCollections();
+  const { collections, canCreate, loading: collectionsLoading, refetch: refetchCollections } = useCollections();
   const { togglePin, rename, deleteCollection, createCollection, mutating } = useCollectionActions();
   const { assets, count, loading: assetsLoading, error: assetsError, refetch: refetchAssets } = useAssets(
-    selectedCollection ? { collection_id: selectedCollection } : {}
+    selectedCollection
+      ? { collection_id: selectedCollection, ...(searchQuery ? { search: searchQuery } : {}) }
+      : {}
   );
   const {
     queue,
@@ -227,12 +261,9 @@ const Media = () => {
     ? assets.filter((a) => a.file_type === activeTab)
     : assets;
 
-  // Separate pinned and unpinned collections
   const pinnedCollections = collections.filter((c) => c.is_pinned);
   const unpinnedCollections = collections.filter((c) => !c.is_pinned);
   const currentCollection = collections.find((c) => c.id === selectedCollection);
-
-  // Get accept attribute based on active tab
   const currentAccept = activeTab ? TAB_ACCEPT[activeTab] : TAB_ACCEPT.ALL;
 
   const handleFileUpload = async (e) => {
@@ -242,7 +273,10 @@ const Media = () => {
     e.target.value = '';
   };
 
-  // Re-fetch assets when upload queue completes
+  const handleDialogUpload = (file, sourceEntityId) => {
+    enqueue([file], selectedCollection, sourceEntityId);
+  };
+
   const prevCompletedRef = useRef(completedItems);
   useEffect(() => {
     if (completedItems > prevCompletedRef.current) {
@@ -252,13 +286,9 @@ const Media = () => {
     prevCompletedRef.current = completedItems;
   }, [completedItems, refetchAssets, refetchCollections]);
 
-  const handleCreateCollection = async () => {
-    const name = newCollectionName.trim();
-    if (!name) return;
-    const result = await createCollection(name);
+  const handleCreateCollection = async ({ name, description, entity_type }) => {
+    const result = await createCollection({ name, description, entity_type });
     if (result.success) {
-      setNewCollectionName('');
-      setShowCreateInput(false);
       setSelectedCollection(result.data.id);
       refetchCollections();
       showFeedback('Collection created.', false);
@@ -282,7 +312,6 @@ const Media = () => {
     if (result.success) {
       if (selectedCollection === id) setSelectedCollection(null);
       refetchCollections();
-      // Show undo toast
       showUndoToast(
         collection?.name || 'Collection',
         'collection',
@@ -323,7 +352,6 @@ const Media = () => {
       refetchAssets();
       refetchCollections();
       if (previewAsset?.id === assetId) setPreviewAsset(null);
-      // Show undo toast
       showUndoToast(
         asset?.file_name || 'Asset',
         'asset',
@@ -343,7 +371,6 @@ const Media = () => {
     }
   };
 
-  // Close preview on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') setPreviewAsset(null);
@@ -358,55 +385,37 @@ const Media = () => {
     <div className="flex min-h-full">
       {/* ===== Sidebar ===== */}
       <aside className="w-64 shrink-0 border-r border-white/5 flex flex-col bg-black/40 relative">
-        {/* Sidebar header */}
         <div className="px-4 pt-6 pb-3 border-b border-white/5">
           <div className="flex items-center gap-2 px-2">
             <FolderOpen size={14} className="text-white/30" />
             <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-white/30">Collections</h2>
           </div>
-
-          {/* Create collection — just below heading */}
-          <div className="mt-2.5 px-2">
-            {showCreateInput ? (
-              <div className="flex flex-col gap-2">
-                <input
-                  type="text"
-                  value={newCollectionName}
-                  onChange={(e) => setNewCollectionName(e.target.value)}
-                  placeholder="Collection name..."
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-blue-400/50 focus:ring-1 focus:ring-blue-400/20"
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateCollection()}
-                  autoFocus
-                />
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={handleCreateCollection}
-                    disabled={mutating || !newCollectionName.trim()}
-                    className="flex-1 px-3 py-1.5 rounded-lg bg-blue-500 text-white text-[10px] font-bold hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    {mutating ? 'Creating...' : 'Create'}
-                  </button>
-                  <button
-                    onClick={() => { setShowCreateInput(false); setNewCollectionName(''); }}
-                    className="px-3 py-1.5 rounded-lg text-[10px] text-white/50 hover:text-white transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
+          <div className="mt-2.5 px-2 space-y-2">
+            {canCreate ? (
               <button
-                onClick={() => setShowCreateInput(true)}
+                onClick={() => setShowCreateDialog(true)}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/15 text-xs text-white/50 hover:text-white hover:border-white/30 hover:bg-white/[0.06] transition-all"
               >
                 <Plus size={14} />
                 <span className="font-semibold">New Collection</span>
               </button>
+            ) : (
+              <p className="text-[9px] text-white/20 text-center px-2 py-1">
+                You don't have permission to create collections
+              </p>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setShowCreatorPanel(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-xs text-white/40 hover:text-white hover:bg-white/5 transition-all"
+              >
+                <UserCheck size={13} />
+                <span className="font-semibold">Manage Creators</span>
+              </button>
             )}
           </div>
         </div>
 
-        {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto custom-scrollbar py-2 px-2 space-y-1">
           {collectionsLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -420,15 +429,17 @@ const Media = () => {
             </p>
           ) : (
             <>
-              {/* Pinned section */}
               {pinnedCollections.length > 0 && (
                 <div className="mb-3">
                   <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">
                     Pinned
-                  </div>                    {pinnedCollections.map((c) => (
+                  </div>
+                  {pinnedCollections.map((c) => (
                     <CollectionItem
                       key={c.id}
                       collection={c}
+                      currentUserId={user?.id}
+                      isAdmin={isAdmin}
                       isSelected={selectedCollection === c.id}
                       onSelect={setSelectedCollection}
                       onTogglePin={handleTogglePin}
@@ -441,12 +452,12 @@ const Media = () => {
                       editName={editName}
                       setEditName={setEditName}
                       mutating={mutating}
+                      onOpenGroupPanel={setGroupPanelCollection}
                     />
                   ))}
                 </div>
               )}
 
-              {/* Unpinned section */}
               <div>
                 {pinnedCollections.length > 0 && (
                   <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">
@@ -457,6 +468,8 @@ const Media = () => {
                   <CollectionItem
                     key={c.id}
                     collection={c}
+                    currentUserId={user?.id}
+                    isAdmin={isAdmin}
                     isSelected={selectedCollection === c.id}
                     onSelect={setSelectedCollection}
                     onTogglePin={handleTogglePin}
@@ -469,19 +482,17 @@ const Media = () => {
                     editName={editName}
                     setEditName={setEditName}
                     mutating={mutating}
+                    onOpenGroupPanel={setGroupPanelCollection}
                   />
                 ))}
               </div>
             </>
           )}
         </div>
-
-
       </aside>
 
       {/* ===== Main Content ===== */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
         <header className="px-10 pt-8 pb-0 flex justify-between items-end border-b border-white/5 relative z-20">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
@@ -504,10 +515,37 @@ const Media = () => {
 
           <div className="flex items-center gap-3 pb-8">
             {selectedCollection && (
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder={"Search by " + (currentCollection?.entity_type === 'contact' ? 'contact name' : currentCollection?.entity_type === 'staff' ? 'staff name' : 'file name') + "..."}
+                  className="w-56 bg-white/5 border border-white/10 rounded-full pl-9 pr-3 py-2 text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 focus:bg-white/[0.06] transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-white/30 hover:text-white transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            )}
+            {selectedCollection && (
               <>
                 <Button
                   variant="primary"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    const coll = collections.find((c) => c.id === selectedCollection);
+                    if (coll && coll.entity_type && coll.entity_type !== 'generic') {
+                      setShowUploadDialog(true);
+                    } else {
+                      fileInputRef.current?.click();
+                    }
+                  }}
                   disabled={uploading}
                   className="w-auto px-6 py-2 rounded-full text-[10px] uppercase tracking-widest font-black shadow-[0_0_20px_rgba(255,255,255,0.1)]"
                 >
@@ -516,7 +554,7 @@ const Media = () => {
                   ) : (
                     <Upload size={14} className="mr-2" />
                   )}
-                  {uploading ? 'Uploading...' : `Upload ${activeTab ? activeTab.charAt(0).toUpperCase() + activeTab.slice(1) + 's' : 'Assets'}`}
+                  {uploading ? 'Uploading...' : 'Upload Assets'}
                 </Button>
                 <span className="text-[9px] text-white/20 font-medium">Max 10 MB per file</span>
                 <input
@@ -527,8 +565,6 @@ const Media = () => {
                   multiple
                   onChange={handleFileUpload}
                 />
-
-                {/* Compact upload queue badge */}
                 <UploadQueuePanel
                   queue={queue}
                   onRetry={retryUpload}
@@ -542,7 +578,6 @@ const Media = () => {
           </div>
         </header>
 
-        {/* Tabs */}
         {selectedCollection && assets.length > 0 && (
           <div className="px-10 pt-4 pb-0 flex gap-1 border-b border-white/5">
             {TABS.map((tab) => {
@@ -551,7 +586,6 @@ const Media = () => {
                 ? assets.filter((a) => a.file_type === tab.id).length
                 : assets.length;
               const isActive = activeTab === tab.id;
-
               return (
                 <button
                   key={tab.id}
@@ -575,7 +609,6 @@ const Media = () => {
           </div>
         )}
 
-        {/* Size exceeded errors */}
         {sizeErrors.length > 0 && (
           <div className="fixed top-6 right-6 z-[60] space-y-2">
             {sizeErrors.map((err, i) => (
@@ -589,7 +622,6 @@ const Media = () => {
           </div>
         )}
 
-        {/* Feedback toast */}
         {feedback && (
           <div
             className={`fixed top-6 right-6 z-[60] px-5 py-3 rounded-xl shadow-2xl text-xs font-semibold transition-all duration-300 ${
@@ -602,7 +634,6 @@ const Media = () => {
           </div>
         )}
 
-        {/* Undo toast */}
         {undoToast && (
           <UndoToast
             itemName={undoToast.itemName}
@@ -612,10 +643,8 @@ const Media = () => {
           />
         )}
 
-        {/* Content area */}
         <main className="flex-1 p-10 relative z-10 overflow-y-auto">
-          {/* Loading */}
-          {(assetsLoading) && (
+          {assetsLoading && (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-4">
                 <Loader size={32} className="text-white/20 animate-spin" />
@@ -624,7 +653,6 @@ const Media = () => {
             </div>
           )}
 
-          {/* Error */}
           {assetsError && !assetsLoading && (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-4 text-center max-w-md">
@@ -642,7 +670,7 @@ const Media = () => {
             </div>
           )}
 
-          {/* Empty state */}              {!assetsLoading && !assetsError && filteredAssets.length === 0 && (
+          {!assetsLoading && !assetsError && filteredAssets.length === 0 && (
             <div className="flex items-center justify-center py-24">
               <div className="flex flex-col items-center gap-4 text-center max-w-md">
                 <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
@@ -660,13 +688,20 @@ const Media = () => {
                     ? activeTab
                       ? `This collection has no ${activeTab}s. Upload one to get started.`
                       : 'This collection is empty. Upload your first asset to get started.'
-                    : 'Create a collection from the sidebar or below to start organizing your media.'}
+                    : 'Select a collection from the sidebar to view its assets.'}
                 </p>
                 {selectedCollection && (
                   <>
                     <Button
                       variant="primary"
-                      onClick={() => emptyFileInputRef.current?.click()}
+                      onClick={() => {
+                        const coll = collections.find((c) => c.id === selectedCollection);
+                        if (coll && coll.entity_type && coll.entity_type !== 'generic') {
+                          setShowUploadDialog(true);
+                        } else {
+                          emptyFileInputRef.current?.click();
+                        }
+                      }}
                       className="w-auto px-6 py-2 rounded-full text-[10px] uppercase tracking-widest font-black"
                     >
                       <Upload size={14} className="mr-2" />
@@ -683,49 +718,29 @@ const Media = () => {
                     />
                   </>
                 )}
-                {!selectedCollection && (
-                  <button
-                    onClick={() => setShowCreateInput(true)}
-                    className="mt-2 px-6 py-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-sm font-bold hover:bg-blue-500/25 hover:border-blue-500/50 transition-all flex items-center gap-2"
-                  >
-                    <Plus size={16} />
-                    Create your first collection
-                  </button>
-                )}
               </div>
             </div>
           )}
 
-          {/* Batch delete bar */}
           {selectedIds.size > 0 && (
             <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 flex items-center gap-4 px-5 py-3 rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl backdrop-blur-md">
               <CheckSquare size={16} className="text-blue-400" />
               <span className="text-sm font-bold text-white">{selectedIds.size} selected</span>
               <div className="w-px h-5 bg-white/10" />
-              <button
-                onClick={toggleSelectAll}
-                className="text-xs font-semibold text-white/40 hover:text-white transition-colors"
-              >
+              <button onClick={toggleSelectAll} className="text-xs font-semibold text-white/40 hover:text-white transition-colors">
                 {selectedIds.size === filteredAssets.length ? 'Deselect all' : 'Select all'}
               </button>
               <div className="w-px h-5 bg-white/10" />
-              <button
-                onClick={handleBatchDelete}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 text-xs font-bold hover:bg-red-500/25 transition-all"
-              >
+              <button onClick={handleBatchDelete} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 text-xs font-bold hover:bg-red-500/25 transition-all">
                 <Trash2 size={12} />
                 Delete {selectedIds.size > 1 ? 'all' : ''}
               </button>
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-all"
-              >
+              <button onClick={() => setSelectedIds(new Set())} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-all">
                 <X size={14} />
               </button>
             </div>
           )}
 
-          {/* Deleted assets view */}
           {showingDeleted && selectedCollection && !deletedLoading && deletedAssets.length > 0 && (
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4 px-1">
@@ -733,93 +748,39 @@ const Media = () => {
                 <h3 className="text-xs font-bold uppercase tracking-widest text-yellow-400/60">
                   Deleted assets ({deletedAssets.length})
                 </h3>
-                <button
-                  onClick={() => { setShowingDeleted(false); setDeletedAssets([]); }}
-                  className="ml-auto text-[10px] text-white/30 hover:text-white transition-colors"
-                >
+                <button onClick={() => { setShowingDeleted(false); setDeletedAssets([]); }} className="ml-auto text-[10px] text-white/30 hover:text-white transition-colors">
                   Hide
                 </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {deletedAssets.map((asset) => {
                   const DelTypeIcon = FILE_TYPE_ICONS[asset.file_type] || Archive;
-                  const delTypeColorClass = FILE_TYPE_COLORS[asset.file_type] || FILE_TYPE_COLORS.other;
-
                   return (
-                    <div
-                      key={asset.id}
-                      className="group bg-red-900/5 border border-red-900/20 rounded-2xl overflow-hidden transition-all duration-300 relative hover:border-red-900/30"
-                    >
-                      {/* Thumbnail / Preview */}
-                      <div className={`aspect-video relative flex items-center justify-center ${delTypeColorClass} bg-opacity-5`}>
+                    <div key={asset.id} className="group bg-red-900/5 border border-red-900/20 rounded-2xl overflow-hidden transition-all duration-300 relative hover:border-red-900/30">
+                      <div className={`aspect-video relative flex items-center justify-center ${FILE_TYPE_COLORS[asset.file_type] || FILE_TYPE_COLORS.other}`}>
                         {asset.file_url && asset.file_type === 'image' ? (
-                          <img
-                            src={asset.file_url}
-                            alt={asset.file_name}
-                            className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500"
-                            loading="lazy"
-                          />
-                        ) : asset.file_url && asset.file_type === 'video' ? (
-                          <>
-                            <video
-                              src={asset.file_url}
-                              className="w-full h-full object-cover opacity-60"
-                              preload="metadata"
-                              muted
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                              <div className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center backdrop-blur-sm">
-                                <Play size={16} className="text-white ml-0.5" />
-                              </div>
-                            </div>
-                          </>
+                          <img src={asset.file_url} alt={asset.file_name} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                         ) : (
                           <DelTypeIcon size={36} className="text-white/20" />
                         )}
-
-                        {/* Deleted badge */}
                         <div className="absolute top-2 left-2">
                           <span className="px-2 py-0.5 rounded-full bg-red-500/30 text-[8px] font-bold uppercase tracking-wider text-red-300 flex items-center gap-1">
                             <Trash2 size={8} />
                             Deleted
                           </span>
                         </div>
-
-                        {/* Restore button */}
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                await mediaApi.restoreAsset(asset.id);
-                                refetchAssets();
-                                refetchCollections();
-                                setDeletedAssets((prev) => prev.filter((a) => a.id !== asset.id));
-                                showFeedback('Asset restored.', false);
-                              } catch {
-                                showFeedback('Failed to restore.');
-                              }
-                            }}
+                            onClick={async (e) => { e.stopPropagation(); try { await mediaApi.restoreAsset(asset.id); refetchAssets(); refetchCollections(); setDeletedAssets((prev) => prev.filter((a) => a.id !== asset.id)); showFeedback('Asset restored.', false); } catch { showFeedback('Failed to restore.'); } }}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/25 text-green-400 text-[10px] font-bold hover:bg-green-500/40 transition-all"
                           >
                             <RotateCcw size={11} />
                             Restore
                           </button>
                         </div>
-
-                        {/* Type badge */}
-                        <div className="absolute bottom-2 left-2">
-                          <span className="px-2 py-0.5 rounded-full bg-black/60 text-[8px] font-bold uppercase tracking-wider text-white/60">
-                            {asset.file_type}
-                          </span>
-                        </div>
                       </div>
-
-                      {/* Info */}
                       <div className="p-3 space-y-1">
-                        <p className="text-sm font-bold text-white/50 truncate" title={asset.file_name}>
-                          {asset.file_name}
-                        </p>
+                        <p className="text-sm font-bold text-white/50 truncate" title={asset.file_name}>{asset.file_name}</p>
                         <p className="text-[10px] text-white/20">{asset.file_size_display}</p>
                       </div>
                     </div>
@@ -829,164 +790,61 @@ const Media = () => {
             </div>
           )}
 
-          {showingDeleted && selectedCollection && !deletedLoading && deletedAssets.length === 0 && (
-            <div className="mb-8 flex items-center gap-2 px-1 py-4">
-              <RotateCcw size={12} className="text-white/20" />
-              <p className="text-xs text-white/20">No deleted assets in this collection</p>
-            </div>
-          )}
-
-          {deletedLoading && showingDeleted && (
-            <div className="flex items-center justify-center py-12">
-              <Loader size={16} className="text-white/20 animate-spin" />
-              <span className="ml-2 text-xs text-white/30">Loading deleted assets…</span>
-            </div>
-          )}
-
-          {/* Asset grid */}
           {!assetsLoading && !assetsError && filteredAssets.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {filteredAssets.map((asset) => {
                 const TypeIcon = FILE_TYPE_ICONS[asset.file_type] || Archive;
-                const typeColorClass = FILE_TYPE_COLORS[asset.file_type] || FILE_TYPE_COLORS.other;
-                const isPreviewable =
-                  asset.file_type === 'image' || asset.file_type === 'video';
                 const isSelected = selectedIds.has(asset.id);
-
                 return (
-                  <div
-                    key={asset.id}
-                    className={`group bg-white/[0.02] border rounded-2xl overflow-hidden transition-all duration-300 relative ${
-                      isSelected
-                        ? 'border-blue-500/40 ring-1 ring-blue-500/20 bg-blue-500/5'
-                        : 'border-white/5 hover:border-white/10 hover:bg-white/[0.04]'
-                    }`}
-                  >
-                    {/* Multi-select checkbox */}
+                  <div key={asset.id} className={`group bg-white/[0.02] border rounded-2xl overflow-hidden transition-all duration-300 relative ${isSelected ? 'border-blue-500/40 ring-1 ring-blue-500/20 bg-blue-500/5' : 'border-white/5 hover:border-white/10 hover:bg-white/[0.04]'}`}>
                     <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleSelected(asset.id);
-                        }}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          isSelected
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'bg-black/60 border-white/20 hover:border-white/50'
-                        }`}
-                      >
-                        {isSelected && (
-                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                            <path d="M2 5L4 7L8 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
+                      <button onClick={(e) => { e.stopPropagation(); toggleSelected(asset.id); }} className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-500 border-blue-500' : 'bg-black/60 border-white/20 hover:border-white/50'}`}>
+                        {isSelected && <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5L4 7L8 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </button>
                     </div>
-
-                    {/* Thumbnail / Preview trigger */}
-                    <div
-                      className={`aspect-video relative flex items-center justify-center ${typeColorClass} bg-opacity-5 ${
-                        isPreviewable ? 'cursor-pointer' : ''
-                      }`}
-                      onClick={() => isPreviewable && setPreviewAsset(asset)}
-                    >
+                    <div className={`aspect-video relative flex items-center justify-center ${FILE_TYPE_COLORS[asset.file_type] || FILE_TYPE_COLORS.other} ${asset.file_type === 'image' || asset.file_type === 'video' ? 'cursor-pointer' : ''}`}
+                      onClick={() => (asset.file_type === 'image' || asset.file_type === 'video') && setPreviewAsset(asset)}>
                       {asset.file_url && asset.file_type === 'image' ? (
-                        <img
-                          src={asset.file_url}
-                          alt={asset.file_name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          loading="lazy"
-                        />
+                        <img src={asset.file_url} alt={asset.file_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                       ) : asset.file_url && asset.file_type === 'video' ? (
-                        <>
-                          <video
-                            src={asset.file_url}
-                            className="w-full h-full object-cover"
-                            preload="metadata"
-                            muted
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-                            <div className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center backdrop-blur-sm">
-                              <Play size={20} className="text-white ml-0.5" />
-                            </div>
-                          </div>
-                        </>
+                        <video src={asset.file_url} className="w-full h-full object-cover" preload="metadata" muted />
                       ) : (
-                        <TypeIcon
-                          size={36}
-                          className="text-white/20 group-hover:text-white/40 transition-colors"
-                        />
+                        <TypeIcon size={36} className="text-white/20 group-hover:text-white/40 transition-colors" />
                       )}
-
-                      {/* Show preview icon on hover for previewable assets */}
-                      {isPreviewable && (
-                        <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="px-2 py-0.5 rounded-full bg-black/60 text-[8px] font-bold uppercase tracking-wider text-white/60 flex items-center gap-1">
-                            <Maximize2 size={8} />
-                            Preview
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Actions */}
                       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {asset.download_url && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              mediaApi.downloadAsset(asset.id, asset.file_name);
-                            }}
-                            className="p-1.5 rounded-md bg-black/60 hover:bg-blue-500/60 transition-colors"
-                            title="Download"
-                          >
+                          <button onClick={(e) => { e.stopPropagation(); mediaApi.downloadAsset(asset.id, asset.file_name); }} className="p-1.5 rounded-md bg-black/60 hover:bg-blue-500/60 transition-colors" title="Download">
                             <Download size={12} className="text-white/80" />
                           </button>
                         )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            showConfirm('delete-asset', asset, asset.file_name);
-                          }}
-                          className="p-1.5 rounded-md bg-black/60 hover:bg-red-500/60 transition-colors"
-                          title="Delete asset"
-                        >
+                        <button onClick={(e) => { e.stopPropagation(); showConfirm('delete-asset', asset, asset.file_name); }} className="p-1.5 rounded-md bg-black/60 hover:bg-red-500/60 transition-colors" title="Delete asset">
                           <Trash2 size={12} className="text-white/80" />
                         </button>
                       </div>
-
-                      {/* Type badge */}
                       <div className="absolute bottom-2 left-2">
-                        <span className="px-2 py-0.5 rounded-full bg-black/60 text-[8px] font-bold uppercase tracking-wider text-white/60">
-                          {asset.file_type}
-                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-black/60 text-[8px] font-bold uppercase tracking-wider text-white/60">{asset.file_type}</span>
                       </div>
                     </div>
-
-                    {/* Info */}
-                    <div className="p-4 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-white truncate flex-1" title={asset.file_name}>
-                          {asset.file_name}
-                        </p>
-                        {asset.download_url && (
-                          <button
-                            onClick={() => mediaApi.downloadAsset(asset.id, asset.file_name)}
-                            className="shrink-0 p-1.5 rounded-lg text-white/20 hover:text-blue-400 hover:bg-blue-500/10 transition-all opacity-0 group-hover:opacity-100"
-                            title="Download"
-                          >
-                            <Download size={13} />
-                          </button>
-                        )}
+                  <div className="p-4 space-y-1.5">
+                    <p className="text-sm font-bold text-white truncate" title={asset.file_name}>{asset.file_name}</p>
+                    {/* Source badge — shows linked contact/staff name */}
+                    {asset.source_display && (
+                      <div className="flex items-center gap-1">
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[9px] font-semibold text-blue-300/80 truncate max-w-full">
+                          <ExternalLink size={9} className="shrink-0" />
+                          <span className="truncate">{asset.source_display}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">
-                          {asset.dimensions_display || asset.mime_type || '—'}
-                        </p>
-                        <p className="text-[10px] text-white/20 font-medium">
-                          {asset.file_size_display}
-                        </p>
-                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <p className="text-[10px] text-white/20 font-medium uppercase tracking-widest">
+                        {asset.dimensions_display || asset.file_type}
+                      </p>
+                      <p className="text-[10px] text-white/20 font-medium">
+                        {asset.file_size_display}
+                      </p>
                     </div>
+                  </div>
                   </div>
                 );
               })}
@@ -995,76 +853,54 @@ const Media = () => {
         </main>
       </div>
 
-      {/* ===== Full-Screen Preview Modal ===== */}
       {previewAsset && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setPreviewAsset(null)}
-        >
-          {/* Close button */}
-          <button
-            onClick={() => setPreviewAsset(null)}
-            className="absolute top-6 right-6 p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors z-10"
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setPreviewAsset(null)}>
+          <button onClick={() => setPreviewAsset(null)} className="absolute top-6 right-6 p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors z-10">
             <X size={20} className="text-white" />
           </button>
-
-          {/* Download button in modal */}
-          {previewAsset.download_url && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                mediaApi.downloadAsset(previewAsset.id, previewAsset.file_name);
-              }}
-              className="absolute top-6 right-20 p-2 rounded-xl bg-white/10 hover:bg-blue-500/30 transition-colors z-10"
-              title="Download"
-            >
-              <Download size={20} className="text-white" />
-            </button>
-          )}
-
-          {/* File info */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex items-center gap-4 px-5 py-3 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10">
-            <p className="text-sm font-bold text-white truncate max-w-xs">
-              {previewAsset.file_name}
-            </p>
-            <span className="w-px h-4 bg-white/10" />
-            <p className="text-xs text-white/40 font-medium uppercase tracking-wider">
-              {previewAsset.file_size_display}
-            </p>
-            <span className="w-px h-4 bg-white/10" />
-            <p className="text-xs text-white/40 font-medium">
-              {previewAsset.dimensions_display || previewAsset.mime_type || ''}
-            </p>
-          </div>
-
-          {/* Image preview */}
           {previewAsset.file_type === 'image' && (
-            <img
-              src={previewAsset.file_url}
-              alt={previewAsset.file_name}
-              className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-            />
+            <img src={previewAsset.file_url} alt={previewAsset.file_name} className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()} />
           )}
-
-          {/* Video preview */}
           {previewAsset.file_type === 'video' && (
             <div className="max-w-[90vw] max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-              <video
-                src={previewAsset.file_url}
-                className="w-full h-full max-h-[85vh] rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200"
-                controls
-                autoPlay
-              >
-                Your browser does not support the video tag.
-              </video>
+              <video src={previewAsset.file_url} className="w-full h-full max-h-[85vh] rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" controls autoPlay />
             </div>
           )}
         </div>
       )}
 
-      {/* ===== Confirmation Modal ===== */}
+      {showCreateDialog && (
+        <CreateCollectionDialog
+          isOpen={showCreateDialog}
+          onClose={() => setShowCreateDialog(false)}
+          onSave={handleCreateCollection}
+        />
+      )}
+
+      {showUploadDialog && selectedCollection && (
+        <UploadAssetDialog
+          isOpen={showUploadDialog}
+          onClose={() => setShowUploadDialog(false)}
+          onUpload={handleDialogUpload}
+          collection={currentCollection}
+        />
+      )}
+
+      {showCreatorPanel && (
+        <CreatorGroupPanel
+          onClose={() => setShowCreatorPanel(false)}
+          onSaved={() => refetchCollections()}
+        />
+      )}
+
+      {groupPanelCollection && (
+        <CollectionGroupPanel
+          collection={groupPanelCollection}
+          onClose={() => setGroupPanelCollection(null)}
+          onSaved={() => { refetchCollections(); refetchAssets(); }}
+        />
+      )}
+
       <ConfirmModal
         open={confirmDialog.open}
         title={confirmDialog.title}
@@ -1082,6 +918,8 @@ const Media = () => {
 // ===== Collection Sidebar Item =====
 const CollectionItem = ({
   collection,
+  currentUserId,
+  isAdmin,
   isSelected,
   onSelect,
   onTogglePin,
@@ -1094,6 +932,7 @@ const CollectionItem = ({
   editName,
   setEditName,
   mutating,
+  onOpenGroupPanel,
 }) => {
   const isEditing = editingId === collection.id;
 
@@ -1132,61 +971,47 @@ const CollectionItem = ({
       <span className="text-xs font-medium truncate flex-1">{collection.name}</span>
       <span className="text-[9px] text-white/20 font-medium">{collection.asset_count}</span>
 
-      {/* Actions on hover */}
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {(isAdmin || collection.created_by === currentUserId) && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenGroupPanel && onOpenGroupPanel(collection); }}
+              className="p-1 rounded text-white/30 hover:text-blue-400 transition-colors"
+              title="Manage group access"
+            >
+              <Users size={11} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onTogglePin(collection.id, collection.is_pinned); }}
+              disabled={mutating}
+              className={`p-1 rounded transition-colors ${collection.is_pinned ? 'text-blue-400 hover:text-blue-300' : 'text-white/30 hover:text-white'}`}
+              title={collection.is_pinned ? 'Unpin' : 'Pin to top'}
+            >
+              {collection.is_pinned ? <PinOff size={11} /> : <Pin size={11} />}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditingId(collection.id); setEditName(collection.name); }}
+              className="p-1 rounded text-white/30 hover:text-white transition-colors"
+              title="Rename"
+            >
+              <MoreHorizontal size={11} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onShowConfirm('delete-collection', collection, collection.name); }}
+              disabled={mutating || collection.is_pinned}
+              className={`p-1 rounded transition-colors ${collection.is_pinned ? 'text-white/10 cursor-not-allowed' : 'text-white/30 hover:text-red-400'}`}
+              title={collection.is_pinned ? 'Unpin before deleting' : 'Delete collection'}
+            >
+              <Trash2 size={11} />
+            </button>
+          </>
+        )}
         <button
-          onClick={(e) => { e.stopPropagation(); onTogglePin(collection.id, collection.is_pinned); }}
-          disabled={mutating}
-          className={`p-1 rounded transition-colors ${
-            collection.is_pinned
-              ? 'text-blue-400 hover:text-blue-300'
-              : 'text-white/30 hover:text-white'
-          }`}
-          title={collection.is_pinned ? 'Unpin' : 'Pin to top'}
-        >
-          {collection.is_pinned ? <PinOff size={11} /> : <Pin size={11} />}
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditingId(collection.id);
-            setEditName(collection.name);
-          }}
-          className="p-1 rounded text-white/30 hover:text-white transition-colors"
-          title="Rename"
-        >
-          <MoreHorizontal size={11} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onShowDeleted(collection.id);
-          }}
-          className={`p-1 rounded transition-colors ${
-            showingDeleted && isSelected
-              ? 'text-yellow-400 hover:text-yellow-300'
-              : 'text-white/30 hover:text-yellow-400'
-          }`}
+          onClick={(e) => { e.stopPropagation(); onShowDeleted(collection.id); }}
+          className={`p-1 rounded transition-colors ${showingDeleted && isSelected ? 'text-yellow-400 hover:text-yellow-300' : 'text-white/30 hover:text-yellow-400'}`}
           title="Show deleted files"
         >
           <RotateCcw size={11} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!collection.is_pinned) {
-              onShowConfirm('delete-collection', collection, collection.name);
-            }
-          }}
-          disabled={mutating || collection.is_pinned}
-          className={`p-1 rounded transition-colors ${
-            collection.is_pinned
-              ? 'text-white/10 cursor-not-allowed'
-              : 'text-white/30 hover:text-red-400'
-          }`}
-          title={collection.is_pinned ? 'Unpin before deleting' : 'Delete collection'}
-        >
-          <Trash2 size={11} />
         </button>
       </div>
     </div>

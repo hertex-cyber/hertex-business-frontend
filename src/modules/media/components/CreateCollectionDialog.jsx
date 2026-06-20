@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, FolderPlus, Loader2 } from 'lucide-react';
+import { X, FolderPlus, Loader2, Users, User, FileType } from 'lucide-react';
+
+const ENTITY_TYPES = [
+  { value: 'generic', label: 'Generic', icon: FileType, desc: 'General purpose assets with no entity mapping' },
+  { value: 'contact', label: 'Contact', icon: User, desc: 'Assets linked to a contact (customer, lead, etc.)' },
+  { value: 'staff', label: 'Staff', icon: Users, desc: 'Assets linked to an employee/staff member' },
+];
 
 const CreateCollectionDialog = ({ isOpen, onClose, onSave, collection }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [entityType, setEntityType] = useState('generic');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -13,6 +20,7 @@ const CreateCollectionDialog = ({ isOpen, onClose, onSave, collection }) => {
     if (isOpen) {
       setName(collection?.name || '');
       setDescription(collection?.description || '');
+      setEntityType(collection?.entity_type || 'generic');
       setError('');
     }
   }, [isOpen, collection]);
@@ -27,7 +35,7 @@ const CreateCollectionDialog = ({ isOpen, onClose, onSave, collection }) => {
     }
     try {
       setSaving(true);
-      await onSave({ name: name.trim(), description: description.trim() });
+      await onSave({ name: name.trim(), description: description.trim(), entity_type: entityType });
       onClose();
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong');
@@ -88,6 +96,41 @@ const CreateCollectionDialog = ({ isOpen, onClose, onSave, collection }) => {
 
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1.5">
+              Entity Type
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {ENTITY_TYPES.map((type) => {
+                const TypeIcon = type.icon;
+                const isActive = entityType === type.value;
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setEntityType(type.value)}
+                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border text-left transition-all ${
+                      isActive
+                        ? 'bg-blue-500/15 border-blue-500/40 text-blue-300'
+                        : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/70'
+                    }`}
+                  >
+                    <TypeIcon size={18} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">
+                      {type.label}
+                    </span>
+                    <span className="text-[9px] text-center leading-tight opacity-60">
+                      {type.desc.split(' ').slice(0, 4).join(' ')}...
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1.5 text-[10px] text-white/30">
+              {ENTITY_TYPES.find((t) => t.value === entityType)?.desc}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1.5">
               Description{' '}
               <span className="text-white/20 font-normal normal-case tracking-normal">
                 (optional)
@@ -97,7 +140,7 @@ const CreateCollectionDialog = ({ isOpen, onClose, onSave, collection }) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this collection for?"
-              rows={3}
+              rows={2}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all resize-none"
             />
           </div>

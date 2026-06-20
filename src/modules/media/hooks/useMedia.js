@@ -7,6 +7,7 @@ import { mediaApi } from '../api/mediaApi';
  */
 export function useCollections() {
   const [collections, setCollections] = useState([]);
+  const [canCreate, setCanCreate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -15,7 +16,9 @@ export function useCollections() {
     setError(null);
     try {
       const res = await mediaApi.listCollections();
-      setCollections(res.data.data || []);
+      const data = res.data.data || {};
+      setCollections(data.collections || data || []);
+      setCanCreate(data.can_create === true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load collections.');
     } finally {
@@ -27,7 +30,7 @@ export function useCollections() {
     fetchCollections();
   }, [fetchCollections]);
 
-  return { collections, loading, error, refetch: fetchCollections };
+  return { collections, canCreate, loading, error, refetch: fetchCollections };
 }
 
 /**
@@ -79,10 +82,10 @@ export function useCollectionActions() {
     }
   }, []);
 
-  const createCollection = useCallback(async (name) => {
+  const createCollection = useCallback(async (data) => {
     setMutating(true);
     try {
-      const res = await mediaApi.createCollection({ name });
+      const res = await mediaApi.createCollection(data);
       return { success: true, data: res.data.data };
     } catch (err) {
       // Extract specific field error first (e.g. duplicate name)
@@ -116,6 +119,7 @@ export function useAssets(filters = {}) {
       const params = {};
       if (filters.collection_id) params.collection_id = filters.collection_id;
       if (filters.file_type) params.file_type = filters.file_type;
+      if (filters.search) params.search = filters.search;
       const res = await mediaApi.listAssets(params);
       const data = res.data.data || {};
       setAssets(data.results || []);
@@ -163,7 +167,7 @@ export function useAssetUpload() {
   }, []);
 
   /** Add one or more files to the upload queue (validates size) */
-  const enqueue = useCallback((files, collectionId) => {
+  const enqueue = useCallback((files, collectionId, sourceEntityId = null) => {
     const oversizedFiles = [];
     const validFiles = [];
 
@@ -194,6 +198,7 @@ export function useAssetUpload() {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       file,
       collectionId,
+      sourceEntityId,
       progress: 0,
       status: 'queued',
     }));
@@ -237,6 +242,9 @@ export function useAssetUpload() {
         const formData = new FormData();
         formData.append('file', nextItem.file);
         formData.append('collection_id', nextItem.collectionId);
+        if (nextItem.sourceEntityId) {
+          formData.append('source_entity_id', nextItem.sourceEntityId);
+        }
 
         const res = await mediaApi.uploadAsset(formData, (percent) => {
           updateItem(nextItem.id, { progress: percent });

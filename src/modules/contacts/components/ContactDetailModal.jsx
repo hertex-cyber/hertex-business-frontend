@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
     X, Mail, Phone, Tag, Calendar, Database, ExternalLink, Copy, Check, 
-    Trash2, User, Plus, Loader2, Save, Wallet, Clock, ChevronDown, MessageSquare
+    Trash2, User, Plus, Loader2, Save, Wallet, Clock, ChevronDown, MessageSquare,
+    File, Image, Download, Upload
 } from 'lucide-react';
 import { TbEdit } from "react-icons/tb";
 import axios from 'axios';
@@ -74,6 +75,68 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
     const [deletingDealId, setDeletingDealId] = useState(null);
     const [pipelineDealToDelete, setPipelineDealToDelete] = useState(null);
     const [showAddToCRM, setShowAddToCRM] = useState(false);
+
+    // Document States
+    const [documents, setDocuments] = useState([]);
+    const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+    const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+    const [documentType, setDocumentType] = useState('other');
+    const fileInputRef = useRef(null);
+
+    const fetchDocuments = async () => {
+        if (!contact?.id) return;
+        setIsLoadingDocuments(true);
+        try {
+            const res = await axios.get(`/api/contacts/documents/?contact=${contact.id}`);
+            setDocuments(res.data.results || res.data);
+        } catch (err) {
+            console.error("Failed to fetch documents:", err);
+        } finally {
+            setIsLoadingDocuments(false);
+        }
+    };
+
+    const handleUploadDocument = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !contact?.id) return;
+        
+        // Client-side size check: max 10 MB
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File exceeds 10 MB size limit.');
+            e.target.value = '';
+            return;
+        }
+        
+        setIsUploadingDocument(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('contact', contact.id);
+            formData.append('document_type', documentType);
+            
+            await axios.post('/api/contacts/documents/', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            
+            await fetchDocuments();
+            e.target.value = '';
+        } catch (err) {
+            console.error("Failed to upload document:", err);
+            console.error("Error response:", err.response?.data);
+            alert(err.response?.data?.message || JSON.stringify(err.response?.data?.errors) || 'Upload failed. Check console.');
+        } finally {
+            setIsUploadingDocument(false);
+        }
+    };
+
+    const handleDeleteDocument = async (docId) => {
+        try {
+            await axios.delete(`/api/contacts/documents/${docId}/`);
+            setDocuments(prev => prev.filter(d => d.id !== docId));
+        } catch (err) {
+            console.error("Failed to delete document:", err);
+        }
+    };
 
     // Payments Ledger States
     const [payments, setPayments] = useState([]);
@@ -187,6 +250,12 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
     useEffect(() => {
         if (contact?.id && activeTab === 'profile') {
             fetchRemarks();
+        }
+    }, [contact?.id, activeTab]);
+
+    useEffect(() => {
+        if (contact?.id && activeTab === 'documents') {
+            fetchDocuments();
         }
     }, [contact?.id, activeTab]);
 
@@ -497,6 +566,7 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
                                     <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-zinc-800/80 shrink-0">
                                         {[
                                             { id: 'profile', label: 'Profile', icon: User },
+                                            { id: 'documents', label: 'Documents', icon: File },
                                             { id: 'payments', label: 'Payments', icon: Wallet },
                                             { id: 'activity', label: 'Activity', icon: Clock },
                                         ].map(tab => {
@@ -838,6 +908,109 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
                                                     )}
                                                 </div>
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* DOCUMENTS TAB: Upload and view files */}
+                                    {activeTab === 'documents' && (
+                                        <div className="space-y-4 pb-4 h-full flex flex-col">
+                                            <div className="flex items-center justify-between shrink-0">
+                                                <div className="flex items-center gap-2">
+                                                    <File size={14} className="text-amber-400" />
+                                                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Documents & Proofs</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        value={documentType}
+                                                        onChange={(e) => setDocumentType(e.target.value)}
+                                                        className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-[9px] text-white/60 outline-none focus:border-amber-500/50"
+                                                    >
+                                                        <option value="photo">Photo</option>
+                                                        <option value="proof">Proof</option>
+                                                        <option value="contract">Contract</option>
+                                                        <option value="other">Other</option>
+                                                    </select>
+                                                    <input
+                                                        ref={fileInputRef}
+                                                        type="file"
+                                                        className="hidden"
+                                                        onChange={handleUploadDocument}
+                                                    />
+                                                    <button
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={isUploadingDocument}
+                                                        className="h-8 px-3 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                                                    >
+                                                        {isUploadingDocument ? (
+                                                            <Loader2 size={11} className="animate-spin" />
+                                                        ) : (
+                                                            <Upload size={11} />
+                                                        )}
+                                                        Upload
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {isLoadingDocuments ? (
+                                                <div className="flex-1 flex items-center justify-center min-h-[250px]">
+                                                    <Loader2 className="animate-spin text-white/20" size={20} />
+                                                </div>
+                                            ) : documents.length > 0 ? (
+                                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                                                    {documents.map(doc => {
+                                                        const isImage = doc.document_type === 'photo';
+                                                        return (
+                                                            <div
+                                                                key={doc.id}
+                                                                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.01] border border-zinc-900 hover:border-zinc-800 transition-all group"
+                                                            >
+                                                                <div className="w-9 h-9 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                                                                    {isImage ? (
+                                                                        <Image size={14} className="text-amber-400" />
+                                                                    ) : (
+                                                                        <File size={14} className="text-amber-400" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-[11px] font-semibold text-white/80 truncate">{doc.file_name}</p>
+                                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                                        <span className="text-[8px] px-1.5 py-0.5 rounded-sm bg-zinc-900 border border-zinc-800 text-white/30 uppercase tracking-wider font-mono">
+                                                                            {doc.document_type}
+                                                                        </span>
+                                                                        <span className="text-[8px] text-white/20">
+                                                                            {new Date(doc.created_at).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                                    {doc.file && (
+                                                                        <a
+                                                                            href={typeof doc.file === 'string' ? doc.file : undefined}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="p-1.5 rounded-md hover:bg-blue-500/10 text-blue-500/60 hover:text-blue-400 transition-colors"
+                                                                        >
+                                                                            <Download size={12} />
+                                                                        </a>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => handleDeleteDocument(doc.id)}
+                                                                        className="p-1.5 rounded-md hover:bg-red-500/10 text-red-500/60 hover:text-red-400 transition-colors"
+                                                                    >
+                                                                        <Trash2 size={12} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[250px] rounded-lg border border-dashed border-zinc-900 bg-white/[0.005]">
+                                                    <File size={20} className="text-white/5" />
+                                                    <p className="text-[9px] font-medium text-white/20 uppercase tracking-[0.15em]">No files uploaded yet</p>
+                                                    <p className="text-[8px] text-white/10">max 50 MB per file</p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

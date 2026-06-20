@@ -38,6 +38,22 @@ export const mediaApi = {
   restoreCollection: (id) => axios.post(`${COLLECTIONS_BASE}/${id}/restore/`),
 
   // -----------------------------------------------------------------------
+  // Collection Group Permissions
+  // -----------------------------------------------------------------------
+
+  /** List group permissions for a collection */
+  listCollectionGroups: (id) =>
+    axios.get(`${COLLECTIONS_BASE}/${id}/groups/`),
+
+  /** Batch-set group permissions for a collection (replaces all) */
+  setCollectionGroups: (id, groupIds) =>
+    axios.post(`${COLLECTIONS_BASE}/${id}/groups/`, { group_ids: groupIds }),
+
+  /** Remove a single group from a collection */
+  removeCollectionGroup: (id, groupId) =>
+    axios.delete(`${COLLECTIONS_BASE}/${id}/groups/${groupId}/`),
+
+  // -----------------------------------------------------------------------
   // Assets
   // -----------------------------------------------------------------------
 
@@ -71,6 +87,32 @@ export const mediaApi = {
 
   /** Batch soft-delete multiple assets */
   batchDeleteAssets: (ids) => axios.post(`${ASSETS_BASE}/batch-delete/`, { ids }),
+
+  // -----------------------------------------------------------------------
+  // Creator Groups — which departments can create collections (admin-only)
+  // -----------------------------------------------------------------------
+
+  /** List all creator groups */
+  listCreatorGroups: () => axios.get('/api/media/creator-groups/'),
+
+  /** Add a department to creator groups */
+  addCreatorGroup: (departmentId) =>
+    axios.post('/api/media/creator-groups/', { department_id: departmentId }),
+
+  /** Remove a department from creator groups */
+  removeCreatorGroup: (id) => axios.delete(`/api/media/creator-groups/${id}/`),
+
+  // -----------------------------------------------------------------------
+  // Entity Search (for collections with entity_type = contact/staff)
+  // -----------------------------------------------------------------------
+
+  /** Search contacts by name, email, phone, or contact_id */
+  searchContacts: (query) =>
+    axios.get('/api/media/search-entities/', { params: { entity_type: 'contact', q: query } }),
+
+  /** Search employees by name, employee_id, or email */
+  searchEmployees: (query) =>
+    axios.get('/api/media/search-entities/', { params: { entity_type: 'staff', q: query } }),
 
   /**
    * Download an asset by fetching it as a blob via fetch() with the JWT
