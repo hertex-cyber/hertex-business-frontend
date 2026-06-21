@@ -12,11 +12,11 @@ import Dashboard from "./modules/dashboard/pages/Dashboard";
 import CRM from "./modules/crm/pages/CRM";
 import Contacts from "./modules/contacts/pages/Contacts";
 import DocTools from "./modules/docs/pages/DocTools";
-import Inventory from "./modules/inventory/pages/Inventory";
 import HR from "./modules/hr/pages/HR";
 import Accounts from "./modules/accounts/pages/Accounts";
 import Media from "./modules/media/pages/Media";
 import LMS from "./modules/lms/pages/LMS";
+import InventoryRoutes from "./modules/inventory/InventoryRoutes";
 
 import SalesTaskManager from "./modules/sales-task-manager/SalesTaskRoutes";
 import Admin from "./modules/admin/pages/Admin";
@@ -116,14 +116,6 @@ function App() {
               }
             />
             <Route
-              path="/inventory"
-              element={
-                <ProtectedRoute>
-                  <Inventory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/hr/*"
               element={
                 <ProtectedRoute>
@@ -152,6 +144,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <LMS />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventory/*"
+              element={
+                <ProtectedRoute>
+                  <InventoryRoutes />
                 </ProtectedRoute>
               }
             />
