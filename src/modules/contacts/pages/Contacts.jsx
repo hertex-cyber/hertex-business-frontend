@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Upload, Search, Rocket } from 'lucide-react';
+import { Upload, Search, Rocket, Plus, UserPlus, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Button from '@/components/Button';
 import ImportModal from '../components/ImportModal';
 import ContactsTable from '../components/tabs/ContactsTable';
@@ -45,14 +46,13 @@ const Contacts = () => {
         try {
             const promises = selectedIds.map(id => 
                 axios.post('/api/crm/pipeline/', { 
-                    contact: id, 
+                    contact: id,
                     stage: stageId,
                     pipeline: pipelineId
                 })
             );
             await Promise.all(promises);
             setSelectedIds([]);
-            // alert(`Successfully added ${selectedIds.length} contacts to CRM pipeline.`);
         } catch (err) {
             console.error('Failed to add to CRM:', err);
             alert('Failed to add some contacts to CRM.');
@@ -81,26 +81,11 @@ const Contacts = () => {
                             Add to CRM ({selectedIds.length})
                         </Button>
                     )}
-
-                    <Button
-                        variant="secondary"
-                        disabled={!isAdmin}
-                        className={cn(
-                            "!w-auto h-9 px-4 border-white/5 bg-white/5 text-white/60 text-xs font-medium",
-                            isAdmin && "hover:bg-white/10",
-                            !isAdmin && "opacity-40 cursor-not-allowed"
-                        )}
-                        onClick={() => isAdmin && setIsImportModalOpen(true)}
-                        title={!isAdmin ? "Only admins can import contacts" : undefined}
-                    >
-                        <Upload size={14} className="mr-2 opacity-50" />
-                        Import
-                    </Button>
                 </div>
             </header>
 
             <main className="flex-1 px-10 pt-5 pb-10 relative z-10 overflow-hidden flex flex-col gap-4 min-h-0">
-                <div className="flex items-center shrink-0 pb-4">
+                <div className="flex items-center justify-between shrink-0 pb-4">
                     <div className="relative flex items-center p-1 bg-white/[0.02] border border-white/20 rounded-md">
                         <div 
                             className={cn(
@@ -137,15 +122,34 @@ const Contacts = () => {
                         })}
                     </div>
                     {activeTab === TABS.CONTACTS && (
-                        <div className="ml-auto relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={13} />
-                            <input
-                                type="text"
-                                placeholder="Search contacts..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 pr-3 h-8 w-52 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder:text-white/20 outline-none focus:border-white/20 transition-all"
-                            />
+                        <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger className="!h-8 px-3 flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-medium text-white/60 hover:bg-white/10 transition-all outline-none disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isAdmin} title={!isAdmin ? "Only admins can import contacts" : undefined}>
+                                    <Plus size={12} className="opacity-60" />
+                                    Add
+                                    <ChevronDown size={10} className="opacity-40" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-40">
+                                    <DropdownMenuItem className="cursor-pointer text-xs">
+                                        <UserPlus size={13} className="mr-2 opacity-50" />
+                                        Add Contact
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => setIsImportModalOpen(true)}>
+                                        <Upload size={13} className="mr-2 opacity-50" />
+                                        Import
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={13} />
+                                <input
+                                    type="text"
+                                    placeholder="Search contacts..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-8 pr-3 h-8 w-52 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder:text-white/20 outline-none focus:border-white/20 transition-all"
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
