@@ -1,5 +1,5 @@
 import LoginForm from '../components/LoginForm';
-import logo from '../../../assets/logo.png';
+import logo from '../../../assets/hertexlogowhite.svg';
 import Beams from '../../../components/Beams';
 
 const Login = () => {

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useMenu } from "@/context/MenuContext";
 import { getLucideIcon } from "@/utils/iconMapper";
-import logo from "../assets/logo.png";
+import logo from "../assets/hertexlogowhite.svg";
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
@@ -21,7 +21,7 @@ const Sidebar = () => {
         to="/dashboard"
         className="p-6 flex items-center gap-3 relative z-10 group"
       >
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform duration-300 overflow-hidden bg-white/10">
+        <div className="w-8 h-8 rounded-sm flex items-center justify-center group-hover:rotate-12 transition-transform duration-300 overflow-hidden bg-blue-700">
           <img
             src={logo}
             alt="ByteHive"
@@ -29,7 +29,7 @@ const Sidebar = () => {
           />
         </div>
         <span className="text-xl font-bold tracking-tight text-white">
-          ByteHive
+          Hertex
         </span>
       </Link>
 
