@@ -25,7 +25,7 @@ const Login = () => {
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
             <img src={logo} alt="ByteHive" className="w-full h-full object-cover" />
           </div>
-          <span className="text-xl font-bold tracking-tight">ByteHive</span>
+          <span className="text-xl font-bold tracking-tight">Hertex</span>
         </div>
 
       </header>
