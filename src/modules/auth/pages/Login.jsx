@@ -72,7 +72,7 @@ const Login = () => {
 
       {/* Footer */}
       <footer className="w-full max-w-[1200px] px-8 py-10 flex justify-between items-center z-10 border-t border-white/5">
-        <p className="text-xs text-white/20">© 2026 ByteHive Systems Inc.</p>
+        <p className="text-xs text-white/20">© 2026 Hertex.in</p>
         <div className="flex gap-8">
           <a href="#" className="text-xs text-white/20 hover:text-white transition-colors">Privacy Policy</a>
           <a href="#" className="text-xs text-white/20 hover:text-white transition-colors">Terms of Service</a>

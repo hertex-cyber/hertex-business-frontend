@@ -36,11 +36,6 @@ const CRM = () => {
 
   const { users, fetchUsers } = useUsers();
   const { departments, refetch: fetchDepartments } = useDepartments();
-  
-  useEffect(() => {
-    fetchUsers();
-    fetchDepartments();
-  }, [fetchUsers, fetchDepartments]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -63,6 +58,13 @@ const CRM = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('pipeline'); // 'pipeline' or 'actions'
+
+  useEffect(() => {
+    if (activeTab === 'actions') {
+      fetchUsers();
+      fetchDepartments();
+    }
+  }, [activeTab]);
   const [deals, setDeals] = useState({
     lead: { items: [], nextPage: null, hasMore: false, count: 0 },
     qualified: { items: [], nextPage: null, hasMore: false, count: 0 },
@@ -175,7 +177,7 @@ const CRM = () => {
 
       // Single API call to get all deals for the pipeline
       const response = await axios.get("/api/crm/pipeline/", {
-        params: { pipeline: selectedPipeline.id, page: 1, page_size: 1000 }
+        params: { pipeline: selectedPipeline.id, page: 1, page_size: 100 }
       });
 
       // Group deals by stage
@@ -237,10 +239,19 @@ const CRM = () => {
 
   useEffect(() => {
     if (selectedPipeline) {
-      setIsLoading(true);
-      setStages([]);
-      setDeals({});
-      fetchStages();
+      // Use stages already embedded in the pipeline object — no extra API call
+      const embeddedStages = selectedPipeline.stages || [];
+      if (embeddedStages.length > 0) {
+        setIsLoading(true);
+        setDeals({});
+        setStages([...embeddedStages].sort((a, b) => a.order - b.order));
+      } else {
+        // Fallback: fetch stages if not embedded
+        setIsLoading(true);
+        setStages([]);
+        setDeals({});
+        fetchStages();
+      }
     }
   }, [selectedPipeline]);
 

@@ -92,7 +92,7 @@ const ImportsTab = ({ onViewBatch }) => {
                                     <MoreVertical size={15} />
                                 </button>
                                 {openMenu === batch.id && (
-                                    <div className="absolute right-0 top-full mt-1 w-44 bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl z-[200] overflow-hidden py-1">
+                                    <div className="absolute right-0 top-full mt-1 w-44 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl z-[200] overflow-hidden py-1">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); setBatchForCRM(batch); setOpenMenu(null); }}
                                             className="w-full flex items-center gap-2.5 px-4 py-2.5 text-xs text-white/70 hover:bg-white/5 hover:text-white transition-colors"

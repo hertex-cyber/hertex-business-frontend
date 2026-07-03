@@ -4,6 +4,7 @@ import { Upload, Search, Rocket, Plus, UserPlus, ChevronDown } from 'lucide-reac
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Button from '@/components/Button';
 import ImportModal from '../components/ImportModal';
+import AddContactModal from '../components/AddContactModal';
 import ContactsTable from '../components/tabs/ContactsTable';
 import ImportsTab from '../components/tabs/ImportsTab';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const Contacts = () => {
 
     const [activeTab, setActiveTab] = useState(TABS.CONTACTS);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [isAddContactModalOpen, setIsAddContactModalOpen] = useState(false);
     const [isAddToCRMModalOpen, setIsAddToCRMModalOpen] = useState(false);
     const [selectedBatch, setSelectedBatch] = useState(null);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -121,37 +123,38 @@ const Contacts = () => {
                             );
                         })}
                     </div>
-                    {activeTab === TABS.CONTACTS && (
-                        <div className="flex items-center gap-2">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger className="!h-8 px-3 flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-medium text-white/60 hover:bg-white/10 transition-all outline-none disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isAdmin} title={!isAdmin ? "Only admins can import contacts" : undefined}>
-                                    <Plus size={12} className="opacity-60" />
-                                    Add
-                                    <ChevronDown size={10} className="opacity-40" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-40">
-                                    <DropdownMenuItem className="cursor-pointer text-xs">
-                                        <UserPlus size={13} className="mr-2 opacity-50" />
-                                        Add Contact
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => setIsImportModalOpen(true)}>
-                                        <Upload size={13} className="mr-2 opacity-50" />
-                                        Import
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={13} />
-                                <input
-                                    type="text"
-                                    placeholder="Search contacts..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-8 pr-3 h-8 w-52 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder:text-white/20 outline-none focus:border-white/20 transition-all"
-                                />
-                            </div>
+                    <div className="flex items-center gap-2">
+                        <div className={cn(
+                            "relative overflow-hidden transition-all duration-300 ease-in-out",
+                            activeTab === TABS.CONTACTS ? "w-52 opacity-100" : "w-0 opacity-0 pointer-events-none"
+                        )}>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={13} />
+                            <input
+                                type="text"
+                                placeholder="Search contacts..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 pr-3 h-8 w-52 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder:text-white/20 outline-none focus:border-white/20 transition-all"
+                            />
                         </div>
-                    )}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger className="!h-8 px-3 flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-medium text-white/60 hover:bg-white/10 transition-all outline-none disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isAdmin} title={!isAdmin ? "Only admins can import contacts" : undefined}>
+                                <Plus size={12} className="opacity-60" />
+                                Add
+                                <ChevronDown size={10} className="opacity-40" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-40 mt-1 bg-zinc-900 rounded-lg" align="end">
+                                <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => setIsAddContactModalOpen(true)}>
+                                    <UserPlus size={13} className="mr-2 opacity-50" />
+                                    Create
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer text-xs" onClick={() => setIsImportModalOpen(true)}>
+                                    <Upload size={13} className="mr-2 opacity-50" />
+                                    Import
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
 
                 {activeTab === TABS.CONTACTS && (
@@ -181,6 +184,12 @@ const Contacts = () => {
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
                 onSuccess={handleImportSuccess}
+            />
+
+            <AddContactModal
+                isOpen={isAddContactModalOpen}
+                onClose={() => setIsAddContactModalOpen(false)}
+                onSuccess={() => { setIsAddContactModalOpen(false); setRefreshKey(k => k + 1); }}
             />
 
             <AddToCRMModal
