@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, HeartPulse, Search, Check, ChevronRight, Loader2, ArrowLeft, SlidersHorizontal } from 'lucide-react';
 import axios from 'axios';
@@ -28,12 +28,14 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
     const abortControllerRef = useRef(null);
     
     // Step 3 state
-    const [newPipelineName, setNewPipelineName] = useState('Retargeting Pipeline');
+    const [newPipelineName, setNewPipelineName] = useState('');
     const [newPipelineDesc, setNewPipelineDesc] = useState('');
     const [selectedDepartments, setSelectedDepartments] = useState([]);
     const [assignmentType, setAssignmentType] = useState('manual');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [showDepartments, setShowDepartments] = useState(false);
+    const [deptSearchQuery, setDeptSearchQuery] = useState('');
 
     useEffect(() => {
         if (isOpen) {
@@ -45,11 +47,13 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             setDebouncedSearchQuery('');
             setSearchFields(['name']);
             setFilterOpen(false);
-            setNewPipelineName('Retargeting Pipeline');
+            setNewPipelineName('');
             setNewPipelineDesc('');
             setSelectedDepartments([]);
             setAssignmentType('manual');
             setError('');
+            setShowDepartments(false);
+            setDeptSearchQuery('');
         }
     }, [isOpen]);
 
@@ -182,6 +186,13 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
         );
     };
 
+    const filteredDepartments = useMemo(() => {
+        if (!deptSearchQuery) return departments;
+        return departments.filter(dept =>
+            dept.name.toLowerCase().includes(deptSearchQuery.toLowerCase())
+        );
+    }, [departments, deptSearchQuery]);
+
     const handleSubmit = async () => {
         if (!newPipelineName.trim()) {
             setError("Pipeline name is required.");
@@ -231,7 +242,10 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
         <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={!isSubmitting ? onClose : undefined} />
             
-            <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            <div className={cn(
+                                "relative w-full bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200",
+                                currentStep === 3 ? "max-w-xl" : "max-w-3xl"
+                            )}>
                 
                 {/* Header */}
                 <div className="px-8 py-6 border-b border-zinc-800 bg-white/[0.02] flex items-center justify-between shrink-0">
@@ -260,7 +274,14 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                     {/* Left: Dynamic Stepper Name */}
                     <div className="flex flex-col">
                         <h3 className="text-sm font-medium text-white uppercase tracking-wider">{STEPS.find(s => s.id === currentStep)?.title}</h3>
-                        <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1 hidden sm:block">{STEPS.find(s => s.id === currentStep)?.desc}</p>
+                        <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1 hidden sm:block">
+    {STEPS.find(s => s.id === currentStep)?.desc}
+    {currentStep === 2 && deals.length > 0 && (
+        <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[8px] font-semibold">
+            {selectedDealIds.size}/{deals.length}
+        </span>
+    )}
+</p>
                     </div>
 
                     {/* Right: Stepper Indicators */}
@@ -283,10 +304,10 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                         )} />
                                     </div>
                                 )}
-                            </React.Fragment>
+</React.Fragment>
                         ))}
                     </div>
-                </div>
+</div>
 
                 {/* Content */}
                 <div className={cn(
@@ -354,7 +375,6 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                             className="w-full h-9 pl-9 pr-10 bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-sm text-white placeholder:text-white/20"
                                         />
-                                        {/* Filter icon button */}
                                         <div className="absolute right-2 top-1/2 -translate-y-1/2">
                                             <button
                                                 onClick={() => setFilterOpen(o => !o)}
@@ -367,7 +387,6 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                             >
                                                 <SlidersHorizontal size={13} />
                                             </button>
-                                            {/* Dropdown */}
                                             {filterOpen && (
                                                 <div className="absolute right-0 top-8 z-30 w-40 bg-zinc-900 border border-zinc-700/60 rounded-lg shadow-2xl overflow-hidden">
                                                     <div className="px-3 py-2 border-b border-zinc-800 text-[9px] font-medium uppercase tracking-widest text-white/30">
@@ -395,12 +414,11 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                                             </span>
                                                         </button>
                                                     ))}
-                                                </div>
+</div>
                                             )}
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="grid grid-cols-12 gap-4 px-8 py-3 border-y border-zinc-800/50 bg-black/20 text-[10px] font-medium uppercase tracking-wider text-white/40 items-center">
                                     <div 
                                         className="col-span-1 flex justify-center cursor-pointer group"
@@ -420,7 +438,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                     <div className="col-span-3">Phone</div>
                                     <div className="col-span-2">Stage</div>
                                 </div>
-                            </div>
+</div>
 
                             <div className="flex-1 bg-zinc-900/10 overflow-y-auto custom-scrollbar min-h-0 relative">
                                 {isLoadingDeals && (
@@ -435,47 +453,47 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                     </div>
                                 ) : (
                                     deals.map(deal => {
-                                            const isSelected = selectedDealIds.has(deal.id);
-                                            const stageName = stages.find(s => s.id === deal.stage)?.name || 'Unknown';
-                                            return (
-                                                <div 
-                                                    key={deal.id}
-                                                    onClick={() => toggleDeal(deal.id)}
-                                                    className="grid grid-cols-12 gap-4 px-8 py-4 border-b border-zinc-800/20 items-center hover:bg-white/[0.02] transition-colors cursor-pointer group"
-                                                >
-                                                    <div className="col-span-1 flex justify-center">
-                                                        <div className={cn(
-                                                            "w-4 h-4 rounded border flex items-center justify-center transition-all",
-                                                            isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700 text-transparent group-hover:border-zinc-500"
-                                                        )}>
-                                                            <Check size={10} strokeWidth={3} />
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-span-3 flex items-center gap-2 min-w-0">
-                                                        <div className="w-6 h-6 rounded-md bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-white/60 uppercase shrink-0">
-                                                            {(deal.contact_details?.name || 'U')[0]}
-                                                        </div>
-                                                        <span className="text-[10px] font-medium text-white/80 truncate min-w-0">
-                                                            {deal.contact_details?.name || 'Unknown'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="col-span-3 text-[10px] text-white/40 truncate">
-                                                        {deal.contact_details?.email || '-'}
-                                                    </div>
-                                                    <div className="col-span-3 text-[10px] text-white/40 truncate">
-                                                        {deal.contact_details?.phone || '-'}
-                                                    </div>
-                                                    <div className="col-span-2">
-                                                        <span className="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-900/50 text-[10px] font-medium text-white/60">
-                                                            {stageName}
-                                                        </span>
+                                        const isSelected = selectedDealIds.has(deal.id);
+                                        const stageName = stages.find(s => s.id === deal.stage)?.name || 'Unknown';
+                                        return (
+                                            <div 
+                                                key={deal.id}
+                                                onClick={() => toggleDeal(deal.id)}
+                                                className="grid grid-cols-12 gap-4 px-8 py-4 border-b border-zinc-800/20 items-center hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                                            >
+                                                <div className="col-span-1 flex justify-center">
+                                                    <div className={cn(
+                                                        "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                                                        isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700 text-transparent group-hover:border-zinc-500"
+                                                    )}>
+                                                        <Check size={10} strokeWidth={3} />
                                                     </div>
                                                 </div>
-                                            )
-                                        })
-                                    )}
-                                </div>
+                                                <div className="col-span-3 flex items-center gap-2 min-w-0">
+                                                    <div className="w-6 h-6 rounded-md bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-white/60 uppercase shrink-0">
+                                                        {(deal.contact_details?.name || 'U')[0]}
+                                                    </div>
+                                                    <span className="text-[10px] font-medium text-white/80 truncate min-w-0">
+                                                        {deal.contact_details?.name || 'Unknown'}
+                                                    </span>
+                                                </div>
+                                                <div className="col-span-3 text-[10px] text-white/40 truncate">
+                                                    {deal.contact_details?.email || '-'}
+                                                </div>
+                                                <div className="col-span-3 text-[10px] text-white/40 truncate">
+                                                    {deal.contact_details?.phone || '-'}
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <span className="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-900/50 text-[10px] font-medium text-white/60">
+                                                        {stageName}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+)}
                             </div>
+                        </div>
                     )}
 
                     {currentStep === 3 && (
@@ -486,8 +504,8 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                     <Input 
                                         value={newPipelineName}
                                         onChange={e => setNewPipelineName(e.target.value)}
-                                        className="bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-sm text-white"
-                                        placeholder="e.g. Q3 Retargeting"
+                                        className="h-11 bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-sm text-white"
+                                        placeholder="RETARGET PIPELINE"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -502,62 +520,74 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                             </div>
 
                             <div className="space-y-4">
-                                <label className="text-[10px] text-white/40 uppercase">Assigned Departments</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {departments.map(dept => {
-                                        const isSelected = selectedDepartments.includes(dept.id);
-                                        return (
-                                            <button
-                                                key={dept.id}
-                                                type="button"
-                                                onClick={() => toggleDepartment(dept.id)}
-                                                className={cn(
-                                                    "p-3 rounded-lg border text-left transition-all duration-300 flex justify-between items-center",
-                                                    isSelected 
-                                                        ? "bg-blue-500/10 border-blue-500/50" 
-                                                        : "bg-zinc-900/30 border-zinc-800 hover:border-zinc-700"
-                                                )}
-                                            >
-                                                <span className={cn(
-                                                    "text-sm font-medium",
-                                                    isSelected ? "text-blue-400" : "text-white/80"
-                                                )}>
-                                                    {dept.name}
-                                                </span>
-                                                <div className={cn(
-                                                    "w-4 h-4 rounded border flex items-center justify-center transition-all",
-                                                    isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700 text-transparent"
-                                                )}>
-                                                    <Check size={10} strokeWidth={3} />
+<div className="flex items-center gap-3">
+                                    <label className="text-xs text-white/60 uppercase tracking-wider font-medium">Assign Groups</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDepartments(prev => !prev)}
+                                        className={cn(
+                                            "relative w-9 h-5 rounded-full transition-colors duration-200 shrink-0",
+                                            showDepartments ? "bg-blue-500" : "bg-zinc-600"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200",
+                                            showDepartments ? "translate-x-[18px]" : "translate-x-0.5"
+                                        )} />
+                                    </button>
+                                    {selectedDepartments.length > 0 && (
+                                        <span className="text-xs text-blue-400 font-medium ml-1">
+                                            {selectedDepartments.length} selected
+                                        </span>
+                                    )}
+                                </div>
+                                {showDepartments && (
+                                    <div className="border border-zinc-800 rounded-lg overflow-hidden">
+                                        <div className="px-3 py-2 border-b border-zinc-800/50 bg-black/20">
+                                            <div className="relative w-full">
+                                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/20" size={12} />
+                                                <Input
+                                                    placeholder="Search departments..."
+                                                    value={deptSearchQuery}
+                                                    onChange={(e) => setDeptSearchQuery(e.target.value)}
+                                                    className="w-full h-8 pl-8 bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-xs text-white placeholder:text-white/20"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="overflow-y-auto custom-scrollbar max-h-28">
+                                            {filteredDepartments.length === 0 ? (
+                                                <div className="py-4 text-center text-[10px] text-white/20 uppercase tracking-wider font-medium">
+                                                    No departments found
                                                 </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <label className="text-[10px] text-white/40 uppercase">Lead Assignment Strategy</label>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    {[
-                                        { id: 'manual', label: 'Manual Assignment' },
-                                        { id: 'round_robin', label: 'Round Robin' },
-                                        { id: 'least_loaded', label: 'Least Loaded' }
-                                    ].map(type => (
-                                        <button
-                                            key={type.id}
-                                            onClick={() => setAssignmentType(type.id)}
-                                            className={cn(
-                                                "px-4 py-3 rounded-lg border text-[10px] font-medium uppercase tracking-[0.2em] transition-all",
-                                                assignmentType === type.id 
-                                                    ? "bg-blue-500/10 border-blue-500/50 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)]" 
-                                                    : "bg-zinc-900/30 border-zinc-800 text-white/40 hover:bg-zinc-900/80"
+                                            ) : (
+                                                filteredDepartments.map(dept => {
+                                                    const isSelected = selectedDepartments.includes(dept.id);
+                                                    return (
+                                                        <button
+                                                            key={dept.id}
+                                                            type="button"
+                                                            onClick={() => toggleDepartment(dept.id)}
+                                                            className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/[0.02] transition-colors border-b border-zinc-800/20 last:border-b-0"
+                                                        >
+                                                            <span className={cn(
+                                                                "text-xs font-medium",
+                                                                isSelected ? "text-blue-400" : "text-white/70"
+                                                            )}>
+                                                                {dept.name}
+                                                            </span>
+                                                            <div className={cn(
+                                                                "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0",
+                                                                isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700"
+                                                            )}>
+                                                                {isSelected && <Check size={8} strokeWidth={3} />}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })
                                             )}
-                                        >
-                                            {type.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                        </div>
+                                    </div>
+)}
                             </div>
                         </div>
                     )}
@@ -595,7 +625,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                         <button 
                             onClick={handleSubmit}
                             disabled={isSubmitting}
-                            className="px-6 h-9 bg-blue-500 text-white text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 h-9 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.15)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
                             <span className="leading-none mt-[1px]">Create & Retarget</span>
