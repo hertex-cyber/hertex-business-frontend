@@ -1,0 +1,611 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { X, HeartPulse, Search, Check, ChevronRight, Loader2, ArrowLeft, SlidersHorizontal } from 'lucide-react';
+import axios from 'axios';
+import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import RingLoader from '@/components/ui/RingLoader';
+
+const STEPS = [
+    { id: 1, title: 'Select Stages', desc: 'Choose source stages' },
+    { id: 2, title: 'Target Deals', desc: 'Select deals to retarget' },
+    { id: 3, title: 'Create Pipeline', desc: 'Configure new pipeline' }
+];
+
+const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [], onPipelineCreated }) => {
+    const [currentStep, setCurrentStep] = useState(1);
+    const [selectedStages, setSelectedStages] = useState([]);
+    
+    // Step 2 state
+    const [isLoadingDeals, setIsLoadingDeals] = useState(false);
+    const [isTransitioning, setIsTransitioning] = useState(false); // only for step 1→2 button
+    const [deals, setDeals] = useState([]);
+    const [selectedDealIds, setSelectedDealIds] = useState(new Set());
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+    const [searchFields, setSearchFields] = useState(['name']);
+    const [filterOpen, setFilterOpen] = useState(false);
+    const abortControllerRef = useRef(null);
+    
+    // Step 3 state
+    const [newPipelineName, setNewPipelineName] = useState('Retargeting Pipeline');
+    const [newPipelineDesc, setNewPipelineDesc] = useState('');
+    const [selectedDepartments, setSelectedDepartments] = useState([]);
+    const [assignmentType, setAssignmentType] = useState('manual');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setCurrentStep(1);
+            setSelectedStages([]);
+            setDeals([]);
+            setSelectedDealIds(new Set());
+            setSearchQuery('');
+            setDebouncedSearchQuery('');
+            setSearchFields(['name']);
+            setFilterOpen(false);
+            setNewPipelineName('Retargeting Pipeline');
+            setNewPipelineDesc('');
+            setSelectedDepartments([]);
+            setAssignmentType('manual');
+            setError('');
+        }
+    }, [isOpen]);
+
+    const toggleStage = (stageId) => {
+        setSelectedStages(prev => 
+            prev.includes(stageId) ? prev.filter(id => id !== stageId) : [...prev, stageId]
+        );
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchQuery(searchQuery);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const fetchDeals = async (search = '', isInitial = false) => {
+        if (selectedStages.length === 0) return;
+
+        // Cancel any in-flight request before starting a new one
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        setIsLoadingDeals(true);
+        try {
+            const response = await axios.get("/api/crm/pipeline/", {
+                params: { 
+                    pipeline: pipeline.id, 
+                    stages: selectedStages.join(','),
+                    search: search,
+                    search_by: searchFields.join(','),
+                    page_size: 1000 
+                },
+                signal: controller.signal,
+            });
+            const results = response.data.results || [];
+            
+            setDeals(results);
+            
+            if (isInitial) {
+                setSelectedDealIds(new Set(results.map(d => d.id)));
+            }
+        } catch (err) {
+            if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+                // Request was intentionally cancelled — do nothing
+                return;
+            }
+            console.error("Failed to fetch deals", err);
+            setError("Failed to fetch deals. Please try again.");
+        } finally {
+            // Only clear loading if this controller is still the active one
+            if (abortControllerRef.current === controller) {
+                setIsLoadingDeals(false);
+            }
+        }
+    };
+
+    const toggleSearchField = (field) => {
+        setSearchFields(prev => {
+            if (prev.includes(field)) {
+                // Prevent deselecting all — keep at least one
+                if (prev.length === 1) return prev;
+                return prev.filter(f => f !== field);
+            }
+            return [...prev, field];
+        });
+    };
+
+    // Re-fetch when searchFields change (only in step 2)
+    useEffect(() => {
+        if (currentStep === 2) {
+            fetchDeals(debouncedSearchQuery, false);
+        }
+    }, [searchFields]);
+
+    useEffect(() => {
+        // Only trigger search fetch if we are already in Step 2
+        // Initial fetch is handled by handleNext
+        if (currentStep === 2) {
+            fetchDeals(debouncedSearchQuery, false);
+        }
+    }, [debouncedSearchQuery]);
+
+    const handleNext = () => {
+        if (currentStep === 1) {
+            if (selectedStages.length === 0) {
+                setError("Please select at least one stage.");
+                return;
+            }
+            setError('');
+            setIsTransitioning(true);
+            fetchDeals('', true).then(() => {
+                setCurrentStep(2);
+                setIsTransitioning(false);
+            }).catch(() => setIsTransitioning(false));
+        } else if (currentStep === 2) {
+            if (selectedDealIds.size === 0) {
+                setError("Please select at least one deal to retarget.");
+                return;
+            }
+            setError('');
+            setCurrentStep(3);
+        }
+    };
+
+    const toggleDeal = (dealId) => {
+        const next = new Set(selectedDealIds);
+        if (next.has(dealId)) {
+            next.delete(dealId);
+        } else {
+            next.add(dealId);
+        }
+        setSelectedDealIds(next);
+    };
+
+    const toggleSelectAllDeals = () => {
+        if (selectedDealIds.size === deals.length && deals.length > 0) {
+            setSelectedDealIds(new Set());
+        } else {
+            setSelectedDealIds(new Set(deals.map(d => d.id)));
+        }
+    };
+
+    const toggleDepartment = (deptId) => {
+        setSelectedDepartments(prev => 
+            prev.includes(deptId) ? prev.filter(id => id !== deptId) : [...prev, deptId]
+        );
+    };
+
+    const handleSubmit = async () => {
+        if (!newPipelineName.trim()) {
+            setError("Pipeline name is required.");
+            return;
+        }
+        setIsSubmitting(true);
+        setError('');
+        
+        try {
+            // 1. Create the new pipeline
+            const pipelineRes = await axios.post("/api/crm/pipelines/", {
+                name: newPipelineName,
+                description: newPipelineDesc,
+                departments: selectedDepartments,
+                assignment_type: assignmentType
+            });
+            
+            const newPipeline = pipelineRes.data;
+            
+            // 2. Extract contact IDs from the selected deals
+            const selectedDealsList = deals.filter(d => selectedDealIds.has(d.id));
+            const contactIds = selectedDealsList.map(d => d.contact); // Assuming deal object has a 'contact' ID field
+            
+            // 3. Bulk add to the new pipeline
+            await axios.post("/api/crm/pipeline/bulk-add-contacts/", {
+                pipeline_id: newPipeline.id,
+                contact_ids: contactIds
+            });
+            
+            if (onPipelineCreated) {
+                onPipelineCreated(newPipeline);
+            }
+            onClose();
+        } catch (err) {
+            console.error("Failed to create retargeting pipeline", err);
+            setError("An error occurred during creation.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+
+
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={!isSubmitting ? onClose : undefined} />
+            
+            <div className="relative w-full max-w-3xl bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+                
+                {/* Header */}
+                <div className="px-8 py-6 border-b border-zinc-800 bg-white/[0.02] flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                            <HeartPulse size={20} />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-medium text-white uppercase tracking-wider">Lead Nurture Setup</h2>
+                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
+                                Source: <span className="text-blue-400 font-semibold">{pipeline?.name}</span>
+                            </p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        disabled={isSubmitting}
+                        className="p-2 text-white/20 hover:text-white rounded-lg hover:bg-white/5 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+
+                {/* Stepper Progress */}
+                <div className="flex items-center justify-between px-8 py-5 bg-zinc-900/30 border-b border-zinc-800 shrink-0">
+                    {/* Left: Dynamic Stepper Name */}
+                    <div className="flex flex-col">
+                        <h3 className="text-sm font-medium text-white uppercase tracking-wider">{STEPS.find(s => s.id === currentStep)?.title}</h3>
+                        <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1 hidden sm:block">{STEPS.find(s => s.id === currentStep)?.desc}</p>
+                    </div>
+
+                    {/* Right: Stepper Indicators */}
+                    <div className="flex items-center gap-2">
+                        {STEPS.map((step, idx) => (
+                            <React.Fragment key={step.id}>
+                                <div className={cn(
+                                    "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0",
+                                    currentStep > step.id ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" :
+                                    currentStep === step.id ? "bg-blue-500/20 border border-blue-500/50 text-blue-400" :
+                                    "bg-zinc-900 border border-zinc-800 text-white/20"
+                                )}>
+                                    {currentStep > step.id ? <Check size={12} strokeWidth={3} /> : step.id}
+                                </div>
+                                {idx < STEPS.length - 1 && (
+                                    <div className="w-8 sm:w-16 h-1 bg-zinc-800 rounded-full overflow-hidden shrink-0">
+                                        <div className={cn(
+                                            "h-full transition-all duration-500 ease-out bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]",
+                                            currentStep > step.id ? "w-full" : "w-0"
+                                        )} />
+                                    </div>
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className={cn(
+                    "flex-1 min-h-0 relative",
+                    currentStep === 2 ? "flex flex-col overflow-hidden" : "overflow-y-auto custom-scrollbar"
+                )}>
+                    {error && (
+                        <div className="mx-8 mt-8 mb-2 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-xs font-medium uppercase tracking-wider text-center">
+                            {error}
+                        </div>
+                    )}
+
+                    {currentStep === 1 && (
+                        <div className="p-8 space-y-6 animate-in slide-in-from-right-4 duration-300">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                {stages.map(stage => {
+                                    const isSelected = selectedStages.includes(stage.id);
+                                    return (
+                                        <button
+                                            key={stage.id}
+                                            onClick={() => toggleStage(stage.id)}
+                                            className={cn(
+                                                "p-4 rounded-md border text-left transition-all duration-300 relative overflow-hidden group",
+                                                isSelected 
+                                                    ? "bg-blue-500/10 border-blue-500/50" 
+                                                    : "bg-zinc-900/30 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/50"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "absolute inset-0 bg-gradient-to-br from-blue-500/0 via-blue-500/0 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity",
+                                                isSelected && "opacity-100 to-blue-500/10"
+                                            )} />
+                                            <div className="relative flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <span className={cn(
+                                                        "text-sm font-medium",
+                                                        isSelected ? "text-blue-400" : "text-white/80"
+                                                    )}>
+                                                        {stage.name}
+                                                    </span>
+                                                </div>
+                                                <div className={cn(
+                                                    "w-5 h-5 rounded-md border flex items-center justify-center transition-all",
+                                                    isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700 text-transparent"
+                                                )}>
+                                                    <Check size={12} strokeWidth={3} />
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep === 2 && (
+                        <div className="flex-1 flex flex-col animate-in slide-in-from-right-4 duration-300 min-h-0">
+                            <div className="z-20 bg-zinc-950/95 backdrop-blur-md flex flex-col shadow-[0_4px_20px_rgba(0,0,0,0.5)] shrink-0">
+                                <div className="px-8 py-3 shrink-0">
+                                    <div className="relative w-full">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" size={14} />
+                                        <Input
+                                            placeholder={`Search by ${searchFields.join(', ')}...`}
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full h-9 pl-9 pr-10 bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-sm text-white placeholder:text-white/20"
+                                        />
+                                        {/* Filter icon button */}
+                                        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                                            <button
+                                                onClick={() => setFilterOpen(o => !o)}
+                                                className={cn(
+                                                    "w-6 h-6 flex items-center justify-center rounded transition-all",
+                                                    filterOpen || searchFields.length > 1
+                                                        ? "text-blue-400 bg-blue-500/10"
+                                                        : "text-white/30 hover:text-white/60"
+                                                )}
+                                            >
+                                                <SlidersHorizontal size={13} />
+                                            </button>
+                                            {/* Dropdown */}
+                                            {filterOpen && (
+                                                <div className="absolute right-0 top-8 z-30 w-40 bg-zinc-900 border border-zinc-700/60 rounded-lg shadow-2xl overflow-hidden">
+                                                    <div className="px-3 py-2 border-b border-zinc-800 text-[9px] font-medium uppercase tracking-widest text-white/30">
+                                                        Search by
+                                                    </div>
+                                                    {['name', 'email', 'phone'].map(field => (
+                                                        <button
+                                                            key={field}
+                                                            onClick={() => toggleSearchField(field)}
+                                                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-white/[0.04] transition-colors group"
+                                                        >
+                                                            <div className={cn(
+                                                                "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0",
+                                                                searchFields.includes(field)
+                                                                    ? "bg-blue-500 border-blue-500 text-white"
+                                                                    : "border-zinc-600 text-transparent group-hover:border-zinc-400"
+                                                            )}>
+                                                                <Check size={8} strokeWidth={3} />
+                                                            </div>
+                                                            <span className={cn(
+                                                                "text-[11px] font-medium capitalize",
+                                                                searchFields.includes(field) ? "text-white/90" : "text-white/40"
+                                                            )}>
+                                                                {field}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-12 gap-4 px-8 py-3 border-y border-zinc-800/50 bg-black/20 text-[10px] font-medium uppercase tracking-wider text-white/40 items-center">
+                                    <div 
+                                        className="col-span-1 flex justify-center cursor-pointer group"
+                                        onClick={toggleSelectAllDeals}
+                                    >
+                                        <div className={cn(
+                                            "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                                            selectedDealIds.size === deals.length && deals.length > 0
+                                                ? "bg-blue-500 border-blue-500 text-white" 
+                                                : "border-zinc-700 text-transparent group-hover:border-zinc-500"
+                                        )}>
+                                            <Check size={10} strokeWidth={3} />
+                                        </div>
+                                    </div>
+                                    <div className="col-span-3">Contact Name</div>
+                                    <div className="col-span-3">Email</div>
+                                    <div className="col-span-3">Phone</div>
+                                    <div className="col-span-2">Stage</div>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 bg-zinc-900/10 overflow-y-auto custom-scrollbar min-h-0 relative">
+                                {isLoadingDeals && (
+                                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-950/40 backdrop-blur-[2px]">
+                                        <RingLoader />
+                                    </div>
+                                )}
+                                
+                                {deals.length === 0 && !isLoadingDeals ? (
+                                    <div className="p-8 flex items-center justify-center text-[10px] uppercase tracking-widest text-white/30 font-medium">
+                                        No deals found
+                                    </div>
+                                ) : (
+                                    deals.map(deal => {
+                                            const isSelected = selectedDealIds.has(deal.id);
+                                            const stageName = stages.find(s => s.id === deal.stage)?.name || 'Unknown';
+                                            return (
+                                                <div 
+                                                    key={deal.id}
+                                                    onClick={() => toggleDeal(deal.id)}
+                                                    className="grid grid-cols-12 gap-4 px-8 py-4 border-b border-zinc-800/20 items-center hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                                                >
+                                                    <div className="col-span-1 flex justify-center">
+                                                        <div className={cn(
+                                                            "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                                                            isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700 text-transparent group-hover:border-zinc-500"
+                                                        )}>
+                                                            <Check size={10} strokeWidth={3} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-span-3 flex items-center gap-2 min-w-0">
+                                                        <div className="w-6 h-6 rounded-md bg-zinc-800 flex items-center justify-center text-[9px] font-bold text-white/60 uppercase shrink-0">
+                                                            {(deal.contact_details?.name || 'U')[0]}
+                                                        </div>
+                                                        <span className="text-[10px] font-medium text-white/80 truncate min-w-0">
+                                                            {deal.contact_details?.name || 'Unknown'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="col-span-3 text-[10px] text-white/40 truncate">
+                                                        {deal.contact_details?.email || '-'}
+                                                    </div>
+                                                    <div className="col-span-3 text-[10px] text-white/40 truncate">
+                                                        {deal.contact_details?.phone || '-'}
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <span className="px-2 py-0.5 rounded border border-zinc-700 bg-zinc-900/50 text-[10px] font-medium text-white/60">
+                                                            {stageName}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                    )}
+
+                    {currentStep === 3 && (
+                        <div className="p-8 space-y-8 animate-in slide-in-from-right-4 duration-300">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] text-white/40 uppercase">Pipeline Name</label>
+                                    <Input 
+                                        value={newPipelineName}
+                                        onChange={e => setNewPipelineName(e.target.value)}
+                                        className="bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-sm text-white"
+                                        placeholder="e.g. Q3 Retargeting"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] text-white/40 uppercase">Description</label>
+                                    <textarea 
+                                        value={newPipelineDesc}
+                                        onChange={e => setNewPipelineDesc(e.target.value)}
+                                        className="w-full h-24 bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none custom-scrollbar"
+                                        placeholder="Optional description..."
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label className="text-[10px] text-white/40 uppercase">Assigned Departments</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {departments.map(dept => {
+                                        const isSelected = selectedDepartments.includes(dept.id);
+                                        return (
+                                            <button
+                                                key={dept.id}
+                                                type="button"
+                                                onClick={() => toggleDepartment(dept.id)}
+                                                className={cn(
+                                                    "p-3 rounded-lg border text-left transition-all duration-300 flex justify-between items-center",
+                                                    isSelected 
+                                                        ? "bg-blue-500/10 border-blue-500/50" 
+                                                        : "bg-zinc-900/30 border-zinc-800 hover:border-zinc-700"
+                                                )}
+                                            >
+                                                <span className={cn(
+                                                    "text-sm font-medium",
+                                                    isSelected ? "text-blue-400" : "text-white/80"
+                                                )}>
+                                                    {dept.name}
+                                                </span>
+                                                <div className={cn(
+                                                    "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                                                    isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700 text-transparent"
+                                                )}>
+                                                    <Check size={10} strokeWidth={3} />
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <label className="text-[10px] text-white/40 uppercase">Lead Assignment Strategy</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    {[
+                                        { id: 'manual', label: 'Manual Assignment' },
+                                        { id: 'round_robin', label: 'Round Robin' },
+                                        { id: 'least_loaded', label: 'Least Loaded' }
+                                    ].map(type => (
+                                        <button
+                                            key={type.id}
+                                            onClick={() => setAssignmentType(type.id)}
+                                            className={cn(
+                                                "px-4 py-3 rounded-lg border text-[10px] font-medium uppercase tracking-[0.2em] transition-all",
+                                                assignmentType === type.id 
+                                                    ? "bg-blue-500/10 border-blue-500/50 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.1)]" 
+                                                    : "bg-zinc-900/30 border-zinc-800 text-white/40 hover:bg-zinc-900/80"
+                                            )}
+                                        >
+                                            {type.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="px-8 py-6 border-t border-zinc-800 bg-white/[0.01] flex items-center justify-between shrink-0">
+                    <button 
+                        onClick={() => {
+                            if (currentStep > 1) {
+                                setCurrentStep(prev => prev - 1);
+                                setError('');
+                            } else {
+                                onClose();
+                            }
+                        }}
+                        disabled={isSubmitting || isLoadingDeals}
+                        className="px-6 h-9 bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em] rounded-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {currentStep > 1 ? (
+                            <><ArrowLeft size={12} /> <span className="leading-none mt-[1px]">Back</span></>
+                        ) : <span className="leading-none mt-[1px]">Cancel</span>}
+                    </button>
+
+                    {currentStep < 3 ? (
+                        <button 
+                            onClick={handleNext}
+                            disabled={isTransitioning}
+                            className="px-6 h-9 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.15)] flex items-center justify-center gap-2"
+                        >
+                            {isTransitioning ? <Loader2 size={12} className="animate-spin" /> : <span className="leading-none mt-[1px]">Next Step</span>}
+                            {!isTransitioning && <ChevronRight size={12} />}
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="px-6 h-9 bg-blue-500 text-white text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer hover:bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
+                            <span className="leading-none mt-[1px]">Create & Retarget</span>
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
+
+export default LeadNurtureModal;

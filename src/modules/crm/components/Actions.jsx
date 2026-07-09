@@ -13,6 +13,7 @@ import CreatePipelineModal from './CreatePipelineModal';
 import ManageStageModal from './ManageStageModal';
 import UserPipelineManager from './UserPipelineManager';
 import LeadSettingsModal from './LeadSettingsModal';
+import LeadNurtureModal from './LeadNurtureModal';
 
 const ActionCard = ({ icon: Icon, title, description, colorClass, pipelineName, onClick }) => {
     return (
@@ -62,6 +63,7 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
     const [isManageStageOpen, setIsManageStageOpen] = useState(false);
     const [isUserManagerOpen, setIsUserManagerOpen] = useState(false);
     const [isLeadSettingsOpen, setIsLeadSettingsOpen] = useState(false);
+    const [isLeadNurtureOpen, setIsLeadNurtureOpen] = useState(false);
 
     const actionItems = [
         {
@@ -114,7 +116,8 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
             title: "Lead Nurture",
             description: "Set up drip sequences, automated follow-ups, and engagement scoring.",
             colorClass: "bg-white",
-            showBadge: true
+            showBadge: true,
+            onClick: () => setIsLeadNurtureOpen(true)
         }
     ];
 
@@ -164,6 +167,17 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
                 onClose={() => setIsLeadSettingsOpen(false)}
                 pipeline={selectedPipeline}
                 onSave={onPipelineUpdated}
+            />
+
+            <LeadNurtureModal
+                isOpen={isLeadNurtureOpen}
+                onClose={() => setIsLeadNurtureOpen(false)}
+                pipeline={selectedPipeline}
+                stages={stages}
+                departments={departments}
+                onPipelineCreated={(newPipeline) => {
+                    if (onPipelineCreated) onPipelineCreated(newPipeline);
+                }}
             />
         </div>
     );
