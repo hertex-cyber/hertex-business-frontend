@@ -11,6 +11,7 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
       'Prospect': 'from-purple-500/10 to-purple-500/5 border-purple-500/20 text-purple-400',
       'Customer': 'from-green-500/10 to-green-500/5 border-green-500/20 text-green-400',
       'Inactive': 'from-zinc-500/10 to-zinc-500/5 border-zinc-500/20 text-zinc-400',
+      'Retarget': 'from-amber-500/10 to-amber-500/5 border-amber-500/20 text-amber-400',
     };
     return colors[status] || colors['Lead'];
   };

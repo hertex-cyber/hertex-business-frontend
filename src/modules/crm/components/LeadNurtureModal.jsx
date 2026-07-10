@@ -20,7 +20,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
     const [isLoadingDeals, setIsLoadingDeals] = useState(false);
     const [isTransitioning, setIsTransitioning] = useState(false); // only for step 1→2 button
     const [deals, setDeals] = useState([]);
-    const [selectedDealIds, setSelectedDealIds] = useState(new Set());
+    const [deselectedDealIds, setDeselectedDealIds] = useState(new Set());
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [searchFields, setSearchFields] = useState(['name']);
@@ -28,6 +28,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
     const [dealPage, setDealPage] = useState(1);
     const [hasMoreDeals, setHasMoreDeals] = useState(false);
     const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
+    const [totalDealCount, setTotalDealCount] = useState(0);
     const abortControllerRef = useRef(null);
     
     // Step 3 state
@@ -36,6 +37,10 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
     const [selectedDepartments, setSelectedDepartments] = useState([]);
     const [assignmentType, setAssignmentType] = useState('manual');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [progressPhase, setProgressPhase] = useState('');
+    const [progressCurrent, setProgressCurrent] = useState(0);
+    const [progressTotal, setProgressTotal] = useState(0);
     const [error, setError] = useState('');
     const [showDepartments, setShowDepartments] = useState(false);
     const [deptSearchQuery, setDeptSearchQuery] = useState('');
@@ -45,19 +50,24 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             setCurrentStep(1);
             setSelectedStages([]);
             setDeals([]);
-            setSelectedDealIds(new Set());
+            setDeselectedDealIds(new Set());
+            setHasMoreDeals(false);
+            setIsLoadingMoreDeals(false);
             setSearchQuery('');
             setDebouncedSearchQuery('');
             setSearchFields(['name']);
             setFilterOpen(false);
             setDealPage(1);
-            setHasMoreDeals(false);
-            setIsLoadingMoreDeals(false);
+            setTotalDealCount(0);
             setNewPipelineName('');
             setNewPipelineDesc('');
             setSelectedDepartments([]);
             setAssignmentType('manual');
             setError('');
+            setIsProcessing(false);
+            setProgressPhase('');
+            setProgressCurrent(0);
+            setProgressTotal(0);
             setShowDepartments(false);
             setDeptSearchQuery('');
         }
@@ -105,17 +115,15 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             });
             const results = response.data.results || [];
 
+            setDealPage(page);
+            setHasMoreDeals(!!response.data.next);
+            setTotalDealCount(response.data.count || results.length);
+
             if (append) {
                 setDeals(prev => [...prev, ...results]);
             } else {
                 setDeals(results);
-            }
-
-            setDealPage(page);
-            setHasMoreDeals(!!response.data.next);
-
-            if (isInitial) {
-                setSelectedDealIds(new Set(results.map(d => d.id)));
+                setDeselectedDealIds(new Set());
             }
         } catch (err) {
             if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
@@ -170,7 +178,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                 setIsTransitioning(false);
             }).catch(() => setIsTransitioning(false));
         } else if (currentStep === 2) {
-            if (selectedDealIds.size === 0) {
+            if (totalDealCount - deselectedDealIds.size === 0) {
                 setError("Please select at least one deal to retarget.");
                 return;
             }
@@ -180,20 +188,22 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
     };
 
     const toggleDeal = (dealId) => {
-        const next = new Set(selectedDealIds);
-        if (next.has(dealId)) {
-            next.delete(dealId);
-        } else {
-            next.add(dealId);
-        }
-        setSelectedDealIds(next);
+        setDeselectedDealIds(prev => {
+            const next = new Set(prev);
+            if (next.has(dealId)) {
+                next.delete(dealId);
+            } else {
+                next.add(dealId);
+            }
+            return next;
+        });
     };
 
     const toggleSelectAllDeals = () => {
-        if (selectedDealIds.size === deals.length && deals.length > 0) {
-            setSelectedDealIds(new Set());
+        if (deselectedDealIds.size > 0) {
+            setDeselectedDealIds(new Set());
         } else {
-            setSelectedDealIds(new Set(deals.map(d => d.id)));
+            setDeselectedDealIds(new Set(deals.map(d => d.id)));
         }
     };
 
@@ -229,15 +239,57 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             
             const newPipeline = pipelineRes.data;
             
-            // 2. Extract contact IDs from the selected deals
-            const selectedDealsList = deals.filter(d => selectedDealIds.has(d.id));
-            const contactIds = selectedDealsList.map(d => d.contact); // Assuming deal object has a 'contact' ID field
+            // 2. Collect all contact IDs (fetch remaining pages if needed)
+            let allDeals = [...deals];
+            if (hasMoreDeals) {
+                setProgressPhase("Collecting deals...");
+                let page = dealPage + 1;
+                while (true) {
+                    const res = await axios.get("/api/crm/pipeline/", {
+                        params: {
+                            pipeline: pipeline.id,
+                            stages: selectedStages.join(','),
+                            page: page,
+                            page_size: 50
+                        }
+                    });
+                    const results = res.data.results || [];
+                    allDeals = [...allDeals, ...results];
+                    setProgressCurrent(allDeals.length);
+                    setProgressTotal(totalDealCount);
+                    if (!res.data.next) break;
+                    page++;
+                }
+                setDeals(allDeals);
+            }
             
-            // 3. Bulk add to the new pipeline
-            await axios.post("/api/crm/pipeline/bulk-add-contacts/", {
-                pipeline_id: newPipeline.id,
-                contact_ids: contactIds
-            });
+            const selectedDealsList = allDeals.filter(d => !deselectedDealIds.has(d.id));
+            const allContactIds = selectedDealsList.map(d => d.contact);
+            
+            // 3. Move in chunks of 100
+            const CHUNK_SIZE = 100;
+            if (allContactIds.length > CHUNK_SIZE) {
+                setIsProcessing(true);
+                setProgressPhase("Moving deals to retarget pipeline...");
+                setProgressTotal(allContactIds.length);
+                setProgressCurrent(0);
+                
+                for (let i = 0; i < allContactIds.length; i += CHUNK_SIZE) {
+                    const chunk = allContactIds.slice(i, i + CHUNK_SIZE);
+                    await axios.post("/api/crm/pipeline/bulk-add-contacts/", {
+                        pipeline_id: newPipeline.id,
+                        contact_ids: chunk,
+                        source_pipeline: pipeline.id
+                    });
+                    setProgressCurrent(Math.min(i + CHUNK_SIZE, allContactIds.length));
+                }
+            } else {
+                await axios.post("/api/crm/pipeline/bulk-add-contacts/", {
+                    pipeline_id: newPipeline.id,
+                    contact_ids: allContactIds,
+                    source_pipeline: pipeline.id
+                });
+            }
             
             if (onPipelineCreated) {
                 onPipelineCreated(newPipeline);
@@ -246,6 +298,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
         } catch (err) {
             console.error("Failed to create retargeting pipeline", err);
             setError("An error occurred during creation.");
+            setIsProcessing(false);
         } finally {
             setIsSubmitting(false);
         }
@@ -288,43 +341,55 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
 
                 {/* Stepper Progress */}
                 <div className="flex items-center justify-between px-8 py-5 bg-zinc-900/30 border-b border-zinc-800 shrink-0">
-                    {/* Left: Dynamic Stepper Name */}
-                    <div className="flex flex-col">
-                        <h3 className="text-sm font-medium text-white uppercase tracking-wider">{STEPS.find(s => s.id === currentStep)?.title}</h3>
-                        <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1 hidden sm:block">
-    {STEPS.find(s => s.id === currentStep)?.desc}
-    {currentStep === 2 && deals.length > 0 && (
-        <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[8px] font-semibold">
-            {selectedDealIds.size}/{deals.length}
-        </span>
-    )}
-</p>
+                    <div className="flex flex-col flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-white uppercase tracking-wider truncate">{STEPS.find(s => s.id === currentStep)?.title}</h3>
+                        {currentStep === 2 && totalDealCount > 0 && (
+                            <p className="text-[10px] text-blue-400 font-medium mt-1">
+                                Total leads: {totalDealCount - deselectedDealIds.size}
+                            </p>
+                        )}
+                        {currentStep !== 2 && (
+                            <p className="text-[9px] text-white/40 uppercase tracking-widest mt-1 hidden sm:block">
+                                {STEPS.find(s => s.id === currentStep)?.desc}
+                            </p>
+                        )}
                     </div>
 
-                    {/* Right: Stepper Indicators */}
-                    <div className="flex items-center gap-2">
-                        {STEPS.map((step, idx) => (
-                            <React.Fragment key={step.id}>
-                                <div className={cn(
-                                    "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0",
-                                    currentStep > step.id ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" :
-                                    currentStep === step.id ? "bg-blue-500/20 border border-blue-500/50 text-blue-400" :
-                                    "bg-zinc-900 border border-zinc-800 text-white/20"
-                                )}>
-                                    {currentStep > step.id ? <Check size={12} strokeWidth={3} /> : step.id}
-                                </div>
-                                {idx < STEPS.length - 1 && (
-                                    <div className="w-8 sm:w-16 h-1 bg-zinc-800 rounded-full overflow-hidden shrink-0">
-                                        <div className={cn(
-                                            "h-full transition-all duration-500 ease-out bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]",
-                                            currentStep > step.id ? "w-full" : "w-0"
-                                        )} />
+                    {isProcessing ? (
+                        <div className="w-48 space-y-1.5 shrink-0 ml-4">
+                            <p className="text-[10px] text-blue-400 font-medium text-right">{progressPhase}</p>
+                            <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                                    style={{ width: `${progressTotal > 0 ? (progressCurrent / progressTotal) * 100 : 0}%` }}
+                                />
+                            </div>
+                            <p className="text-[9px] text-white/40 text-right">{progressCurrent} / {progressTotal}</p>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 shrink-0">
+                            {STEPS.map((step, idx) => (
+                                <React.Fragment key={step.id}>
+                                    <div className={cn(
+                                        "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0",
+                                        currentStep > step.id ? "bg-blue-500 text-white shadow-[0_0_15px rgba(59,130,246,0.3)]" :
+                                        currentStep === step.id ? "bg-blue-500/20 border border-blue-500/50 text-blue-400" :
+                                        "bg-zinc-900 border border-zinc-800 text-white/20"
+                                    )}>
+                                        {currentStep > step.id ? <Check size={12} strokeWidth={3} /> : step.id}
                                     </div>
-                                )}
-</React.Fragment>
-                        ))}
-                    </div>
-</div>
+                                    {idx < STEPS.length - 1 && (
+                                        <div className="w-8 sm:w-16 h-1 bg-zinc-800 rounded-full overflow-hidden shrink-0">
+                                            <div className={cn(
+                                                "h-full transition-all duration-500 ease-out bg-blue-500 shadow-[0_0_10px rgba(59,130,246,0.5)]",
+                                                currentStep > step.id ? "w-full" : "w-0"
+                                            )} />
+                                        </div>
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    )}</div>
 
                 {/* Content */}
                 <div className={cn(
@@ -443,7 +508,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                     >
                                         <div className={cn(
                                             "w-4 h-4 rounded border flex items-center justify-center transition-all",
-                                            selectedDealIds.size === deals.length && deals.length > 0
+                                            deselectedDealIds.size === 0 && deals.length > 0
                                                 ? "bg-blue-500 border-blue-500 text-white" 
                                                 : "border-zinc-700 text-transparent group-hover:border-zinc-500"
                                         )}>
@@ -470,7 +535,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                     </div>
                                 ) : (
                                     deals.map(deal => {
-                                        const isSelected = selectedDealIds.has(deal.id);
+                                        const isSelected = !deselectedDealIds.has(deal.id);
                                         const stageName = stages.find(s => s.id === deal.stage)?.name || 'Unknown';
                                         return (
                                             <div 
@@ -624,41 +689,49 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
 
                 {/* Footer */}
                 <div className="px-8 py-6 border-t border-zinc-800 bg-white/[0.01] flex items-center justify-between shrink-0">
-                    <button 
-                        onClick={() => {
-                            if (currentStep > 1) {
-                                setCurrentStep(prev => prev - 1);
-                                setError('');
-                            } else {
-                                onClose();
-                            }
-                        }}
-                        disabled={isSubmitting || isLoadingDeals}
-                        className="px-6 h-9 bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em] rounded-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        {currentStep > 1 ? (
-                            <><ArrowLeft size={12} /> <span className="leading-none mt-[1px]">Back</span></>
-                        ) : <span className="leading-none mt-[1px]">Cancel</span>}
-                    </button>
-
-                    {currentStep < 3 ? (
-                        <button 
-                            onClick={handleNext}
-                            disabled={isTransitioning}
-                            className="px-6 h-9 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.15)] flex items-center justify-center gap-2"
-                        >
-                            {isTransitioning ? <Loader2 size={12} className="animate-spin" /> : <span className="leading-none mt-[1px]">Next Step</span>}
-                            {!isTransitioning && <ChevronRight size={12} />}
-                        </button>
+                    {isProcessing ? (
+                        <div className="w-full text-center">
+                            <p className="text-[10px] text-white/40">Processing, please wait...</p>
+                        </div>
                     ) : (
-                        <button 
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="px-6 h-9 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.15)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
-                            <span className="leading-none mt-[1px]">Create & Retarget</span>
-                        </button>
+                        <>
+                            <button 
+                                onClick={() => {
+                                    if (currentStep > 1) {
+                                        setCurrentStep(prev => prev - 1);
+                                        setError('');
+                                    } else {
+                                        onClose();
+                                    }
+                                }}
+                                disabled={isSubmitting || isLoadingDeals}
+                                className="px-6 h-9 bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em] rounded-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {currentStep > 1 ? (
+                                    <><ArrowLeft size={12} /> <span className="leading-none mt-[1px]">Back</span></>
+                                ) : <span className="leading-none mt-[1px]">Cancel</span>}
+                            </button>
+
+                            {currentStep < 3 ? (
+                                <button 
+                                    onClick={handleNext}
+                                    disabled={isTransitioning}
+                                    className="px-6 h-9 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.15)] flex items-center justify-center gap-2"
+                                >
+                                    {isTransitioning ? <Loader2 size={12} className="animate-spin" /> : <span className="leading-none mt-[1px]">Next Step</span>}
+                                    {!isTransitioning && <ChevronRight size={12} />}
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={handleSubmit}
+                                    disabled={isSubmitting || isProcessing}
+                                    className="px-6 h-9 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer shadow-[0_0_15px rgba(59,130,246,0.15)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isSubmitting || isProcessing ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
+                                    <span className="leading-none mt-[1px]">{isProcessing ? "Processing..." : "Create & Retarget"}</span>
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
