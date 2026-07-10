@@ -70,20 +70,6 @@ const Contacts = () => {
                     <h1 className="text-2xl font-semibold text-white">Contacts</h1>
                     <p className="text-sm text-white/40">Your customer repository</p>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                    {selectedIds.length > 0 && (
-                        <Button
-                            variant="secondary"
-                            className="!w-auto h-9 px-4 border-blue-500/20 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold"
-                            onClick={() => setIsAddToCRMModalOpen(true)}
-                            disabled={isAddingToCRM}
-                        >
-                            {isAddingToCRM ? <RingLoader size="1.2em" className="mr-2" /> : <Rocket size={14} className="mr-2" />}
-                            Add to CRM ({selectedIds.length})
-                        </Button>
-                    )}
-                </div>
             </header>
 
             <main className="flex-1 px-10 pt-5 pb-10 relative z-10 overflow-hidden flex flex-col gap-4 min-h-0">
@@ -136,6 +122,25 @@ const Contacts = () => {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-8 pr-3 h-8 w-52 bg-white/5 border border-white/10 rounded-lg text-xs text-white placeholder:text-white/20 outline-none focus:border-white/20 transition-all"
                             />
+                        </div>
+                        <div className={cn(
+                            "overflow-hidden transition-all duration-300 ease-in-out",
+                            selectedIds.length > 0 ? "max-w-[220px] mr-0" : "max-w-0 mr-0"
+                        )}>
+                            <div style={{
+                                opacity: selectedIds.length > 0 ? 1 : 0,
+                                transition: 'opacity 200ms ease-in-out',
+                                transitionDelay: selectedIds.length > 0 ? '250ms' : '0ms',
+                            }}>
+                                <button
+                                    onClick={() => setIsAddToCRMModalOpen(true)}
+                                    disabled={isAddingToCRM}
+                                    className="px-4 h-8 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium uppercase tracking-[0.2em] transition-all rounded-sm cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.15)] flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isAddingToCRM ? <RingLoader size="1.2em" /> : <Rocket size={12} />}
+                                    Add to CRM ({selectedIds.length})
+                                </button>
+                            </div>
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger className="!h-8 px-3 flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-medium text-white/60 hover:bg-white/10 transition-all outline-none disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isAdmin} title={!isAdmin ? "Only admins can import contacts" : undefined}>
