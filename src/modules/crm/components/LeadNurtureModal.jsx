@@ -25,6 +25,9 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [searchFields, setSearchFields] = useState(['name']);
     const [filterOpen, setFilterOpen] = useState(false);
+    const [dealPage, setDealPage] = useState(1);
+    const [hasMoreDeals, setHasMoreDeals] = useState(false);
+    const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
     const abortControllerRef = useRef(null);
     
     // Step 3 state
@@ -47,6 +50,9 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             setDebouncedSearchQuery('');
             setSearchFields(['name']);
             setFilterOpen(false);
+            setDealPage(1);
+            setHasMoreDeals(false);
+            setIsLoadingMoreDeals(false);
             setNewPipelineName('');
             setNewPipelineDesc('');
             setSelectedDepartments([]);
@@ -70,17 +76,21 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const fetchDeals = async (search = '', isInitial = false) => {
+    const fetchDeals = async (search = '', isInitial = false, page = 1, append = false) => {
         if (selectedStages.length === 0) return;
 
-        // Cancel any in-flight request before starting a new one
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        setIsLoadingDeals(true);
+        if (append) {
+            setIsLoadingMoreDeals(true);
+        } else {
+            setIsLoadingDeals(true);
+        }
+
         try {
             const response = await axios.get("/api/crm/pipeline/", {
                 params: { 
@@ -88,28 +98,38 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                     stages: selectedStages.join(','),
                     search: search,
                     search_by: searchFields.join(','),
-                    page_size: 1000 
+                    page: page,
+                    page_size: 50
                 },
                 signal: controller.signal,
             });
             const results = response.data.results || [];
-            
-            setDeals(results);
-            
+
+            if (append) {
+                setDeals(prev => [...prev, ...results]);
+            } else {
+                setDeals(results);
+            }
+
+            setDealPage(page);
+            setHasMoreDeals(!!response.data.next);
+
             if (isInitial) {
                 setSelectedDealIds(new Set(results.map(d => d.id)));
             }
         } catch (err) {
             if (axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
-                // Request was intentionally cancelled — do nothing
                 return;
             }
             console.error("Failed to fetch deals", err);
             setError("Failed to fetch deals. Please try again.");
         } finally {
-            // Only clear loading if this controller is still the active one
             if (abortControllerRef.current === controller) {
-                setIsLoadingDeals(false);
+                if (append) {
+                    setIsLoadingMoreDeals(false);
+                } else {
+                    setIsLoadingDeals(false);
+                }
             }
         }
     };
@@ -125,18 +145,15 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
         });
     };
 
-    // Re-fetch when searchFields change (only in step 2)
     useEffect(() => {
         if (currentStep === 2) {
-            fetchDeals(debouncedSearchQuery, false);
+            fetchDeals(debouncedSearchQuery, false, 1, false);
         }
     }, [searchFields]);
 
     useEffect(() => {
-        // Only trigger search fetch if we are already in Step 2
-        // Initial fetch is handled by handleNext
         if (currentStep === 2) {
-            fetchDeals(debouncedSearchQuery, false);
+            fetchDeals(debouncedSearchQuery, false, 1, false);
         }
     }, [debouncedSearchQuery]);
 
@@ -148,7 +165,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             }
             setError('');
             setIsTransitioning(true);
-            fetchDeals('', true).then(() => {
+            fetchDeals('', true, 1, false).then(() => {
                 setCurrentStep(2);
                 setIsTransitioning(false);
             }).catch(() => setIsTransitioning(false));
@@ -491,7 +508,19 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                             </div>
                                         );
                                     })
-)}
+                                )}
+                                {hasMoreDeals && (
+                                    <div className="px-8 py-4 flex items-center justify-center">
+                                        <button
+                                            onClick={() => fetchDeals(debouncedSearchQuery, false, dealPage + 1, true)}
+                                            disabled={isLoadingMoreDeals}
+                                            className="px-4 py-2 bg-zinc-900/50 border border-zinc-800 text-white/50 hover:text-white hover:border-zinc-600 text-[9px] font-medium uppercase tracking-[0.15em] transition-all rounded-sm cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                                        >
+                                            {isLoadingMoreDeals ? <Loader2 size={10} className="animate-spin" /> : null}
+                                            Load More
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

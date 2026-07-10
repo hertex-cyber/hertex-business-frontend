@@ -175,29 +175,36 @@ const CRM = () => {
     try {
       setIsLoading(true);
 
-      // Single API call to get all deals for the pipeline
-      const response = await axios.get("/api/crm/pipeline/", {
-        params: { pipeline: selectedPipeline.id, page: 1, page_size: 100 }
-      });
+      // Fetch first 100 deals per stage (server-side paginated)
+      const promises = stages.map(stage =>
+        axios.get("/api/crm/pipeline/", {
+          params: { pipeline: selectedPipeline.id, stage: stage.id, page: 1, page_size: 100 }
+        }).then(res => ({
+          stageId: stage.id,
+          items: (res.data.results || []).map(transformDeal),
+          nextPage: res.data.next ? 2 : null,
+          hasMore: !!res.data.next,
+          count: res.data.count || 0
+        })).catch(err => {
+          console.error(`Failed to fetch deals for stage ${stage.id}:`, err);
+          return { stageId: stage.id, items: [], nextPage: null, hasMore: false, count: 0 };
+        })
+      );
 
-      // Group deals by stage
+      const results = await Promise.all(promises);
+
       const newDeals = {};
       stages.forEach(stage => {
-        newDeals[stage.id] = {
-          items: [],
-          nextPage: null,
-          hasMore: false,
-          count: 0,
+        newDeals[stage.id] = { items: [], nextPage: null, hasMore: false, count: 0, isLoadingMore: false };
+      });
+      results.forEach(r => {
+        newDeals[r.stageId] = {
+          items: r.items,
+          nextPage: r.nextPage,
+          hasMore: r.hasMore,
+          count: r.count,
           isLoadingMore: false
         };
-      });
-
-      (response.data.results || []).forEach(deal => {
-        const stageId = deal.stage;
-        if (stageId && newDeals[stageId]) {
-          newDeals[stageId].items.push(transformDeal(deal));
-          newDeals[stageId].count += 1;
-        }
       });
 
       setDeals(newDeals);
@@ -214,7 +221,7 @@ const CRM = () => {
     try {
       setDeals(prev => ({ ...prev, [stageId]: { ...prev[stageId], isLoadingMore: true } }));
       const response = await axios.get("/api/crm/pipeline/", {
-        params: { pipeline: selectedPipeline.id, stage: stageId, page: stageData.nextPage }
+        params: { pipeline: selectedPipeline.id, stage: stageId, page: stageData.nextPage, page_size: 100 }
       });
       const newItems = (response.data.results || []).map(transformDeal);
       setDeals(prev => ({
