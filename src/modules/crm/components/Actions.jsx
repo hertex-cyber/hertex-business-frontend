@@ -175,6 +175,7 @@ const Actions = ({ selectedPipeline, pipelines, stages, departments = [], users 
                 pipeline={selectedPipeline}
                 stages={stages}
                 departments={departments}
+                users={users}
                 onPipelineCreated={(newPipeline) => {
                     if (onPipelineCreated) onPipelineCreated(newPipeline);
                 }}

@@ -12,7 +12,7 @@ const STEPS = [
     { id: 3, title: 'Create Pipeline', desc: 'Configure new pipeline' }
 ];
 
-const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [], onPipelineCreated }) => {
+const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [], users = [], onPipelineCreated }) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [selectedStages, setSelectedStages] = useState([]);
     
@@ -36,6 +36,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
     const [newPipelineDesc, setNewPipelineDesc] = useState('');
     const [selectedDepartments, setSelectedDepartments] = useState([]);
     const [assignmentType, setAssignmentType] = useState('manual');
+    const [selectedSingleUser, setSelectedSingleUser] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [progressPhase, setProgressPhase] = useState('');
@@ -63,6 +64,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             setNewPipelineDesc('');
             setSelectedDepartments([]);
             setAssignmentType('manual');
+            setSelectedSingleUser('');
             setError('');
             setIsProcessing(false);
             setProgressPhase('');
@@ -209,9 +211,17 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
 
     const toggleDepartment = (deptId) => {
         setSelectedDepartments(prev => 
-            prev.includes(deptId) ? prev.filter(id => id !== deptId) : [...prev, deptId]
+            prev.includes(deptId) ? [] : [deptId]
         );
     };
+
+    const selectedGroupUsers = useMemo(() => {
+        if (selectedDepartments.length === 0) return [];
+        const deptId = selectedDepartments[0];
+        return users.filter(user =>
+            user.departments?.some(d => String(d.id) === String(deptId))
+        );
+    }, [selectedDepartments, users]);
 
     const filteredDepartments = useMemo(() => {
         if (!deptSearchQuery) return departments;
@@ -233,7 +243,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             const pipelineRes = await axios.post("/api/crm/pipelines/", {
                 name: newPipelineName,
                 description: newPipelineDesc,
-                departments: selectedDepartments,
+                department_ids: selectedDepartments,
                 assignment_type: assignmentType
             });
             
@@ -291,6 +301,15 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                 });
             }
             
+            // 4. Auto-assign if strategy is not manual
+            if (assignmentType !== 'manual' && selectedDepartments.length > 0) {
+                const payload = { strategy: assignmentType };
+                if (assignmentType === 'single_user' && selectedSingleUser) {
+                    payload.target_user_id = selectedSingleUser;
+                }
+                await axios.post(`/api/crm/pipelines/${newPipeline.id}/trigger-assignment/`, payload);
+            }
+
             if (onPipelineCreated) {
                 onPipelineCreated(newPipeline);
             }
@@ -614,8 +633,8 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                             </div>
 
                             <div className="space-y-4">
-<div className="flex items-center gap-3">
-                                    <label className="text-xs text-white/60 uppercase tracking-wider font-medium">Assign Groups</label>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-xs text-white/60 uppercase tracking-wider font-medium">Assign Group</label>
                                     <button
                                         type="button"
                                         onClick={() => setShowDepartments(prev => !prev)}
@@ -631,7 +650,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                     </button>
                                     {selectedDepartments.length > 0 && (
                                         <span className="text-xs text-blue-400 font-medium ml-1">
-                                            {selectedDepartments.length} selected
+                                            {departments.find(d => d.id === selectedDepartments[0])?.name}
                                         </span>
                                     )}
                                 </div>
@@ -670,10 +689,10 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                                                 {dept.name}
                                                             </span>
                                                             <div className={cn(
-                                                                "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0",
-                                                                isSelected ? "bg-blue-500 border-blue-500 text-white" : "border-zinc-700"
+                                                                "w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all shrink-0",
+                                                                isSelected ? "bg-blue-500 border-blue-500" : "border-zinc-700"
                                                             )}>
-                                                                {isSelected && <Check size={8} strokeWidth={3} />}
+                                                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                                             </div>
                                                         </button>
                                                     );
@@ -681,8 +700,89 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                                             )}
                                         </div>
                                     </div>
-)}
+                                )}
                             </div>
+
+                            {selectedDepartments.length > 0 && (
+                                <div className="space-y-4">
+                                    <p className="text-[10px] text-blue-400/80 uppercase tracking-wider font-medium">Assign your special team</p>
+                                    
+                                    <div className="space-y-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setAssignmentType('single_user'); setSelectedSingleUser(''); }}
+                                            className={cn(
+                                                "w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-left",
+                                                assignmentType === 'single_user'
+                                                    ? "bg-blue-500/10 border-blue-500/30"
+                                                    : "bg-zinc-900/30 border-zinc-800 hover:bg-zinc-900/50"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                                                assignmentType === 'single_user' ? "border-blue-500" : "border-zinc-700"
+                                            )}>
+                                                {assignmentType === 'single_user' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                                            </div>
+                                            <div>
+                                                <p className={cn("text-xs font-medium", assignmentType === 'single_user' ? "text-blue-400" : "text-white/80")}>Single User</p>
+                                                <p className="text-[10px] text-white/40 mt-0.5">Assign all leads to one user in this group</p>
+                                            </div>
+                                        </button>
+
+                                        {assignmentType === 'single_user' && selectedGroupUsers.length > 0 && (
+                                            <div className="pl-8 space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
+                                                {selectedGroupUsers.map(user => (
+                                                    <button
+                                                        key={user.id}
+                                                        type="button"
+                                                        onClick={() => setSelectedSingleUser(user.id)}
+                                                        className={cn(
+                                                            "w-full flex items-center gap-2.5 px-3 py-2 rounded-md transition-all text-left",
+                                                            selectedSingleUser === user.id
+                                                                ? "bg-blue-500/10 border border-blue-500/20"
+                                                                : "hover:bg-white/[0.02] border border-transparent"
+                                                        )}
+                                                    >
+                                                        <div className={cn(
+                                                            "w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0",
+                                                            selectedSingleUser === user.id ? "border-blue-500" : "border-zinc-700"
+                                                        )}>
+                                                            {selectedSingleUser === user.id && <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+                                                        </div>
+                                                        <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center shrink-0">
+                                                            <span className="text-[9px] font-medium text-white/60">{(user.first_name?.[0] || user.email[0]).toUpperCase()}</span>
+                                                        </div>
+                                                        <span className="text-xs text-white/70 truncate">{user.first_name} {user.last_name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setAssignmentType('round_robin')}
+                                            className={cn(
+                                                "w-full flex items-center gap-3 px-4 py-3 rounded-lg border transition-all text-left",
+                                                assignmentType === 'round_robin'
+                                                    ? "bg-blue-500/10 border-blue-500/30"
+                                                    : "bg-zinc-900/30 border-zinc-800 hover:bg-zinc-900/50"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                                                assignmentType === 'round_robin' ? "border-blue-500" : "border-zinc-700"
+                                            )}>
+                                                {assignmentType === 'round_robin' && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                                            </div>
+                                            <div>
+                                                <p className={cn("text-xs font-medium", assignmentType === 'round_robin' ? "text-blue-400" : "text-white/80")}>Round Robin</p>
+                                                <p className="text-[10px] text-white/40 mt-0.5">Evenly distribute leads across all users in this group</p>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
