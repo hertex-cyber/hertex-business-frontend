@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Rocket, Layout, Loader2, Check, Plus } from 'lucide-react';
+import { X, Rocket, Layout, Loader2, Check, Plus, Database, GitMerge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
 
-const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
+const AddToCRMModal = ({ isOpen, onClose, onConfirm, onSuccess, contactCount }) => {
   const [pipelines, setPipelines] = useState([]);
   const [selectedPipeline, setSelectedPipeline] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -14,6 +14,9 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
   const [newPipelineName, setNewPipelineName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState({ phase: '', current: 0, total: 0 });
+  const [processingError, setProcessingError] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,11 +43,17 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
 
   const handleConfirm = async () => {
     if (!selectedPipeline) return;
-    setIsSubmitting(true);
-    const firstStage = selectedPipeline.stages?.sort((a, b) => a.order - b.order)[0];
-    await onConfirm(selectedPipeline.id, firstStage?.id);
-    setIsSubmitting(false);
-    onClose();
+    setIsProcessing(true);
+    setProcessingError(null);
+    try {
+      const firstStage = selectedPipeline.stages?.sort((a, b) => a.order - b.order)[0];
+      await onConfirm(selectedPipeline.id, firstStage?.id, setProgress);
+      onSuccess?.(selectedPipeline.id);
+      onClose();
+    } catch (err) {
+      console.error('Failed to add to CRM:', err);
+      setProcessingError('Failed to add contacts. Please try again.');
+    }
   };
 
   const handleCreatePipeline = async (e) => {
@@ -81,9 +90,9 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
                 <Rocket size={18} />
               </div>
               <div>
-                <h2 className="text-lg font-medium text-white">Add to CRM</h2>
+                <h2 className="text-lg text-white">Add to CRM</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-blue-400">
+                  <span className="text-xs text-blue-400">
                     {contactCount} contacts selected
                   </span>
                 </div>
@@ -99,16 +108,16 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 bg-zinc-900/30 flex-1 overflow-hidden flex flex-col">
+        <div className={cn("p-6 bg-zinc-900/30 flex-1 overflow-hidden flex flex-col", isProcessing && "pointer-events-none opacity-60 cursor-not-allowed")}>
           {isLoading ? (
             <div className="py-10 flex flex-col items-center gap-4">
               <Loader2 className="animate-spin text-blue-500/50" size={24} />
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/20">Loading Pipelines...</p>
+              <p className="text-[10px] text-white/20">Loading Pipelines...</p>
             </div>
           ) : isCreatingPipeline || pipelines.length === 0 ? (
             <form onSubmit={handleCreatePipeline} className="space-y-4 py-2">
               <div>
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 mb-2 block">
+                <label className="text-[10px] text-white/40 mb-2 block">
                   New Pipeline Name
                 </label>
                 <input
@@ -128,7 +137,7 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
                   <button
                     type="button"
                     onClick={() => { setIsCreatingPipeline(false); setNewPipelineName(''); setCreateError(''); }}
-                    className="flex-1 py-2 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 hover:text-white transition-colors"
+                    className="flex-1 py-2 rounded-md bg-zinc-900 border border-zinc-800 text-[10px] text-white/40 hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
@@ -136,7 +145,7 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
                 <button
                   type="submit"
                   disabled={isCreating || !newPipelineName.trim()}
-                  className="flex-1 py-2 rounded-md bg-blue-500/10 border border-blue-500/30 text-[10px] font-medium uppercase tracking-[0.2em] text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 py-2 rounded-md bg-blue-500/10 border border-blue-500/30 text-[10px] text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isCreating ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
                   Create & Select
@@ -146,10 +155,10 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
           ) : (
             <div className="space-y-4 flex-1 flex flex-col min-h-0">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40">Select Target Pipeline</label>
+                <label className="text-[10px] text-white/40">Select Target Pipeline</label>
                 <button
                   onClick={() => setIsCreatingPipeline(true)}
-                  className="text-[10px] font-medium uppercase tracking-[0.2em] text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                  className="text-[12px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
                 >
                   <Plus size={10} /> New
                 </button>
@@ -177,7 +186,7 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
                         <Layout size={14} />
                       </div>
                       <span className={cn(
-                        "text-[10px] font-medium uppercase tracking-[0.2em]",
+                        "text-[15px]",
                         selectedPipeline?.id === p.id && !p.custom_fields_enabled ? "text-blue-400" : "text-white/60"
                       )}>{p.name}</span>
                     </div>
@@ -199,24 +208,56 @@ const AddToCRMModal = ({ isOpen, onClose, onConfirm, contactCount }) => {
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-zinc-800 bg-black/50 backdrop-blur-xl flex justify-end gap-3 shrink-0 rounded-b-lg">
-            <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]"
-            >
-                Cancel
-            </button>
-            <button
-                onClick={handleConfirm}
-                disabled={isSubmitting || !selectedPipeline}
-                className="px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
-            >
-                {isSubmitting ? (
-                    <><Loader2 size={14} className="animate-spin" /> Exporting...</>
-                ) : (
-                    'Confirm Export'
-                )}
-            </button>
+            {(isProcessing || processingError) && contactCount >= 1500 ? (
+                <div className="w-full space-y-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-white/40">
+                            {processingError ? `${progress.phase} — Failed` : progress.phase}
+                        </span>
+                        <span className="text-[10px] font-mono text-white/20">
+                            {progress.total > 0 ? `${progress.current} / ${progress.total}` : ''}
+                        </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+                        <div
+                            className={cn(
+                                "h-full rounded-full transition-all duration-300 ease-out",
+                                processingError ? "bg-red-500" : "bg-blue-500"
+                            )}
+                            style={{ width: progress.total > 0 ? `${Math.round((progress.current / progress.total) * 100)}%` : '0%' }}
+                        />
+                    </div>
+                    {processingError && (
+                        <p className="text-[10px] text-red-400 text-center">{processingError}</p>
+                    )}
+                </div>
+            ) : isProcessing ? (
+                <div className="w-full flex items-center justify-center gap-2">
+                    <Loader2 size={14} className="animate-spin text-blue-400" />
+                    <span className="text-[10px] text-white/40">Processing...</span>
+                </div>
+            ) : (
+                <>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px]"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleConfirm}
+                        disabled={isSubmitting || !selectedPipeline}
+                        className="px-6 py-2 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] transition-all flex items-center gap-2"
+                    >
+                        {isSubmitting ? (
+                            <><Loader2 size={14} className="animate-spin" /> Exporting...</>
+                        ) : (
+                            'Confirm Export'
+                        )}
+                    </button>
+                </>
+            )}
         </div>
 
       </div>

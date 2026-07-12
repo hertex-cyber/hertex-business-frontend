@@ -34,7 +34,7 @@ const SYSTEM_FIELDS = [
     { key: 'phone', label: 'Phone Number', required: false },
 ];
 
-const BACKEND_STATUSES = ['Lead', 'Prospect', 'Customer', 'Inactive'];
+const BACKEND_STATUSES = ['Lead', 'Prospect', 'Customer', 'Inactive', 'Retarget', 'Imports'];
 
 const ImportModal = ({ isOpen, onClose, onSuccess }) => {
     const [step, setStep] = useState(STEPS.UPLOAD);
@@ -43,7 +43,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
     const [allHeaders, setAllHeaders] = useState([]);
     const [selectedHeaders, setSelectedHeaders] = useState([]);
     const [mapping, setMapping] = useState({});
-    const [importStatus, setImportStatus] = useState('Lead');
+    const [importStatus, setImportStatus] = useState('Imports');
     const [previewData, setPreviewData] = useState([]);
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState(0);
@@ -58,7 +58,7 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
             setAllHeaders([]);
             setSelectedHeaders([]);
             setMapping({});
-            setImportStatus('Lead');
+            setImportStatus('Imports');
             setPreviewData([]);
             setError(null);
         }
@@ -134,8 +134,6 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
     };
 
     const handleFinalImport = async () => {
-        setIsImporting(true);
-        setImportProgress(0);
         setError(null);
         try {
             const fullData = await parseFileFull(file);
@@ -152,6 +150,11 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
 
             const CHUNK_SIZE = 1500;
             const total = transformedData.length;
+            const isMultiChunk = total > CHUNK_SIZE;
+            if (isMultiChunk) {
+                setIsImporting(true);
+                setImportProgress(0);
+            }
             let currentBatchId = null;
 
             for (let i = 0; i < total; i += CHUNK_SIZE) {
@@ -166,8 +169,10 @@ const ImportModal = ({ isOpen, onClose, onSuccess }) => {
                 
                 if (response.data.success) {
                     currentBatchId = response.data.batch_id;
-                    const progress = Math.min(Math.round(((i + chunk.length) / total) * 100), 100);
-                    setImportProgress(progress);
+                    if (isMultiChunk) {
+                        const progress = Math.min(Math.round(((i + chunk.length) / total) * 100), 100);
+                        setImportProgress(progress);
+                    }
                 } else {
                     throw new Error(response.data.message || 'Import failed at a chunk.');
                 }

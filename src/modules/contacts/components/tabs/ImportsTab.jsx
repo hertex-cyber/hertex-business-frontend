@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FileInput, Calendar, MoreVertical, Download, GitMerge, Trash2 } from 'lucide-react';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -6,11 +7,12 @@ import RingLoader from '@/components/ui/RingLoader';
 import AddToCRMModal from '../AddToCRMModal';
 
 const ImportsTab = ({ onViewBatch }) => {
+    const navigate = useNavigate();
     const [batches, setBatches] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [openMenu, setOpenMenu] = useState(null);
     const [batchToDelete, setBatchToDelete] = useState(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteProgress, setDeleteProgress] = useState(null);
     const [batchForCRM, setBatchForCRM] = useState(null);
 
     useEffect(() => {
@@ -22,29 +24,74 @@ const ImportsTab = ({ onViewBatch }) => {
 
     const handleDeleteBatch = async () => {
         if (!batchToDelete) return;
+        const CHUNK_SIZE = 1500;
+        const batch = batchToDelete;
+        const total = batch.contact_count;
+
+        if (total === 0) {
+            try {
+                await axios.delete(`/api/contacts/batches/${batch.id}/`);
+                setBatches(prev => prev.filter(b => b.id !== batch.id));
+            } catch (err) {
+                console.error('Delete failed:', err);
+                alert(err.response?.data?.detail || err.response?.data?.error || 'Failed to delete import batch.');
+            } finally {
+                setBatchToDelete(null);
+            }
+            return;
+        }
+
+        setDeleteProgress({ phase: 'Deleting contacts...', current: 0, total });
+
         try {
-            setIsDeleting(true);
-            await axios.delete(`/api/contacts/batches/${batchToDelete.id}/`);
-            setBatches(prev => prev.filter(b => b.id !== batchToDelete.id));
+            for (let i = 0; i < total; i += CHUNK_SIZE) {
+                const res = await axios.post(`/api/contacts/batches/${batch.id}/delete-chunk/`, {
+                    limit: CHUNK_SIZE,
+                });
+                const current = Math.min(i + CHUNK_SIZE, total);
+                setDeleteProgress({ phase: 'Deleting contacts...', current, total });
+                if (res.data.remaining === 0) break;
+            }
+            setBatches(prev => prev.filter(b => b.id !== batch.id));
             setBatchToDelete(null);
         } catch (err) {
             console.error('Delete failed:', err);
+            alert(err.response?.data?.detail || err.response?.data?.error || 'Failed to delete import batch.');
         } finally {
-            setIsDeleting(false);
+            setDeleteProgress(null);
         }
     };
 
-    const handleAddToCRM = async (pipelineId) => {
+    const handleAddToCRM = async (pipelineId, stageId, onProgress) => {
         if (!batchForCRM) return;
+        const CHUNK_SIZE = 1500;
         try {
-            await axios.post('/api/crm/pipeline/bulk-add-from-batch/', {
-                batch_id: batchForCRM.id,
-                pipeline_id: pipelineId
-            });
-            // Success feedback could be added here
+            // Fetch all contact IDs for the batch
+            onProgress({ phase: 'Fetching contacts...', current: 0, total: 0 });
+            const res = await axios.get(`/api/contacts/?batch=${batchForCRM.id}&page_size=50000`);
+            const contacts = res.data.results || res.data;
+            const allIds = contacts.map(c => c.id);
+            const total = allIds.length;
+            const totalChunks = Math.ceil(total / CHUNK_SIZE);
+
+            onProgress({ phase: 'Adding to CRM...', current: 0, total });
+
+            for (let i = 0; i < totalChunks; i++) {
+                const chunk = allIds.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+                await axios.post('/api/crm/pipeline/bulk-add-contacts/', {
+                    pipeline_id: pipelineId,
+                    contact_ids: chunk,
+                });
+                onProgress({
+                    phase: 'Adding to CRM...',
+                    current: Math.min((i + 1) * CHUNK_SIZE, total),
+                    total,
+                });
+            }
+            // Only reached if all chunks succeeded
         } catch (err) {
             console.error('Failed to add to CRM:', err);
-            alert('Failed to add contacts to CRM. Please try again.');
+            throw err;
         }
     };
 
@@ -139,7 +186,7 @@ const ImportsTab = ({ onViewBatch }) => {
             isOpen={!!batchToDelete}
             title="Delete Import"
             description={`This will permanently delete "${batchToDelete?.name}" and all ${batchToDelete?.contact_count} contacts within it.`}
-            isDeleting={isDeleting}
+            progress={deleteProgress}
             onConfirm={handleDeleteBatch}
             onCancel={() => setBatchToDelete(null)}
         />
@@ -148,6 +195,10 @@ const ImportsTab = ({ onViewBatch }) => {
             isOpen={!!batchForCRM}
             onClose={() => setBatchForCRM(null)}
             onConfirm={handleAddToCRM}
+            onSuccess={(pipelineId) => {
+                localStorage.setItem('crm_selected_pipeline_id', pipelineId);
+                navigate('/crm');
+            }}
             contactCount={batchForCRM?.contact_count || 0}
         />
         </>

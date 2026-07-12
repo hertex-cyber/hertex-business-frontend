@@ -16,6 +16,8 @@ const STATUS_STYLES = {
     Prospect: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
     Customer: 'bg-green-500/10 text-green-400 border-green-500/20',
     Inactive: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+    Retarget: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    Imports:  'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
 };
 
 const Field = ({ icon: Icon, label, value, actions, isEditing, children, colorClass }) => {
