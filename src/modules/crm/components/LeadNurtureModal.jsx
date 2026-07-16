@@ -261,7 +261,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                         pipeline: pipeline.id,
                         stages: selectedStages.join(','),
                         page: 1,
-                        page_size: 50000
+                        page_size: 2000
                     }
                 });
                 allDeals = res.data.results || [];
