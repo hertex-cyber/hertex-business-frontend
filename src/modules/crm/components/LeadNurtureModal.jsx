@@ -249,52 +249,40 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             
             const newPipeline = pipelineRes.data;
             
-            // 2. Collect all deals (single large fetch like Add to CRM)
-            let allDeals = [...deals];
-            if (hasMoreDeals || totalDealCount > deals.length) {
-                setProgressPhase("Collecting deals...");
-                setProgressTotal(totalDealCount);
-                setProgressCurrent(0);
+            // 2. Fetch page 1 → post → repeat (deals shift as they're moved out)
+            const totalSelected = totalDealCount - deselectedDealIds.size;
+            let processedCount = 0;
+            if (totalSelected > 0) {
                 setIsProcessing(true);
-                const res = await axios.get("/api/crm/pipeline/", {
-                    params: {
-                        pipeline: pipeline.id,
-                        stages: selectedStages.join(','),
-                        page: 1,
-                        page_size: 2000
-                    }
-                });
-                allDeals = res.data.results || [];
-                setProgressCurrent(allDeals.length);
-                setDeals(allDeals);
-            }
-            
-            const selectedDealsList = allDeals.filter(d => !deselectedDealIds.has(d.id));
-            const allContactIds = selectedDealsList.map(d => d.contact);
-            
-            // 3. Move in chunks of 1500
-            const CHUNK_SIZE = 1500;
-            if (allContactIds.length > CHUNK_SIZE) {
-                setIsProcessing(true);
-                setProgressPhase("Moving deals to retarget pipeline...");
-                setProgressTotal(allContactIds.length);
+                setProgressPhase("Processing deals...");
+                setProgressTotal(totalSelected);
                 setProgressCurrent(0);
-                
-                for (let i = 0; i < allContactIds.length; i += CHUNK_SIZE) {
-                    const chunk = allContactIds.slice(i, i + CHUNK_SIZE);
-                    await axios.post("/api/crm/pipeline/bulk-add-contacts/", {
-                        pipeline_id: newPipeline.id,
-                        contact_ids: chunk,
-                        source_pipeline: pipeline.id
+
+                while (true) {
+                    const res = await axios.get("/api/crm/pipeline/", {
+                        params: {
+                            pipeline: pipeline.id,
+                            stages: selectedStages.join(','),
+                            page: 1,
+                            page_size: 1500
+                        }
                     });
-                    setProgressCurrent(Math.min(i + CHUNK_SIZE, allContactIds.length));
+                    const results = res.data.results || [];
+                    if (results.length === 0) break;
+
+                    const selectedFromPage = results.filter(d => !deselectedDealIds.has(d.id));
+                    const contactIdsFromPage = selectedFromPage.map(d => d.contact);
+
+                    if (contactIdsFromPage.length > 0) {
+                        await axios.post("/api/crm/pipeline/bulk-add-contacts/", {
+                            pipeline_id: newPipeline.id,
+                            contact_ids: contactIdsFromPage,
+                            source_pipeline: pipeline.id
+                        });
+                        processedCount += contactIdsFromPage.length;
+                        setProgressCurrent(processedCount);
+                    }
                 }
-            } else {
-                await axios.post("/api/crm/pipeline/bulk-add-contacts/", {
-                    pipeline_id: newPipeline.id,
-                    contact_ids: allContactIds,
-                    source_pipeline: pipeline.id
-                });
             }
             
             // 4. Auto-assign if strategy is not manual
