@@ -12,6 +12,7 @@ const CreatePipelineModal = ({ isOpen, onClose, onSuccess, onDelete, onUpdate, p
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(null); // stores id of pipeline being deleted
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [error, setError] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -91,10 +92,13 @@ const CreatePipelineModal = ({ isOpen, onClose, onSuccess, onDelete, onUpdate, p
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this pipeline? All associated deals may be affected.')) return;
-    
+  const handleDeleteClick = (id) => {
+    setConfirmDeleteId(confirmDeleteId === id ? null : id);
+  };
+
+  const confirmDelete = async (id) => {
     setIsDeleting(id);
+    setConfirmDeleteId(null);
     try {
       await axios.delete(`/api/crm/pipelines/${id}/`);
       if (onDelete) onDelete(id);
@@ -230,33 +234,59 @@ const CreatePipelineModal = ({ isOpen, onClose, onSuccess, onDelete, onUpdate, p
                 </div>
               ) : (
                 localPipelines.map((pipeline) => (
-                  <div key={pipeline.id} className="group px-8 py-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-default">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-medium text-white uppercase tracking-wider">{pipeline.name}</h3>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium line-clamp-1">
-                        {pipeline.description || "No description provided"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      {/* Action Icons */}
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => startEdit(pipeline)}
-                          className="p-2 rounded-md hover:bg-blue-500/10 text-zinc-600 hover:text-blue-400 transition-colors cursor-pointer"
-                          title="Edit"
-                        >
-                          <Pencil size={18} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(pipeline.id)}
-                          disabled={isDeleting === pipeline.id}
-                          className="p-2 rounded-md hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
-                          title="Delete"
-                        >
-                          {isDeleting === pipeline.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
-                        </button>
+                  <div key={pipeline.id}>
+                    <div className="group px-8 py-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-default">
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-medium text-white uppercase tracking-wider">{pipeline.name}</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium line-clamp-1">
+                          {pipeline.description || "No description provided"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className={cn("flex items-center gap-2 transition-opacity", isDeleting === pipeline.id ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                          <button 
+                            onClick={() => startEdit(pipeline)}
+                            className="p-2 rounded-md hover:bg-blue-500/10 text-zinc-600 hover:text-blue-400 transition-colors cursor-pointer"
+                            title="Edit"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteClick(pipeline.id)}
+                            disabled={isDeleting === pipeline.id}
+                            className="p-2 rounded-md hover:bg-red-500/10 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50"
+                            title="Delete"
+                          >
+                            {isDeleting === pipeline.id ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                          </button>
+                        </div>
                       </div>
                     </div>
+                    {confirmDeleteId === pipeline.id && (
+                      <div className="px-8 pb-4 animate-in slide-in-from-top-2 duration-200">
+                        <div className="bg-red-500/5 border border-red-500/20 rounded-md p-4 flex items-center justify-between">
+                          <p className="text-[10px] text-red-400 font-medium uppercase tracking-wider">
+                            Warning. All associated contacts will be removed from this pipeline.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 text-white/60 hover:text-white text-[9px] font-medium uppercase tracking-wider rounded-sm transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => confirmDelete(pipeline.id)}
+                              disabled={isDeleting === pipeline.id}
+                              className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 text-[9px] font-medium uppercase tracking-wider rounded-sm transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {isDeleting === pipeline.id ? <Loader2 size={10} className="animate-spin" /> : null}
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

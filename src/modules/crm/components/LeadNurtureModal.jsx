@@ -249,35 +249,31 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
             
             const newPipeline = pipelineRes.data;
             
-            // 2. Collect all contact IDs (fetch remaining pages if needed)
+            // 2. Collect all deals (single large fetch like Add to CRM)
             let allDeals = [...deals];
-            if (hasMoreDeals) {
+            if (hasMoreDeals || totalDealCount > deals.length) {
                 setProgressPhase("Collecting deals...");
-                let page = dealPage + 1;
-                while (true) {
-                    const res = await axios.get("/api/crm/pipeline/", {
-                        params: {
-                            pipeline: pipeline.id,
-                            stages: selectedStages.join(','),
-                            page: page,
-                            page_size: 50
-                        }
-                    });
-                    const results = res.data.results || [];
-                    allDeals = [...allDeals, ...results];
-                    setProgressCurrent(allDeals.length);
-                    setProgressTotal(totalDealCount);
-                    if (!res.data.next) break;
-                    page++;
-                }
+                setProgressTotal(totalDealCount);
+                setProgressCurrent(0);
+                setIsProcessing(true);
+                const res = await axios.get("/api/crm/pipeline/", {
+                    params: {
+                        pipeline: pipeline.id,
+                        stages: selectedStages.join(','),
+                        page: 1,
+                        page_size: 50000
+                    }
+                });
+                allDeals = res.data.results || [];
+                setProgressCurrent(allDeals.length);
                 setDeals(allDeals);
             }
             
             const selectedDealsList = allDeals.filter(d => !deselectedDealIds.has(d.id));
             const allContactIds = selectedDealsList.map(d => d.contact);
             
-            // 3. Move in chunks of 100
-            const CHUNK_SIZE = 100;
+            // 3. Move in chunks of 1500
+            const CHUNK_SIZE = 1500;
             if (allContactIds.length > CHUNK_SIZE) {
                 setIsProcessing(true);
                 setProgressPhase("Moving deals to retarget pipeline...");
@@ -612,13 +608,13 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                     {currentStep === 3 && (
                         <div className="p-8 space-y-8 animate-in slide-in-from-right-4 duration-300">
                             <div className="space-y-4">
-                                <div className="space-y-2">
+                                <div className="space-y-2 w-3/5">
                                     <label className="text-[10px] text-white/40 uppercase">Pipeline Name</label>
                                     <Input 
                                         value={newPipelineName}
                                         onChange={e => setNewPipelineName(e.target.value)}
-                                        className="h-11 bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-sm text-white"
-                                        placeholder="RETARGET PIPELINE"
+                                        className="h-8 bg-zinc-900/50 border-zinc-800 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-blue-500/40 text-xs md:text-xs text-white"
+                                        placeholder="NURTURE PIPELINE"
                                     />
                                 </div>
                                 <div className="space-y-2">
