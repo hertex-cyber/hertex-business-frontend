@@ -6,11 +6,23 @@ const AuthContext = createContext(null);
 // Configure axios base URL
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Attach JWT token to every request
+function getCSRFToken() {
+  const name = 'csrftoken';
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return '';
+}
+
+// Attach JWT token and CSRF to every request
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.method !== 'get') {
+    const csrf = getCSRFToken();
+    if (csrf) config.headers['X-CSRFToken'] = csrf;
   }
   return config;
 });

@@ -13,11 +13,12 @@ const adminModules = [
   { title: 'Payroll & Salary', description: 'Salary structures, payroll processing, loans, advances, and reimbursements.', icon: <DollarSign size={22} />, path: '/hr/admin/payroll', accent: 'green' },
   { title: 'Performance (PMS)', description: 'Appraisal cycles, goals, 360° feedback, calibration, and PIP management.', icon: <TrendingUp size={22} />, path: '/hr/admin/performance', accent: 'orange' },
   { title: 'Statutory Compliance', description: 'PF, ESI, PT, TDS, Gratuity, Bonus automation with compliance calendar.', icon: <Shield size={22} />, path: '/hr/admin/compliance', accent: 'red' },
-  { title: 'Attendance & Shifts', description: 'Shift management, attendance tracking, overtime, and regularisation.', icon: <Clock size={22} />, path: '/hr/ess/attendance', accent: 'cyan' },
+  { title: 'Attendance & Shifts', description: 'Shift management, attendance tracking, overtime, and regularisation.', icon: <Clock size={22} />, path: '/hr/admin/attendance', accent: 'cyan' },
   { title: 'Leave & Holidays', description: 'Leave types, policies, holiday calendars, and encashment rules.', icon: <Calendar size={22} />, path: '/hr/ess/leave', accent: 'purple' },
+  { title: 'Leave Administration', description: 'Review, approve, and manage employee leave applications.', icon: <Clock size={22} />, path: '/hr/admin/leaves', accent: 'cyan' },
   { title: 'Exit Management', description: 'Resignations, clearance checklists, F&F settlements, and alumni portal.', icon: <LogOut size={22} />, path: '/hr/admin/exits', accent: 'red' },
   { title: 'Training & L&D', description: 'Training programs, nominations, skill matrix, and certifications.', icon: <Award size={22} />, path: '/hr/admin/training', accent: 'pink' },
-  { title: 'Master Data', description: 'Designations, locations, cost centers, shifts, and salary components.', icon: <Settings size={22} />, path: '/hr/admin/employees', accent: 'gray' },
+  { title: 'Master Data', description: 'Designations, locations, cost centers, shifts, and salary components.', icon: <Settings size={22} />, path: '/hr/admin/settings', accent: 'gray' },
 ];
 
 const HRAdminView = () => {

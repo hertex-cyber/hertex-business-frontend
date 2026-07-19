@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { leaveAPI, employeeAPI } from "../services/hrAPI";
-import { Check, X, Calendar, User, Eye, RefreshCw, Filter } from "lucide-react";
+import { useHR } from "../context/HRContext";
+import { Check, X, Calendar, User, Eye, RefreshCw, Filter, Clock } from "lucide-react";
+
+const extractError = (err) =>
+  err.response?.data?.error || err.response?.data?.detail || err.message || "Something went wrong";
 
 export default function LeaveAdminDashboard() {
+  const { showToast } = useHR();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("PENDING");
@@ -19,7 +24,7 @@ export default function LeaveAdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await leaveAPI.getLeaveApplications({ status: statusFilter || undefined });
+      const res = await leaveAPI.getLeaveApplications({ approval_status: statusFilter || undefined });
       const allRes = await leaveAPI.getLeaveApplications();
       
       const appList = res.data?.results || res.data || [];
@@ -28,9 +33,9 @@ export default function LeaveAdminDashboard() {
       setLeaves(appList);
       
       // Calculate basic metrics
-      const pending = allAppList.filter(l => l.status === "PENDING").length;
-      const approved = allAppList.filter(l => l.status === "APPROVED").length;
-      const rejected = allAppList.filter(l => l.status === "REJECTED").length;
+      const pending = allAppList.filter(l => l.approval_status === "PENDING").length;
+      const approved = allAppList.filter(l => l.approval_status === "APPROVED").length;
+      const rejected = allAppList.filter(l => l.approval_status === "REJECTED").length;
       setMetrics({ pending, approved, rejected });
     } catch (err) {
       console.error("Error loading leaves:", err);
@@ -54,9 +59,10 @@ export default function LeaveAdminDashboard() {
         await leaveAPI.rejectLeave(selectedLeave.id, comment);
       }
       setCommentModalOpen(false);
+      showToast(`Leave ${actionType === "approve" ? "approved" : "rejected"} successfully`, "success");
       loadData();
     } catch (err) {
-      alert("Action failed: " + (err.response?.data?.error || err.message));
+      showToast(extractError(err));
     }
   };
 
@@ -162,39 +168,37 @@ export default function LeaveAdminDashboard() {
                       </td>
                       <td className="px-6 py-4 font-semibold text-white">{leave.leave_type_name || leave.leave_type}</td>
                       <td className="px-6 py-4 text-zinc-400">
-                        {leave.start_date} to {leave.end_date}
+                          {leave.date_from} to {leave.date_to}
                       </td>
-                      <td className="px-6 py-4 font-semibold text-white">{leave.total_days} days</td>
+                      <td className="px-6 py-4 font-semibold text-white">{leave.number_of_days} days</td>
                       <td className="px-6 py-4 text-zinc-400 max-w-xs truncate">{leave.reason}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          leave.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400" :
-                          leave.status === "REJECTED" ? "bg-rose-500/10 text-rose-400" : "bg-blue-500/10 text-blue-400"
+                          leave.approval_status === "APPROVED" ? "bg-emerald-500/10 text-emerald-400" :
+                          leave.approval_status === "REJECTED" ? "bg-rose-500/10 text-rose-400" : "bg-blue-500/10 text-blue-400"
                         }`}>
-                          {leave.status}
+                          {leave.approval_status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 flex items-center gap-2">
-                        {leave.status === "PENDING" ? (
-                          <>
-                            <button
-                              onClick={() => openCommentModal(leave, "approve")}
-                              className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded text-xs font-semibold transition"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => openCommentModal(leave, "reject")}
-                              className="px-3 py-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded text-xs font-semibold transition"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        ) : (
-                          <button className="text-zinc-500 hover:text-white transition">
-                            <Eye size={16} />
-                          </button>
-                        )}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {leave.approval_status === "PENDING" && (
+                            <>
+                              <button
+                                onClick={() => openCommentModal(leave, "approve")}
+                                className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded text-xs font-semibold transition"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => openCommentModal(leave, "reject")}
+                                className="px-3 py-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 rounded text-xs font-semibold transition"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -19,6 +19,8 @@ import {
   Download,
   Clock,
   Users,
+  Upload,
+  X,
 } from "lucide-react";
 import { employeeAPI, documentAPI } from "../services/hrAPI";
 import { formatDate, calculateAge } from "../utils/helpers";
@@ -32,6 +34,29 @@ export default function EmployeeDetail() {
   const [activeTab, setActiveTab] = useState("profile");
   const [confirmingProbation, setConfirmingProbation] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadDocType, setUploadDocType] = useState("OTHER");
+  const [uploading, setUploading] = useState(false);
+
+  const DOCUMENT_TYPE_OPTIONS = [
+    { value: "OFFER_LETTER", label: "Offer Letter" },
+    { value: "APPOINTMENT_LETTER", label: "Appointment Letter" },
+    { value: "10TH_CERTIFICATE", label: "10th Certificate" },
+    { value: "12TH_CERTIFICATE", label: "12th Certificate" },
+    { value: "UG_CERTIFICATE", label: "UG Certificate" },
+    { value: "PG_CERTIFICATE", label: "PG Certificate" },
+    { value: "PROFESSIONAL_CERT", label: "Professional Certificate" },
+    { value: "EXPERIENCE_CERT", label: "Experience Certificate" },
+    { value: "BGV_DOCUMENT", label: "BGV Document" },
+    { value: "AADHAAR", label: "Aadhaar" },
+    { value: "PAN", label: "PAN" },
+    { value: "PASSPORT", label: "Passport" },
+    { value: "VOTER_ID", label: "Voter ID" },
+    { value: "DRIVING_LICENSE", label: "Driving License" },
+    { value: "BANK_DETAILS", label: "Bank Details" },
+    { value: "OTHER", label: "Other" },
+  ];
 
   useEffect(() => {
     if (id) fetchEmployee();
@@ -62,6 +87,28 @@ export default function EmployeeDetail() {
       setErrorMsg("Failed to confirm probation");
     } finally {
       setConfirmingProbation(false);
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    if (!uploadFile) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("employee", id);
+      formData.append("document_type", uploadDocType);
+      formData.append("document_file", uploadFile);
+      await documentAPI.uploadDocument(formData);
+      setShowUploadModal(false);
+      setUploadFile(null);
+      setUploadDocType("OTHER");
+      const docRes = await documentAPI.getDocuments(id);
+      setDocuments(docRes.data?.results || docRes.data || []);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.detail || Object.values(err.response?.data || {}).flat().join(", ") || "Failed to upload document");
+      console.error(err);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -133,7 +180,7 @@ export default function EmployeeDetail() {
             employee.status === 'NOTICE_PERIOD' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
             'bg-red-500/10 text-red-400 border-red-500/20'
           }`}>{employee.status?.replace(/_/g, ' ')}</span>
-          <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white">
+          <button onClick={() => navigate(`/hr/admin/employees/${id}/edit`)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white">
             <Edit size={18} />
           </button>
         </div>
@@ -232,8 +279,8 @@ export default function EmployeeDetail() {
           <div className="max-w-4xl space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold text-white">Uploaded Documents ({documents.length})</h3>
-              <button className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-colors">
-                Upload Document
+              <button onClick={() => setShowUploadModal(true)} className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-colors flex items-center gap-2">
+                <Upload size={14} /> Upload Document
               </button>
             </div>
             {documents.length === 0 ? (
@@ -256,8 +303,9 @@ export default function EmployeeDetail() {
                     <p className="text-sm font-medium text-white mb-1">{doc.document_type?.replace(/_/g, ' ')}</p>
                     {doc.document_number && <p className="text-xs text-white/40 mb-2">No: {doc.document_number}</p>}
                     <div className="flex gap-2 mt-3">
-                      <button className="flex-1 px-3 py-1.5 bg-white/5 text-white/60 rounded-lg text-xs hover:bg-white/10 transition-colors">
-                        <Download size={12} className="inline mr-1" /> View
+                      <button onClick={() => documentAPI.downloadDocument(doc.id)}
+                        className="flex-1 px-3 py-1.5 bg-white/5 text-white/60 rounded-lg text-xs hover:bg-white/10 transition-colors">
+                        <Download size={12} className="inline mr-1" /> Download
                       </button>
                       {!doc.is_verified && (
                         <button onClick={() => handleVerifyDocument(doc.id)}
@@ -305,12 +353,53 @@ export default function EmployeeDetail() {
                     {confirmingProbation ? 'Confirming...' : 'Confirm Probation'}
                   </button>
                 )}
-                <button className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-colors flex items-center gap-2">
+                <button onClick={() => navigate(`/hr/admin/employees/${id}/edit`)} className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-colors flex items-center gap-2">
                   <Edit size={14} /> Edit Employee
                 </button>
-                <button className="px-4 py-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-lg text-sm font-medium hover:bg-orange-500/20 transition-colors flex items-center gap-2">
+                <button onClick={() => navigate(`/hr/admin/payroll/revisions?employee=${id}`)} className="px-4 py-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-lg text-sm font-medium hover:bg-orange-500/20 transition-colors flex items-center gap-2">
                   <Briefcase size={14} /> Assign Salary
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upload Modal */}
+        {showUploadModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div className="bg-zinc-900 border border-white/10 rounded-xl p-6 w-full max-w-md mx-4">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-white">Upload Document</h3>
+                <button onClick={() => { setShowUploadModal(false); setUploadFile(null); }} className="text-white/40 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">Document Type</label>
+                  <select value={uploadDocType} onChange={(e) => setUploadDocType(e.target.value)}
+                    className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/50">
+                    {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">File</label>
+                  <input type="file" onChange={(e) => setUploadFile(e.target.files[0])}
+                    className="w-full text-sm text-white/60 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 file:cursor-pointer cursor-pointer" />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => { setShowUploadModal(false); setUploadFile(null); }}
+                    className="flex-1 px-4 py-2 bg-white/5 text-white/60 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleUploadDocument} disabled={!uploadFile || uploading}
+                    className="flex-1 px-4 py-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {uploading ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
+                    {uploading ? "Uploading..." : "Upload"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

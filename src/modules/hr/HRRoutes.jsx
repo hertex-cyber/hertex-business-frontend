@@ -81,6 +81,7 @@ export const HRRoutes = () => {
         <Route path="/admin/employees" element={<EmployeeDirectory />} />
         <Route path="/admin/employees/new" element={<EmployeeOnboarding />} />
         <Route path="/admin/employees/:id" element={<EmployeeDetail />} />
+        <Route path="/admin/employees/:id/edit" element={<EmployeeOnboarding />} />
         
         {/* Recruitment */}
         <Route path="/admin/recruitment" element={<RecruitmentDashboard />} />

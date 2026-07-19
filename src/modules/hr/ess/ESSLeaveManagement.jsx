@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   Plus,
   Loader,
-  AlertCircle,
   CheckCircle2,
   Calendar,
   FileText,
@@ -12,14 +11,18 @@ import { useNavigate } from "react-router-dom";
 import { useHR } from "../context/HRContext";
 import { leaveAPI } from "../services/hrAPI";
 
+const extractError = (err) =>
+  err.response?.data?.error || err.response?.data?.detail || err.message || "Something went wrong";
+
 export const ESSLeaveManagement = () => {
   const navigate = useNavigate();
-  const { loading, setLoadingState, error, setErrorState } = useHR();
+  const { loading, setLoadingState, showToast } = useHR();
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [applications, setApplications] = useState([]);
   const [balances, setBalances] = useState([]);
   const [filter, setFilter] = useState("PENDING");
   const [showForm, setShowForm] = useState(false);
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [formData, setFormData] = useState({
     leave_type: "",
     date_from: "",
@@ -40,11 +43,11 @@ export const ESSLeaveManagement = () => {
         leaveAPI.getCurrentYearBalance().catch(() => ({ data: [] })),
       ]);
 
-      setLeaveTypes(typesRes.data || []);
-      setApplications(appsRes.data || []);
-      setBalances(balancesRes.data || []);
+      setLeaveTypes(typesRes.data?.results || typesRes.data || []);
+      setApplications(appsRes.data?.results || appsRes.data || []);
+      setBalances(balancesRes.data?.results || balancesRes.data || []);
     } catch (err) {
-      setErrorState(err.message);
+      showToast(extractError(err));
     } finally {
       setLoadingState(false);
     }
@@ -53,7 +56,7 @@ export const ESSLeaveManagement = () => {
   const handleSubmitLeave = async (e) => {
     e.preventDefault();
     if (!formData.leave_type || !formData.date_from || !formData.date_to || !formData.reason) {
-      setErrorState("All fields are required");
+      showToast("All fields are required");
       return;
     }
     try {
@@ -63,7 +66,7 @@ export const ESSLeaveManagement = () => {
       setFormData({ leave_type: "", date_from: "", date_to: "", reason: "" });
       fetchData();
     } catch (err) {
-      setErrorState(err.response?.data?.detail || err.message);
+      showToast(extractError(err));
     } finally {
       setLoadingState(false);
     }
@@ -73,9 +76,10 @@ export const ESSLeaveManagement = () => {
     try {
       setLoadingState(true);
       await leaveAPI.cancelLeave(applicationId, "Cancelled by employee");
+      showToast("Leave request cancelled", "success");
       fetchData();
     } catch (err) {
-      setErrorState(err.message);
+      showToast(extractError(err));
     } finally {
       setLoadingState(false);
     }
@@ -127,12 +131,6 @@ export const ESSLeaveManagement = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
 
         {/* Leave Balances */}
         <div className="mb-8">
@@ -144,7 +142,7 @@ export const ESSLeaveManagement = () => {
             {balances.length > 0 ? (
               balances.map((balance) => (
                 <div key={balance.id} className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
-                  <h3 className="font-semibold text-white mb-4">{balance.leaf_type_name}</h3>
+                  <h3 className="font-semibold text-white mb-4">{balance.leave_type_name}</h3>
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-white/50">Available</span>
@@ -186,19 +184,25 @@ export const ESSLeaveManagement = () => {
             </div>
             <form onSubmit={handleSubmitLeave} className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-white/60 mb-2">Leave Type *</label>
-                  <select
-                    required
-                    value={formData.leave_type}
-                    onChange={(e) => setFormData({ ...formData, leave_type: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
-                  >
-                    <option value="">Select Leave Type</option>
-                    {leaveTypes.map((type) => (
-                      <option key={type.id} value={type.id}>{type.name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <button type="button" onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                      className="w-full px-4 py-2.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-left focus:outline-none focus:ring-2 focus:ring-green-500/50 flex items-center justify-between">
+                      <span className={formData.leave_type ? 'text-white' : 'text-white/30'}>{formData.leave_type ? leaveTypes.find(t => t.id === formData.leave_type)?.name || 'Select Leave Type' : 'Select Leave Type'}</span>
+                      <svg className={`w-4 h-4 text-white/40 transition-transform ${showTypeDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {showTypeDropdown && (
+                      <div className="absolute z-20 top-full mt-1 w-full bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl overflow-hidden">
+                        {leaveTypes.map(type => (
+                          <button key={type.id} type="button" onClick={() => { setFormData({...formData, leave_type: type.id}); setShowTypeDropdown(false); }}
+                            className={`w-full px-4 py-2.5 text-left text-sm hover:bg-white/5 transition-colors ${formData.leave_type === type.id ? 'text-green-400 bg-green-500/5' : 'text-white'}`}>
+                            {type.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white/60 mb-2">From Date *</label>

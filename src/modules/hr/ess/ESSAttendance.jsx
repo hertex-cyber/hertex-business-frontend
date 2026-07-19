@@ -4,19 +4,22 @@ import {
   Clock,
   MapPin,
   Loader,
-  AlertCircle,
   Calendar,
   CheckCircle2,
   XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useHR } from "../context/HRContext";
 import { attendanceAPI } from "../services/hrAPI";
 import { formatDate, formatTime } from "../utils/helpers";
 
+const extractError = (err) =>
+  err.response?.data?.error || err.response?.data?.detail || err.message || "Something went wrong";
+
 export const ESSAttendance = () => {
   const navigate = useNavigate();
-  const { loading, setLoadingState, error, setErrorState } = useHR();
+  const { loading, setLoadingState, showToast } = useHR();
   const [attendance, setAttendance] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [checkedIn, setCheckedIn] = useState(false);
@@ -40,7 +43,7 @@ export const ESSAttendance = () => {
       if (todayRes.data && todayRes.data.length > 0) {
         const today = todayRes.data[0];
         setTodayAttendance(today);
-        setCheckedIn(!!today.check_in_time);
+        setCheckedIn(!!today.check_in_time && !today.check_out_time);
       } else {
         setTodayAttendance(null);
         setCheckedIn(false);
@@ -54,9 +57,9 @@ export const ESSAttendance = () => {
         wfh: stats.wfh_days || 0,
       });
 
-      setAttendance(attendanceRes.data || []);
+      setAttendance(attendanceRes.data?.results || attendanceRes.data || []);
     } catch (err) {
-      setErrorState(err.message);
+      showToast(extractError(err));
     } finally {
       setLoadingState(false);
     }
@@ -76,7 +79,7 @@ export const ESSAttendance = () => {
       setCheckedIn(true);
       fetchAttendanceData();
     } catch (err) {
-      setErrorState(err.response?.data?.detail || err.message);
+      showToast(extractError(err));
     } finally {
       setLoadingState(false);
     }
@@ -92,9 +95,10 @@ export const ESSAttendance = () => {
         check_out_time: timeString,
         check_out_location: "Office",
       });
+      setCheckedIn(false);
       fetchAttendanceData();
     } catch (err) {
-      setErrorState(err.response?.data?.detail || err.message);
+      showToast(extractError(err));
     } finally {
       setLoadingState(false);
     }
@@ -163,12 +167,6 @@ export const ESSAttendance = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
-        {error && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
 
         {/* Today's Check-in/out */}
         <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-blue-500/5 to-transparent border border-blue-500/10">

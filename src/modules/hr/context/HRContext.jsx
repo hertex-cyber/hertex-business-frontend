@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
+import Toast from "../components/Toast";
 
 const HRContext = createContext();
 
@@ -75,6 +76,18 @@ export const HRProvider = ({ children }) => {
     setError(null);
   }, []);
 
+  // Toast state
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
+  const showToast = useCallback((message, type = "error", duration = 4000) => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { id, message, type, duration }]);
+    return id;
+  }, []);
+  const dismissToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const updateMasterData = useCallback((type, data) => {
     switch (type) {
       case "designations":
@@ -128,6 +141,11 @@ export const HRProvider = ({ children }) => {
     setErrorState,
     clearError,
 
+    // Toast
+    toasts,
+    showToast,
+    dismissToast,
+
     // Master data
     designations,
     workLocations,
@@ -140,7 +158,19 @@ export const HRProvider = ({ children }) => {
     setFilters,
   };
 
-  return <HRContext.Provider value={value}>{children}</HRContext.Provider>;
+  return (
+    <HRContext.Provider value={value}>
+      {children}
+      {/* Toast container */}
+      {toasts.length > 0 && (
+        <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
+          {toasts.map(t => (
+            <Toast key={t.id} {...t} onDismiss={dismissToast} />
+          ))}
+        </div>
+      )}
+    </HRContext.Provider>
+  );
 };
 
 export const useHR = () => {

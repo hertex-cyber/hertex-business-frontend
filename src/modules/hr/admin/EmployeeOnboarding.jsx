@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Save, ChevronLeft, Building, Briefcase, FileText, CreditCard, Shield, MapPin, Phone } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { UserPlus, Save, ChevronLeft, Building, Briefcase, FileText, CreditCard, Shield, MapPin, Phone, Edit } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 
 export default function EmployeeOnboarding() {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const isEdit = Boolean(id);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(isEdit);
   const [step, setStep] = useState(1);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -66,11 +69,63 @@ export default function EmployeeOnboarding() {
   });
 
   useEffect(() => {
+    if (!id) return;
+    const fetchEmployee = async () => {
+      try {
+        const res = await axios.get(`/api/hr/employees/${id}/`);
+        const emp = res.data;
+        setFormData({
+          first_name: emp.first_name || '',
+          middle_name: emp.middle_name || '',
+          last_name: emp.last_name || '',
+          date_of_birth: emp.date_of_birth || '',
+          gender: emp.gender || 'MALE',
+          nationality: emp.nationality || 'Indian',
+          marital_status: emp.marital_status || 'SINGLE',
+          blood_group: ({'O+':'O_POSITIVE','O-':'O_NEGATIVE','A+':'A_POSITIVE','A-':'A_NEGATIVE','B+':'B_POSITIVE','B-':'B_NEGATIVE','AB+':'AB_POSITIVE','AB-':'AB_NEGATIVE'})[emp.blood_group] || emp.blood_group || 'O_POSITIVE',
+          personal_email: emp.personal_email || '',
+          personal_mobile: emp.personal_mobile || '',
+          current_address: emp.current_address || '',
+          current_city: emp.current_city || '',
+          current_state: emp.current_state || '',
+          current_country: emp.current_country || 'India',
+          current_pin_code: emp.current_pin_code || '',
+          permanent_address: emp.permanent_address || '',
+          permanent_city: emp.permanent_city || '',
+          permanent_state: emp.permanent_state || '',
+          permanent_country: emp.permanent_country || 'India',
+          permanent_pin_code: emp.permanent_pin_code || '',
+          aadhaar_number: emp.aadhaar_number || '',
+          pan_number: emp.pan_number || '',
+          bank_account_number: emp.bank_account_number || '',
+          ifsc_code: emp.ifsc_code || '',
+          bank_name: emp.bank_name || '',
+          employee_id: emp.employee_id || '',
+          employment_type: emp.employment_type || 'PERMANENT',
+          date_of_joining: emp.date_of_joining || '',
+          status: emp.status || 'ONBOARDING',
+          department: emp.department || '',
+          designation: emp.designation || '',
+          work_location: emp.work_location || '',
+          work_shift: emp.work_shift || 'GENERAL',
+          notice_period_days: emp.notice_period_days || 30,
+        });
+      } catch (err) {
+        console.error(err);
+        setErrorMsg('Failed to load employee data');
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchEmployee();
+  }, [id]);
+
+  useEffect(() => {
     // Fetch departments, designations, locations
     const fetchMeta = async () => {
       try {
         const [depRes, desRes, locRes] = await Promise.all([
-          axios.get('/api/authentication/departments/').catch(() => ({data: []})),
+          axios.get('/api/auth/departments/').catch(() => ({data: []})),
           axios.get('/api/hr/designations/').catch(() => ({data: []})),
           axios.get('/api/hr/work-locations/').catch(() => ({data: []}))
         ]);
@@ -108,8 +163,12 @@ export default function EmployeeOnboarding() {
       if (!payload.designation) delete payload.designation;
       if (!payload.work_location) delete payload.work_location;
 
-      await axios.post('/api/hr/employees/', payload);
-      navigate('/hr/admin/employees');
+      if (isEdit) {
+        await axios.patch(`/api/hr/employees/${id}/`, payload);
+      } else {
+        await axios.post('/api/hr/employees/', payload);
+      }
+      navigate(isEdit ? `/hr/admin/employees/${id}` : '/hr/admin/employees');
     } catch (err) {
       console.error(err);
       setErrorMsg(err.response?.data ? JSON.stringify(err.response.data) : 'Failed to onboard employee. Please check all fields.');
@@ -126,10 +185,10 @@ export default function EmployeeOnboarding() {
             <ChevronLeft size={16} /> Back to Directory
           </button>
           <h1 className="text-4xl font-bold tracking-tight text-white flex items-center gap-3">
-            <UserPlus size={32} className="text-blue-500" />
-            Comprehensive Onboarding
+            {isEdit ? <Edit size={32} className="text-blue-500" /> : <UserPlus size={32} className="text-blue-500" />}
+            {isEdit ? 'Edit Employee' : 'Comprehensive Onboarding'}
           </h1>
-          <p className="text-sm text-white/40 font-medium">Step {step} of 4: Create a full employee master record.</p>
+          <p className="text-sm text-white/40 font-medium">{isEdit ? `Editing ${formData.first_name} ${formData.last_name}` : `Step ${step} of 4: Create a full employee master record.`}</p>
         </div>
         
         {/* Progress Tracker */}
@@ -143,6 +202,11 @@ export default function EmployeeOnboarding() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
+        {fetching ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent" />
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
           {errorMsg && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl">
@@ -360,11 +424,12 @@ export default function EmployeeOnboarding() {
               <div></div> // Spacer
             )}
             
-            <button type="submit" disabled={loading} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-bold transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2">
-              {loading ? 'Processing...' : step === 4 ? <><Save size={20} /> Finish Onboarding</> : 'Next Step'}
+            <button type="submit" disabled={loading || fetching} className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-bold transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2">
+              {loading ? 'Saving...' : fetching ? 'Loading...' : isEdit ? <><Save size={20} /> Save Changes</> : step === 4 ? <><Save size={20} /> Finish Onboarding</> : 'Next Step'}
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

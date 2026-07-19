@@ -124,7 +124,7 @@ export default function EmployeeDirectory() {
                         <button onClick={() => navigate(`/hr/admin/employees/${emp.id}`)} className="p-2 hover:bg-white/10 rounded transition-colors text-white/40 hover:text-white" title="View Profile">
                           <Eye size={16} />
                         </button>
-                        <button className="p-2 hover:bg-white/10 rounded transition-colors text-white/40 hover:text-white" title="Edit Employee">
+                        <button onClick={() => navigate(`/hr/admin/employees/${emp.id}/edit`)} className="p-2 hover:bg-white/10 rounded transition-colors text-white/40 hover:text-white" title="Edit Employee">
                           <Edit size={16} />
                         </button>
                       </div>

@@ -49,7 +49,7 @@ const HRModules = () => {
         <ModuleCard title="Leave & Holidays" description="Leave types, policies, and holiday calendars" icon={<Calendar size={22} />} path="/hr/ess/leave" accent="purple" />
         <ModuleCard title="Exit Management" description="Resignations, clearances, and F&F settlements" icon={<LogOut size={22} />} path="/hr/admin/exits" accent="red" />
         <ModuleCard title="Training & L&D" description="Training programs, nominations, skill matrix" icon={<Award size={22} />} path="/hr/admin/training" accent="pink" />
-        <ModuleCard title="Master Data" description="Designations, locations, cost centers, shifts" icon={<Settings size={22} />} path="/hr/admin/employees" accent="gray" />
+        <ModuleCard title="Master Data" description="Designations, locations, cost centers, shifts" icon={<Settings size={22} />} path="/hr/admin/settings" accent="gray" />
       </div>
     </div>
   );
