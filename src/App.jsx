@@ -16,6 +16,7 @@ import HR from "./modules/hr/pages/HR";
 import Accounts from "./modules/accounts/pages/Accounts";
 import Media from "./modules/media/pages/Media";
 import LMS from "./modules/lms/pages/LMS";
+import CalendarPage from "./modules/calendar/pages/CalendarPage";
 import InventoryRoutes from "./modules/inventory/InventoryRoutes";
 
 import SalesTaskManager from "./modules/sales-task-manager/SalesTaskRoutes";
@@ -104,6 +105,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Contacts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedRoute>
+                  <CalendarPage />
                 </ProtectedRoute>
               }
             />
