@@ -11,6 +11,8 @@ export default function AttendanceAdmin() {
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split("T")[0]);
   const [activeTab, setActiveTab] = useState("logs");
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [actionType, setActionType] = useState(""); // "regularization", "overtime", "shiftswap"
   const [comment, setComment] = useState("");
@@ -180,7 +182,8 @@ export default function AttendanceAdmin() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <button className="text-zinc-500 hover:text-white transition">
+                          <button onClick={() => { setSelectedLog(log); setDetailModalOpen(true); }}
+                            className="text-zinc-500 hover:text-white transition">
                             <Eye size={16} />
                           </button>
                         </td>
@@ -375,6 +378,79 @@ export default function AttendanceAdmin() {
           </div>
         )}
       </div>
+
+      {/* Attendance Detail Modal */}
+      {detailModalOpen && selectedLog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl max-w-lg w-full space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">Attendance Detail</h2>
+              <button onClick={() => setDetailModalOpen(false)} className="text-zinc-400 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Employee</p>
+                <p className="text-white font-semibold">{selectedLog.employee_name}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Date</p>
+                <p className="text-white font-semibold">{selectedLog.date}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Shift</p>
+                <p className="text-white">{selectedLog.shift || "GENERAL"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Status</p>
+                <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  selectedLog.status === "PRESENT" ? "bg-emerald-500/10 text-emerald-400" :
+                  selectedLog.status === "ABSENT" ? "bg-rose-500/10 text-rose-400" : "bg-amber-500/10 text-amber-400"
+                }`}>{selectedLog.status}</span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Check-in Time</p>
+                <p className="text-white">{selectedLog.check_in_time ? selectedLog.check_in_time.slice(0, 5) : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Check-out Time</p>
+                <p className="text-white">{selectedLog.check_out_time ? selectedLog.check_out_time.slice(0, 5) : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Check-in Location</p>
+                <p className="text-white">{selectedLog.check_in_location || "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Check-out Location</p>
+                <p className="text-white">{selectedLog.check_out_location || "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Working Hours</p>
+                <p className="text-white">{selectedLog.working_hours ? `${selectedLog.working_hours} hrs` : "-"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Late By</p>
+                <p className="text-white">{selectedLog.is_late ? `${selectedLog.late_by_minutes || 0} min` : "On Time"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Early Checkout</p>
+                <p className="text-white">{selectedLog.is_early_checkout ? `${selectedLog.early_by_minutes || 0} min` : "No"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-zinc-500 text-xs uppercase tracking-wider">Regularized</p>
+                <p className="text-white">{selectedLog.is_regularized ? "Yes" : "No"}</p>
+              </div>
+            </div>
+            <div className="pt-2">
+              <button onClick={() => setDetailModalOpen(false)}
+                className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-sm font-medium transition">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rejection Modal */}
       {modalOpen && (

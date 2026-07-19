@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   TrendingUp,
   ChevronLeft,
@@ -12,7 +12,7 @@ import {
   Users,
   DollarSign,
 } from "lucide-react";
-import { salaryRevisionAPI, employeeAPI } from "../services/hrAPI";
+import { salaryRevisionAPI, employeeAPI, payrollAPI } from "../services/hrAPI";
 
 const StatusBadge = ({ status }) => {
   const colors = {
@@ -40,15 +40,16 @@ const StatusBadge = ({ status }) => {
 
 const SalaryRevisionManagement = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [revisions, setRevisions] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(searchParams.has('employee'));
   const [formLoading, setFormLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [formData, setFormData] = useState({
-    employee: "", previous_ctc: "", previous_gross: "", previous_basic: "",
+    employee: searchParams.get('employee') || "", previous_ctc: "", previous_gross: "", previous_basic: "",
     revised_ctc: "", revised_gross: "", revised_basic: "",
     revision_type: "ANNUAL_INCREMENT", reason: "",
     effective_month: new Date().getMonth() + 1,
@@ -58,6 +59,13 @@ const SalaryRevisionManagement = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const empId = searchParams.get('employee');
+    if (empId && employees.length > 0) {
+      handleEmployeeSelect(empId);
+    }
+  }, [employees]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -81,25 +89,22 @@ const SalaryRevisionManagement = () => {
     setFormLoading(true);
     setError(null);
     try {
-      // Auto-calc revised gross & basic if not provided
-      const data = { ...formData };
-      if (!data.revised_gross) {
-        const oldEmp = employees.find(emp => emp.id === data.employee);
-        if (oldEmp) {
-          // 10% default increment suggestion
-          data.revised_ctc = (parseFloat(data.previous_ctc) * 1.1).toString();
-        }
-      }
+      const f = formData;
+      const pCtc = parseFloat(f.previous_ctc) || 0;
+      const pGross = parseFloat(f.previous_gross) || 0;
+      const pBasic = parseFloat(f.previous_basic) || 0;
+      const rCtc = parseFloat(f.revised_ctc) || 0;
+      const rGross = parseFloat(f.revised_gross) || Math.round(rCtc * 0.85 * 100) / 100;
+      const rBasic = parseFloat(f.revised_basic) || Math.round(rCtc * 0.5 * 100) / 100;
+
       await salaryRevisionAPI.createRevision({
-        ...data,
-        previous_ctc: parseFloat(data.previous_ctc),
-        previous_gross: parseFloat(data.previous_gross),
-        previous_basic: parseFloat(data.previous_basic),
-        revised_ctc: parseFloat(data.revised_ctc),
-        revised_gross: parseFloat(data.revised_ctc) * 0.85, // ~85% of CTC
-        revised_basic: parseFloat(data.revised_ctc) * 0.5, // ~50% of CTC
-        effective_month: parseInt(data.effective_month),
-        effective_year: parseInt(data.effective_year),
+        employee: f.employee,
+        previous_ctc: pCtc, previous_gross: pGross, previous_basic: pBasic,
+        revised_ctc: rCtc, revised_gross: rGross, revised_basic: rBasic,
+        revision_type: f.revision_type,
+        reason: f.reason,
+        effective_month: parseInt(f.effective_month) || new Date().getMonth() + 1,
+        effective_year: parseInt(f.effective_year) || new Date().getFullYear(),
       });
       setShowForm(false);
       setFormData({
@@ -111,7 +116,12 @@ const SalaryRevisionManagement = () => {
       });
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to create revision");
+      const d = err.response?.data;
+      if (d && typeof d === 'object') {
+        setError(Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | '));
+      } else {
+        setError(d?.detail || "Failed to create revision");
+      }
     } finally {
       setFormLoading(false);
     }
@@ -132,14 +142,28 @@ const SalaryRevisionManagement = () => {
     }
   };
 
-  const handleEmployeeSelect = (empId) => {
+  const handleEmployeeSelect = async (empId) => {
     const emp = employees.find(e => e.id === empId);
     if (emp) {
-      setFormData(prev => ({
-        ...prev, employee: empId,
-        previous_ctc: "", previous_gross: "", previous_basic: "",
-        revised_ctc: "", revised_gross: "", revised_basic: "",
-      }));
+      try {
+        const salaryRes = await payrollAPI.getEmployeeSalary({ employee: empId, is_active: true });
+        const salary = salaryRes?.data?.[0];
+        setFormData(prev => ({
+          ...prev, employee: empId,
+          previous_ctc: salary?.ctc || "",
+          previous_gross: salary?.gross_salary || "",
+          previous_basic: salary?.basic_salary || "",
+          revised_ctc: salary?.ctc ? (salary.ctc * 1.1).toFixed(2) : "",
+          revised_gross: salary?.gross_salary ? (salary.gross_salary * 1.1).toFixed(2) : "",
+          revised_basic: salary?.basic_salary ? (salary.basic_salary * 1.1).toFixed(2) : "",
+        }));
+      } catch {
+        setFormData(prev => ({
+          ...prev, employee: empId,
+          previous_ctc: "", previous_gross: "", previous_basic: "",
+          revised_ctc: "", revised_gross: "", revised_basic: "",
+        }));
+      }
     }
   };
 

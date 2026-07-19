@@ -10,6 +10,10 @@ import {
   ArrowRight,
   CheckCircle2,
   FileText,
+  RotateCcw,
+  Sun,
+  Repeat,
+  Gift,
 } from "lucide-react";
 import { useHR } from "../context/HRContext";
 import {
@@ -85,6 +89,9 @@ export const ESSDashboard = () => {
           color === "green" ? "bg-green-500/10 text-green-400" :
           color === "purple" ? "bg-purple-500/10 text-purple-400" :
           color === "orange" ? "bg-orange-500/10 text-orange-400" :
+          color === "yellow" ? "bg-yellow-500/10 text-yellow-400" :
+          color === "pink" ? "bg-pink-500/10 text-pink-400" :
+          color === "emerald" ? "bg-emerald-500/10 text-emerald-400" :
           "bg-white/10 text-white/40"
         }`}>
           <Icon size={24} />
@@ -104,6 +111,9 @@ export const ESSDashboard = () => {
           color === "green" ? "bg-green-500/10 text-green-400" :
           color === "purple" ? "bg-purple-500/10 text-purple-400" :
           color === "orange" ? "bg-orange-500/10 text-orange-400" :
+          color === "yellow" ? "bg-yellow-500/10 text-yellow-400" :
+          color === "pink" ? "bg-pink-500/10 text-pink-400" :
+          color === "emerald" ? "bg-emerald-500/10 text-emerald-400" :
           "bg-white/10 text-white/40"
         }`}>
           <Icon size={24} />
@@ -240,11 +250,43 @@ export const ESSDashboard = () => {
             badge="ESS"
           />
           <ModuleCard
+            title="Regularization"
+            description="Request corrections for missed or incorrect attendance."
+            icon={RotateCcw}
+            path="regularization"
+            color="yellow"
+            badge="ESS"
+          />
+          <ModuleCard
+            title="Overtime"
+            description="Apply for overtime hours and approvals."
+            icon={Sun}
+            path="overtime"
+            color="orange"
+            badge="ESS"
+          />
+          <ModuleCard
+            title="Shift Swap"
+            description="Request to swap shifts with colleagues."
+            icon={Repeat}
+            path="shift-swap"
+            color="purple"
+            badge="ESS"
+          />
+          <ModuleCard
+            title="Comp Off"
+            description="Apply for compensatory off."
+            icon={Gift}
+            path="comp-off"
+            color="pink"
+            badge="ESS"
+          />
+          <ModuleCard
             title="Payroll"
             description={employeeSalary ? `CTC ₹${(employeeSalary.ctc / 12)?.toLocaleString("en-IN")}/mo` : "View payslips and salary info."}
             icon={DollarSign}
             path="payroll"
-            color="purple"
+            color="emerald"
             badge="Monthly"
           />
           <ModuleCard

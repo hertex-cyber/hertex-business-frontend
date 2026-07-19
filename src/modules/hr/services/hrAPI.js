@@ -12,11 +12,23 @@ const hrClient = axios.create({
   },
 });
 
-// Add token to requests
+function getCSRFToken() {
+  const name = "csrftoken";
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return "";
+}
+
+// Add token and CSRF to requests
 hrClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  if (config.method !== "get") {
+    const csrf = getCSRFToken();
+    if (csrf) config.headers["X-CSRFToken"] = csrf;
   }
   return config;
 });
@@ -167,6 +179,9 @@ export const payrollAPI = {
 export const masterDataAPI = {
   // Designations
   getDesignations: () => hrClient.get("/designations/"),
+  createDesignation: (data) => hrClient.post("/designations/", data),
+  updateDesignation: (id, data) => hrClient.patch(`/designations/${id}/`, data),
+  deleteDesignation: (id) => hrClient.delete(`/designations/${id}/`),
 
   // Work Locations
   getWorkLocations: () => hrClient.get("/work-locations/"),
@@ -197,11 +212,32 @@ export const documentAPI = {
   // Upload document
   uploadDocument: (data) =>
     hrClient.post("/employee-documents/", data, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": undefined },
     }),
 
   // Verify document
   verifyDocument: (id) => hrClient.post(`/employee-documents/${id}/verify/`),
+
+  // Download document
+  downloadDocument: async (id) => {
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(
+      `${API_BASE_URL}/hr/employee-documents/${id}/download/`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    const blob = await response.blob();
+    const disposition = response.headers.get("content-disposition");
+    const match = disposition && disposition.match(/filename="?(.+?)"?$/);
+    const filename = match ? match[1] : `document-${id}.${blob.type.split("/")[1] || "bin"}`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ============================================================================
@@ -686,7 +722,7 @@ export const exitAPI = {
   createResignation: (data) => hrClient.post("/resignations/", data),
   updateResignation: (id, data) => hrClient.patch(`/resignations/${id}/`, data),
   approveResignation: (id, lastWorkingDay) =>
-    hrClient.post(`/resignations/${id}/approve/`, { last_working_day: lastWorkingDay }),
+    hrClient.post(`/resignations/${id}/approve/`, { approved_last_working_day: lastWorkingDay }),
   rejectResignation: (id, reason = "") =>
     hrClient.post(`/resignations/${id}/reject/`, { reason }),
   withdrawResignation: (id) =>
