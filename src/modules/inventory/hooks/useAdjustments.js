@@ -1,22 +1,49 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  fetchTransfers,
-  fetchTransfer,
-  createTransfer as apiCreateTransfer,
-  submitTransfer as apiSubmitTransfer,
-  approveTransfer as apiApproveTransfer,
-  rejectTransfer as apiRejectTransfer,
-  dispatchTransfer as apiDispatchTransfer,
-  receiveTransfer as apiReceiveTransfer,
-  cancelTransfer as apiCancelTransfer,
-  exportTransfers as apiExportTransfers,
-} from "../services/transferService";
+  fetchAdjustments,
+  fetchAdjustment,
+  createAdjustment as apiCreateAdjustment,
+  updateAdjustment as apiUpdateAdjustment,
+  submitAdjustment as apiSubmitAdjustment,
+  approveAdjustment as apiApproveAdjustment,
+  rejectAdjustment as apiRejectAdjustment,
+  applyAdjustment as apiApplyAdjustment,
+  cancelAdjustment as apiCancelAdjustment,
+  exportAdjustments as apiExportAdjustments,
+  fetchAdjustmentReasons,
+} from "../services/adjustmentService";
 
 /**
- * useTransfers hook - Fetch paginated transfer list
+ * useAdjustmentReasons hook - Fetch adjustment reasons for dropdown
  */
-export const useTransfers = (filters = {}) => {
-  const [transfers, setTransfers] = useState([]);
+export const useAdjustmentReasons = (params = {}) => {
+  const [reasons, setReasons] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetchAdjustmentReasons(params);
+      setReasons(response.data.results || response.data.data || response.data || []);
+    } catch {
+      setReasons([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [JSON.stringify(params)]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { reasons, loading, refetch };
+};
+
+/**
+ * useAdjustments hook - Fetch paginated adjustment list
+ */
+export const useAdjustments = (filters = {}) => {
+  const [adjustments, setAdjustments] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,12 +52,12 @@ export const useTransfers = (filters = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetchTransfers(filters);
-      setTransfers(response.data.results || response.data.data || []);
+      const response = await fetchAdjustments(filters);
+      setAdjustments(response.data.results || response.data.data || []);
       setCount(response.data.count || 0);
     } catch (err) {
       setError(
-        err.response?.data?.detail || err.message || "Failed to fetch transfers",
+        err.response?.data?.detail || err.message || "Failed to fetch adjustments",
       );
     } finally {
       setLoading(false);
@@ -41,50 +68,19 @@ export const useTransfers = (filters = {}) => {
     refetch();
   }, [refetch]);
 
-  return { transfers, count, loading, error, refetch };
+  return { adjustments, count, loading, error, refetch };
 };
 
 /**
- * useTransfer hook - Fetch single transfer detail
+ * useAdjustmentActions hook - All adjustment workflow actions
  */
-export const useTransfer = (id) => {
-  const [transfer, setTransfer] = useState(null);
-  const [loading, setLoading] = useState(!!id);
-  const [error, setError] = useState(null);
-
-  const refetch = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetchTransfer(id);
-      setTransfer(response.data.data || response.data);
-    } catch (err) {
-      setError(
-        err.response?.data?.detail || err.message || "Failed to fetch transfer",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
-
-  return { transfer, loading, error, refetch };
-};
-
-/**
- * useTransferActions hook - All transfer workflow actions
- */
-export const useTransferActions = () => {
+export const useAdjustmentActions = () => {
   const [loading, setLoading] = useState(false);
 
-  const createTransfer = useCallback(async (data) => {
+  const createAdjustment = useCallback(async (data) => {
     setLoading(true);
     try {
-      const response = await apiCreateTransfer(data);
+      const response = await apiCreateAdjustment(data);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
@@ -92,125 +88,124 @@ export const useTransferActions = () => {
         err.response?.data?.message ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to create transfer";
+        "Failed to create adjustment";
       return { success: false, error: msg, errors: err.response?.data };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const submitTransfer = useCallback(async (id) => {
+  const updateAdjustment = useCallback(async (id, data) => {
     setLoading(true);
     try {
-      const response = await apiSubmitTransfer(id);
+      const response = await apiUpdateAdjustment(id, data);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to submit transfer";
+        "Failed to update adjustment";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const approveTransfer = useCallback(async (id, notes = "") => {
+  const submitAdjustment = useCallback(async (id) => {
     setLoading(true);
     try {
-      const response = await apiApproveTransfer(id, { notes });
+      const response = await apiSubmitAdjustment(id);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to approve transfer";
+        "Failed to submit adjustment";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const rejectTransfer = useCallback(async (id, notes = "") => {
+  const approveAdjustment = useCallback(async (id, notes = "") => {
     setLoading(true);
     try {
-      const response = await apiRejectTransfer(id, { notes });
+      const response = await apiApproveAdjustment(id, { notes });
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to reject transfer";
+        "Failed to approve adjustment";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const dispatchTransfer = useCallback(async (id) => {
+  const rejectAdjustment = useCallback(async (id, notes = "") => {
     setLoading(true);
     try {
-      const response = await apiDispatchTransfer(id);
+      const response = await apiRejectAdjustment(id, { notes });
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to dispatch transfer";
+        "Failed to reject adjustment";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const receiveTransfer = useCallback(async (id, items = null) => {
+  const applyAdjustment = useCallback(async (id) => {
     setLoading(true);
     try {
-      const payload = items ? { items } : {};
-      const response = await apiReceiveTransfer(id, payload);
+      const response = await apiApplyAdjustment(id);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to receive transfer";
+        "Failed to apply adjustment";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const cancelTransfer = useCallback(async (id) => {
+  const cancelAdjustment = useCallback(async (id) => {
     setLoading(true);
     try {
-      const response = await apiCancelTransfer(id);
+      const response = await apiCancelAdjustment(id);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to cancel transfer";
+        "Failed to cancel adjustment";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const exportTransfers = useCallback(async (params = {}) => {
+  const exportAdjustments = useCallback(async (params = {}) => {
     setLoading(true);
     try {
-      const response = await apiExportTransfers(params);
+      const response = await apiExportAdjustments(params);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
       const disposition = response.headers["content-disposition"];
-      let filename = "transfers.xlsx";
+      let filename = "adjustments.xlsx";
       if (disposition) {
         const match = disposition.match(/filename="?(.+)"?/);
         if (match) filename = match[1];
@@ -225,7 +220,7 @@ export const useTransferActions = () => {
       const msg =
         err.response?.data?.message ||
         err.message ||
-        "Failed to export transfers";
+        "Failed to export adjustments";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
@@ -234,13 +229,13 @@ export const useTransferActions = () => {
 
   return {
     loading,
-    createTransfer,
-    submitTransfer,
-    approveTransfer,
-    rejectTransfer,
-    dispatchTransfer,
-    receiveTransfer,
-    cancelTransfer,
-    exportTransfers,
+    createAdjustment,
+    updateAdjustment,
+    submitAdjustment,
+    approveAdjustment,
+    rejectAdjustment,
+    applyAdjustment,
+    cancelAdjustment,
+    exportAdjustments,
   };
 };

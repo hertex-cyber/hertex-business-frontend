@@ -153,7 +153,7 @@ export const useLocationActions = () => {
       const link = document.createElement("a");
       link.href = url;
       const disposition = response.headers["content-disposition"];
-      let filename = "locations.csv";
+      let filename = "locations.xlsx";
       if (disposition) {
         const match = disposition.match(/filename="?(.+)"?/);
         if (match) filename = match[1];

@@ -295,7 +295,7 @@ const LocationList = () => {
   };
 
   const handleExport = async () => {
-    await actions.exportLocations({ format: "csv", ...filters });
+    await actions.exportLocations({ export_format: "xlsx", ...filters });
   };
 
   const handleImport = async (e) => {

@@ -228,7 +228,7 @@ const CategoryList = () => {
   };
 
   const handleExport = async () => {
-    await actions.exportCategories({ format: "csv", ...filters });
+    await actions.exportCategories({ export_format: "xlsx", ...filters });
   };
 
   const totalPages = Math.ceil(count / pageSize);

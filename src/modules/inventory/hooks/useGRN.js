@@ -1,22 +1,22 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  fetchTransfers,
-  fetchTransfer,
-  createTransfer as apiCreateTransfer,
-  submitTransfer as apiSubmitTransfer,
-  approveTransfer as apiApproveTransfer,
-  rejectTransfer as apiRejectTransfer,
-  dispatchTransfer as apiDispatchTransfer,
-  receiveTransfer as apiReceiveTransfer,
-  cancelTransfer as apiCancelTransfer,
-  exportTransfers as apiExportTransfers,
-} from "../services/transferService";
+  fetchGRNs,
+  fetchGRN,
+  createGRN as apiCreateGRN,
+  updateGRN as apiUpdateGRN,
+  deleteGRN as apiDeleteGRN,
+  submitGRN as apiSubmitGRN,
+  approveGRN as apiApproveGRN,
+  receiveGRN as apiReceiveGRN,
+  completeGRN as apiCompleteGRN,
+  cancelGRN as apiCancelGRN,
+  exportGRNs as apiExportGRNs,
+  fetchGRNHistory as apiFetchGRNHistory,
+  printGRN as apiPrintGRN,
+} from "../services/grnService";
 
-/**
- * useTransfers hook - Fetch paginated transfer list
- */
-export const useTransfers = (filters = {}) => {
-  const [transfers, setTransfers] = useState([]);
+export const useGRNs = (filters = {}) => {
+  const [grns, setGRNs] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,12 +25,12 @@ export const useTransfers = (filters = {}) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetchTransfers(filters);
-      setTransfers(response.data.results || response.data.data || []);
+      const response = await fetchGRNs(filters);
+      setGRNs(response.data.results || response.data.data || []);
       setCount(response.data.count || 0);
     } catch (err) {
       setError(
-        err.response?.data?.detail || err.message || "Failed to fetch transfers",
+        err.response?.data?.detail || err.message || "Failed to fetch GRNs",
       );
     } finally {
       setLoading(false);
@@ -41,14 +41,11 @@ export const useTransfers = (filters = {}) => {
     refetch();
   }, [refetch]);
 
-  return { transfers, count, loading, error, refetch };
+  return { grns, count, loading, error, refetch };
 };
 
-/**
- * useTransfer hook - Fetch single transfer detail
- */
-export const useTransfer = (id) => {
-  const [transfer, setTransfer] = useState(null);
+export const useGRN = (id) => {
+  const [grn, setGRN] = useState(null);
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState(null);
 
@@ -57,11 +54,11 @@ export const useTransfer = (id) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetchTransfer(id);
-      setTransfer(response.data.data || response.data);
+      const response = await fetchGRN(id);
+      setGRN(response.data.data || response.data);
     } catch (err) {
       setError(
-        err.response?.data?.detail || err.message || "Failed to fetch transfer",
+        err.response?.data?.detail || err.message || "Failed to fetch GRN",
       );
     } finally {
       setLoading(false);
@@ -72,19 +69,16 @@ export const useTransfer = (id) => {
     refetch();
   }, [refetch]);
 
-  return { transfer, loading, error, refetch };
+  return { grn, loading, error, refetch };
 };
 
-/**
- * useTransferActions hook - All transfer workflow actions
- */
-export const useTransferActions = () => {
+export const useGRNActions = () => {
   const [loading, setLoading] = useState(false);
 
-  const createTransfer = useCallback(async (data) => {
+  const createGRN = useCallback(async (data) => {
     setLoading(true);
     try {
-      const response = await apiCreateTransfer(data);
+      const response = await apiCreateGRN(data);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
@@ -92,125 +86,141 @@ export const useTransferActions = () => {
         err.response?.data?.message ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to create transfer";
+        "Failed to create GRN";
       return { success: false, error: msg, errors: err.response?.data };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const submitTransfer = useCallback(async (id) => {
+  const updateGRN = useCallback(async (id, data) => {
     setLoading(true);
     try {
-      const response = await apiSubmitTransfer(id);
+      const response = await apiUpdateGRN(id, data);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to submit transfer";
+        "Failed to update GRN";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const approveTransfer = useCallback(async (id, notes = "") => {
+  const deleteGRN = useCallback(async (id) => {
     setLoading(true);
     try {
-      const response = await apiApproveTransfer(id, { notes });
+      await apiDeleteGRN(id);
+      return { success: true };
+    } catch (err) {
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        err.message ||
+        "Failed to delete GRN";
+      return { success: false, error: msg };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const submitGRN = useCallback(async (id) => {
+    setLoading(true);
+    try {
+      const response = await apiSubmitGRN(id);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to approve transfer";
+        "Failed to submit GRN";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const rejectTransfer = useCallback(async (id, notes = "") => {
+  const approveGRN = useCallback(async (id, notes = "") => {
     setLoading(true);
     try {
-      const response = await apiRejectTransfer(id, { notes });
+      const response = await apiApproveGRN(id, { notes });
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to reject transfer";
+        "Failed to approve GRN";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const dispatchTransfer = useCallback(async (id) => {
+  const receiveGRN = useCallback(async (id) => {
     setLoading(true);
     try {
-      const response = await apiDispatchTransfer(id);
+      const response = await apiReceiveGRN(id);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to dispatch transfer";
+        "Failed to receive GRN";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const receiveTransfer = useCallback(async (id, items = null) => {
+  const completeGRN = useCallback(async (id) => {
     setLoading(true);
     try {
-      const payload = items ? { items } : {};
-      const response = await apiReceiveTransfer(id, payload);
+      const response = await apiCompleteGRN(id);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to receive transfer";
+        "Failed to complete GRN";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const cancelTransfer = useCallback(async (id) => {
+  const cancelGRN = useCallback(async (id) => {
     setLoading(true);
     try {
-      const response = await apiCancelTransfer(id);
+      const response = await apiCancelGRN(id);
       return { success: true, data: response.data.data || response.data };
     } catch (err) {
       const msg =
         err.response?.data?.error ||
         err.response?.data?.detail ||
         err.message ||
-        "Failed to cancel transfer";
+        "Failed to cancel GRN";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const exportTransfers = useCallback(async (params = {}) => {
+  const exportGRNs = useCallback(async (params = {}) => {
     setLoading(true);
     try {
-      const response = await apiExportTransfers(params);
+      const response = await apiExportGRNs(params);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
       const disposition = response.headers["content-disposition"];
-      let filename = "transfers.xlsx";
+      let filename = "goods_receipts.xlsx";
       if (disposition) {
         const match = disposition.match(/filename="?(.+)"?/);
         if (match) filename = match[1];
@@ -225,7 +235,31 @@ export const useTransferActions = () => {
       const msg =
         err.response?.data?.message ||
         err.message ||
-        "Failed to export transfers";
+        "Failed to export GRNs";
+      return { success: false, error: msg };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const printGRN = useCallback(async (id) => {
+    setLoading(true);
+    try {
+      const response = await apiPrintGRN(id);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `GRN-${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      return { success: true };
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to print GRN";
       return { success: false, error: msg };
     } finally {
       setLoading(false);
@@ -234,13 +268,31 @@ export const useTransferActions = () => {
 
   return {
     loading,
-    createTransfer,
-    submitTransfer,
-    approveTransfer,
-    rejectTransfer,
-    dispatchTransfer,
-    receiveTransfer,
-    cancelTransfer,
-    exportTransfers,
+    createGRN,
+    updateGRN,
+    deleteGRN,
+    submitGRN,
+    approveGRN,
+    receiveGRN,
+    completeGRN,
+    cancelGRN,
+    exportGRNs,
+    printGRN,
   };
+};
+
+export const useGRNHistory = (id) => {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    apiFetchGRNHistory(id)
+      .then((res) => setHistory(res.data))
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  return { history, loading };
 };

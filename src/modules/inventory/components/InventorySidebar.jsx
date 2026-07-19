@@ -1,24 +1,41 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Box, FolderTree, Ruler, Building2, MapPin, Tags, PackageSearch, ArrowLeftRight, ChevronRight } from "lucide-react";
+import { Box, FolderTree, Ruler, Building2, MapPin, Tags, PackageSearch, ArrowLeftRight, ChevronRight, Scale, CalendarCheck, ClipboardList, PackageCheck, Receipt, Undo2, IndianRupee, LayoutDashboard, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFeatureContext } from "@/context/FeatureContext";
 
 const NAV_ITEMS = [
-  { label: "Items", href: "/inventory/items", icon: Box },
-  { label: "Categories", href: "/inventory/categories", icon: FolderTree },
-  { label: "Units", href: "/inventory/units", icon: Ruler },
-  { label: "Brands", href: "/inventory/brands", icon: Building2 },
-  { label: "Locations", href: "/inventory/locations", icon: MapPin },
-  { label: "Location Types", href: "/inventory/location-types", icon: Tags },
-  { label: "Transfers", href: "/inventory/transfers", icon: ArrowLeftRight },
-  { label: "Stock", href: "/inventory/stock", icon: PackageSearch },
+  { label: "Dashboard", href: "/inventory/dashboard", icon: LayoutDashboard, featureCode: "dashboard" },
+  { label: "Reports", href: "/inventory/reports", icon: BarChart3, featureCode: "reports" },
+  { label: "Items", href: "/inventory/items", icon: Box, featureCode: "items" },
+  { label: "Categories", href: "/inventory/categories", icon: FolderTree, featureCode: "categories" },
+  { label: "Units", href: "/inventory/units", icon: Ruler, featureCode: "units" },
+  { label: "Brands", href: "/inventory/brands", icon: Building2, featureCode: "brands" },
+  { label: "Locations", href: "/inventory/locations", icon: MapPin, featureCode: "locations" },
+  { label: "Location Types", href: "/inventory/location-types", icon: Tags, featureCode: "location-types" },
+  { label: "Transfers", href: "/inventory/transfers", icon: ArrowLeftRight, featureCode: "transfers" },
+  { label: "Adjustments", href: "/inventory/adjustments", icon: Scale, featureCode: "adjustments" },
+  { label: "Reservations", href: "/inventory/reservations", icon: CalendarCheck, featureCode: "reservations" },
+  { label: "Stock", href: "/inventory/stock", icon: PackageSearch, featureCode: "stock" },
+  { label: "Purchase Orders", href: "/inventory/purchase-orders", icon: ClipboardList, featureCode: "purchase-orders" },
+  { label: "Goods Receipts", href: "/inventory/goods-receipts", icon: PackageCheck, featureCode: "goods-receipts" },
+  { label: "Supplier Invoices", href: "/inventory/supplier-invoices", icon: Receipt, featureCode: "supplier-invoices" },
+  { label: "Purchase Returns", href: "/inventory/purchase-returns", icon: Undo2, featureCode: "purchase-returns" },
+  { label: "Supplier Payments", href: "/inventory/supplier-payments", icon: IndianRupee, featureCode: "supplier-payments" },
 ];
 
 const InventorySidebar = () => {
   const location = useLocation();
+  const { enabledFeatures, loading } = useFeatureContext();
+
+  const visibleItems = loading
+    ? NAV_ITEMS  // Show all while loading
+    : NAV_ITEMS.filter(
+        (item) => !item.featureCode || enabledFeatures[item.featureCode] !== false
+      );
 
   return (
-    <div className="w-56 h-full bg-black/40 border-r border-white/5 flex flex-col shrink-0">
+    <div className="w-56 h-full bg-black/40 border-r border-white/5 flex flex-col shrink-0 no-print">
       {/* Section Header */}
       <div className="px-5 pt-6 pb-4 border-b border-white/5">
         <div className="flex items-center gap-2.5">
@@ -34,7 +51,7 @@ const InventorySidebar = () => {
 
       {/* Navigation Items */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href;
 

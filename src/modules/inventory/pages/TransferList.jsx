@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ArrowLeftRight, Search, Plus, X, ChevronDown, Download,
   CheckCircle, XCircle, Send, Truck, PackageCheck, Ban,
-  ArrowUpDown, FileDown, Loader2,
+  ArrowUpDown, FileDown, Loader2, History, ClipboardList,
 } from "lucide-react";
 import { useTransfers, useTransferActions } from "../hooks/useTransfers";
 import { useItems } from "../hooks/useItems";
 import { useLocations } from "../hooks/useLocations";
+import { fetchTransferHistory, fetchTransfer } from "../services/transferService";
 
 // ============================================================================
 // STATUS CONFIG
@@ -22,6 +23,19 @@ const STATUS_CONFIG = {
   PARTIALLY_RECEIVED: { label: "Partial", color: "text-orange-400 bg-orange-400/10 border-orange-400/20" },
   COMPLETED: { label: "Completed", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
   CANCELLED: { label: "Cancelled", color: "text-red-400 bg-red-400/10 border-red-400/20" },
+};
+
+const ACTION_LABELS = {
+  CREATED: "Transfer Created",
+  SUBMITTED: "Submitted for Approval",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  DISPATCHED: "Dispatched",
+  RECEIVED: "Received",
+  PARTIALLY_RECEIVED: "Partially Received",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+  UPDATED: "Updated",
 };
 
 // ============================================================================
@@ -260,12 +274,214 @@ const TransferForm = ({ isOpen, onClose, locations, items, onSubmit, loading }) 
 };
 
 // ============================================================================
-// TRANSFER DETAIL MODAL
+// RECEIVE TRANSFER MODAL (Partial Receipt UI)
+// ============================================================================
+
+const ReceiveTransferModal = ({ transfer, isOpen, onClose, onSubmit, loading }) => {
+  const [items, setItems] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (transfer && isOpen) {
+      setItems(
+        (transfer.items || []).map((item) => ({
+          item_id: item.item_id || item.item?.id || item.id,
+          item_code: item.item_code || item.item?.item_code || "",
+          item_name: item.item_name || item.item?.item_name || "",
+          quantity: Number(item.quantity) || 0,
+          received_quantity: "",
+          damaged_quantity: "",
+          remarks: "",
+        }))
+      );
+      setError("");
+    }
+  }, [transfer, isOpen]);
+
+  if (!isOpen || !transfer) return null;
+
+  const handleChange = (idx, field, value) => {
+    setItems((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return updated;
+    });
+    setError("");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    // Build payload with only items that have quantities
+    const payloadItems = items
+      .map((item) => ({
+        item_id: item.item_id,
+        received_quantity: item.received_quantity !== "" ? Number(item.received_quantity) : Number(item.quantity),
+        damaged_quantity: item.damaged_quantity !== "" ? Number(item.damaged_quantity) : 0,
+        remarks: item.remarks || "",
+      }))
+      .filter((item) => item.received_quantity > 0 || item.damaged_quantity > 0);
+
+    if (payloadItems.length === 0) {
+      setError("Please enter at least one item with received or damaged quantity.");
+      return;
+    }
+
+    // Validate: Received + Damaged <= Transferred
+    for (const payloadItem of payloadItems) {
+      const original = items.find((i) => i.item_id === payloadItem.item_id);
+      if (original && payloadItem.received_quantity + payloadItem.damaged_quantity > original.quantity) {
+        setError(
+          `"${original.item_name}": Received (${payloadItem.received_quantity}) + Damaged (${payloadItem.damaged_quantity}) = ${payloadItem.received_quantity + payloadItem.damaged_quantity} exceeds transferred quantity (${original.quantity}).`
+        );
+        return;
+      }
+    }
+
+    const result = await onSubmit(transfer.id, payloadItems);
+    if (result.success) {
+      onClose();
+    } else {
+      setError(result.error || "Failed to receive transfer.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-neutral-950 border border-white/10 rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-y-auto custom-scrollbar"
+        onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <PackageCheck size={18} className="text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Receive Transfer</h3>
+              <p className="text-xs text-white/40">{transfer.transfer_number} — Enter received quantities per item</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+            <X size={18} className="text-white/60" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {error && (
+            <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          {/* Info Bar */}
+          <div className="flex items-center gap-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-xs text-blue-300">
+            <span>Source: <strong className="text-white">{transfer.source_name || transfer.source_location?.location_name}</strong></span>
+            <span className="text-white/20">→</span>
+            <span>Destination: <strong className="text-white">{transfer.destination_name || transfer.destination_location?.location_name}</strong></span>
+          </div>
+
+          {/* Items Table with Receipt Inputs */}
+          <div className="overflow-hidden rounded-xl border border-white/5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-white/5">
+                  <th className="text-left px-3 py-2.5 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Item</th>
+                  <th className="text-right px-3 py-2.5 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Transferred</th>
+                  <th className="text-right px-3 py-2.5 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Received</th>
+                  <th className="text-right px-3 py-2.5 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Damaged</th>
+                  <th className="text-right px-3 py-2.5 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Missing</th>
+                  <th className="text-left px-3 py-2.5 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {items.map((item, idx) => {
+                  const received = item.received_quantity !== "" ? Number(item.received_quantity) : item.quantity;
+                  const damaged = item.damaged_quantity !== "" ? Number(item.damaged_quantity) : 0;
+                  const missing = item.quantity - received - damaged;
+                  return (
+                    <tr key={item.item_id || idx} className="hover:bg-white/5">
+                      <td className="px-3 py-2.5">
+                        <p className="text-sm font-medium text-white">{item.item_name}</p>
+                        <p className="text-[10px] text-white/30">{item.item_code}</p>
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-sm text-white font-medium">{item.quantity}</td>
+                      <td className="px-3 py-2.5 text-right">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.received_quantity}
+                          onChange={(e) => handleChange(idx, "received_quantity", e.target.value)}
+                          placeholder={String(item.quantity)}
+                          className="w-20 px-2 py-1.5 bg-gray-800/50 border border-white/10 rounded-lg text-xs text-white text-right placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.damaged_quantity}
+                          onChange={(e) => handleChange(idx, "damaged_quantity", e.target.value)}
+                          placeholder="0"
+                          className="w-20 px-2 py-1.5 bg-gray-800/50 border border-white/10 rounded-lg text-xs text-white text-right placeholder:text-white/30 focus:outline-none focus:border-red-500/50"
+                        />
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <span className={`text-sm font-medium ${missing > 0 ? "text-orange-400" : "text-emerald-400"}`}>
+                          {missing > 0 ? missing : "0"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="text"
+                          value={item.remarks}
+                          onChange={(e) => handleChange(idx, "remarks", e.target.value)}
+                          placeholder="Notes..."
+                          className="w-full px-2 py-1.5 bg-gray-800/50 border border-white/10 rounded-lg text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-white/20"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Validation Hint */}
+          <div className="text-xs text-white/30 px-1">
+            Missing = Transferred − Received − Damaged. Values must not exceed the transferred quantity.
+          </div>
+
+          {/* Submit */}
+          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white/50 hover:text-white hover:bg-white/5 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={loading}
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50">
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <PackageCheck size={14} />}
+              Receive Stock
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// TRANSFER DETAIL MODAL (with History Tab)
 // ============================================================================
 
 const TransferDetail = ({ transfer, onClose, onAction, actions }) => {
   const [notes, setNotes] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("details");
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   if (!transfer) return null;
 
@@ -285,6 +501,20 @@ const TransferDetail = ({ transfer, onClose, onAction, actions }) => {
       }
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setActiveTab("history");
+    if (history.length > 0) return;
+    setHistoryLoading(true);
+    try {
+      const response = await fetchTransferHistory(transfer.id);
+      setHistory(response.data || []);
+    } catch {
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -308,124 +538,242 @@ const TransferDetail = ({ transfer, onClose, onAction, actions }) => {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-white/5 px-6">
+          <button
+            onClick={() => setActiveTab("details")}
+            className={`px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${
+              activeTab === "details"
+                ? "text-white border-white/50"
+                : "text-white/30 border-transparent hover:text-white/50"
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <ClipboardList size={13} /> Details
+            </div>
+          </button>
+          <button
+            onClick={loadHistory}
+            className={`px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${
+              activeTab === "history"
+                ? "text-white border-white/50"
+                : "text-white/30 border-transparent hover:text-white/50"
+            }`}
+          >
+            <div className="flex items-center gap-1.5">
+              <History size={13} /> History
+            </div>
+          </button>
+        </div>
+
         <div className="p-6 space-y-6">
-          {/* Status Badge */}
-          <div className="flex items-center justify-between">
-            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${config.color}`}>
-              {config.label}
-            </span>
-            <span className="text-xs text-white/30">Type: {transfer.transfer_type || "Standard"}</span>
-          </div>
+          {activeTab === "details" && (
+            <>
+              {/* Status Badge */}
+              <div className="flex items-center justify-between">
+                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${config.color}`}>
+                  {config.label}
+                </span>
+                <span className="text-xs text-white/30">Type: {transfer.transfer_type || "Standard"}</span>
+              </div>
 
-          {/* Locations */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-white/5 rounded-xl">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Source</p>
-              <p className="text-sm font-semibold text-white">{transfer.source_name || transfer.source_location?.location_name}</p>
-            </div>
-            <div className="p-4 bg-white/5 rounded-xl">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Destination</p>
-              <p className="text-sm font-semibold text-white">{transfer.destination_name || transfer.destination_location?.location_name}</p>
-            </div>
-          </div>
+              {/* Locations */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-white/5 rounded-xl">
+                  <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Source</p>
+                  <p className="text-sm font-semibold text-white">{transfer.source_name || transfer.source_location?.location_name}</p>
+                </div>
+                <div className="p-4 bg-white/5 rounded-xl">
+                  <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Destination</p>
+                  <p className="text-sm font-semibold text-white">{transfer.destination_name || transfer.destination_location?.location_name}</p>
+                </div>
+              </div>
 
-          {/* Items Table */}
-          <div>
-            <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">Items ({transfer.items?.length || 0})</p>
-            <div className="overflow-hidden rounded-xl border border-white/5">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-white/5">
-                    <th className="text-left px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Item</th>
-                    <th className="text-right px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Qty</th>
-                    <th className="text-right px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Received</th>
-                    <th className="text-right px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Damaged</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {(transfer.items || []).map((item, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-white/5">
-                      <td className="px-3 py-2.5">
-                        <p className="text-sm font-medium text-white">{item.item_name || item.item?.item_name}</p>
-                        <p className="text-[10px] text-white/30">{item.item_code || item.item?.item_code}</p>
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-sm text-white">{item.quantity}</td>
-                      <td className="px-3 py-2.5 text-right text-sm text-emerald-400">{item.received_quantity || "-"}</td>
-                      <td className="px-3 py-2.5 text-right text-sm text-red-400">{item.damaged_quantity || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+              {/* Items Table */}
+              <div>
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">Items ({transfer.items?.length || 0})</p>
+                <div className="overflow-hidden rounded-xl border border-white/5">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-white/5">
+                        <th className="text-left px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Item</th>
+                        <th className="text-right px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Qty</th>
+                        <th className="text-right px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Received</th>
+                        <th className="text-right px-3 py-2 text-[10px] text-white/40 uppercase tracking-wider font-semibold">Damaged</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {(transfer.items || []).map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-white/5">
+                          <td className="px-3 py-2.5">
+                            <p className="text-sm font-medium text-white">{item.item_name || item.item?.item_name}</p>
+                            <p className="text-[10px] text-white/30">{item.item_code || item.item?.item_code}</p>
+                          </td>
+                          <td className="px-3 py-2.5 text-right text-sm text-white">{item.quantity}</td>
+                          <td className="px-3 py-2.5 text-right text-sm text-emerald-400">{item.received_quantity || "-"}</td>
+                          <td className="px-3 py-2.5 text-right text-sm text-red-400">{item.damaged_quantity || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-          {/* Remarks */}
-          {transfer.remarks && (
-            <div className="p-3 bg-white/5 rounded-xl">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Remarks</p>
-              <p className="text-sm text-white/70">{transfer.remarks}</p>
-            </div>
+              {/* Remarks */}
+              {transfer.remarks && (
+                <div className="p-3 bg-white/5 rounded-xl">
+                  <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Remarks</p>
+                  <p className="text-sm text-white/70">{transfer.remarks}</p>
+                </div>
+              )}
+
+              {/* Approval / Dispatch Info */}
+              {(transfer.approved_by || transfer.dispatched_at || transfer.received_at) && (
+                <div className="grid grid-cols-3 gap-3">
+                  {transfer.approved_by && (
+                    <div className="p-3 bg-white/5 rounded-xl">
+                      <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Approved By</p>
+                      <p className="text-xs text-white/70">{transfer.approved_by_name || "N/A"}</p>
+                    </div>
+                  )}
+                  {transfer.dispatched_at && (
+                    <div className="p-3 bg-white/5 rounded-xl">
+                      <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Dispatched At</p>
+                      <p className="text-xs text-white/70">{new Date(transfer.dispatched_at).toLocaleString()}</p>
+                    </div>
+                  )}
+                  {transfer.received_at && (
+                    <div className="p-3 bg-white/5 rounded-xl">
+                      <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold mb-1">Received At</p>
+                      <p className="text-xs text-white/70">{new Date(transfer.received_at).toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes Input (for approve/reject) */}
+              {(isPending || isInTransit) && (
+                <div>
+                  <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Notes</label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    className="w-full px-3 py-2.5 bg-gray-800/50 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 resize-none"
+                    placeholder="Optional notes..."
+                  />
+                </div>
+              )}
+
+              {/* Workflow Actions */}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                {isDraft && (
+                  <button onClick={() => handleAction(actions.submitTransfer)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
+                    <Send size={13} /> Submit for Approval
+                  </button>
+                )}
+                {isDraft && (
+                  <button onClick={() => handleAction(actions.cancelTransfer)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
+                    <Ban size={13} /> Cancel
+                  </button>
+                )}
+                {isPending && (
+                  <>
+                    <button onClick={() => handleAction(actions.approveTransfer)}
+                      disabled={actionLoading}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
+                      <CheckCircle size={13} /> Approve
+                    </button>
+                    <button onClick={() => handleAction(actions.rejectTransfer)}
+                      disabled={actionLoading}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
+                      <XCircle size={13} /> Reject
+                    </button>
+                  </>
+                )}
+                {isApproved && (
+                  <button onClick={() => handleAction(actions.dispatchTransfer)}
+                    disabled={actionLoading}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
+                    <Truck size={13} /> Dispatch
+                  </button>
+                )}
+              </div>
+            </>
           )}
 
-          {/* Notes Input (for approve/reject) */}
-          {(isPending || isInTransit) && (
+          {activeTab === "history" && (
             <div>
-              <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-1.5">Notes</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                className="w-full px-3 py-2.5 bg-gray-800/50 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 resize-none"
-                placeholder="Optional notes..."
-              />
+              <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-3">Audit Trail</p>
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 size={18} className="animate-spin text-white/30" />
+                </div>
+              ) : history.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <History size={28} className="text-white/10 mb-2" />
+                  <p className="text-sm text-white/30">No history entries yet</p>
+                </div>
+              ) : (
+                <div className="relative">
+                  {/* Timeline Line */}
+                  <div className="absolute left-[15px] top-2 bottom-2 w-px bg-white/5"></div>
+
+                  <div className="space-y-0">
+                    {history.map((entry, idx) => (
+                      <div key={entry.id || idx} className="flex gap-4 pb-5 last:pb-0 relative">
+                        {/* Timeline Dot */}
+                        <div className="relative z-10 shrink-0 mt-1">
+                          <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center border ${
+                            entry.action === "CREATED" ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
+                            entry.action === "SUBMITTED" ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+                            entry.action === "APPROVED" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                            entry.action === "REJECTED" ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                            entry.action === "DISPATCHED" ? "bg-purple-500/10 border-purple-500/20 text-purple-400" :
+                            entry.action === "COMPLETED" || entry.action === "RECEIVED" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                            entry.action === "CANCELLED" ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                            "bg-white/5 border-white/10 text-white/40"
+                          }`}>
+                            {entry.action === "CREATED" || entry.action === "SUBMITTED" ? <Send size={12} /> :
+                             entry.action === "APPROVED" || entry.action === "COMPLETED" || entry.action === "RECEIVED" ? <CheckCircle size={12} /> :
+                             entry.action === "REJECTED" || entry.action === "CANCELLED" ? <XCircle size={12} /> :
+                             entry.action === "DISPATCHED" ? <Truck size={12} /> :
+                             <ArrowLeftRight size={12} />}
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-white">
+                              {ACTION_LABELS[entry.action] || entry.action}
+                            </p>
+                            <span className="text-[10px] text-white/30 shrink-0">
+                              {new Date(entry.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          {entry.performed_by_name && (
+                            <p className="text-[11px] text-white/40 mt-0.5">
+                              by {entry.performed_by_name}
+                            </p>
+                          )}
+                          {entry.remarks && (
+                            <p className="text-xs text-white/50 mt-1 italic">
+                              "{entry.remarks}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-
-          {/* Workflow Actions */}
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-            {isDraft && (
-              <button onClick={() => handleAction(actions.submitTransfer)}
-                disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
-                <Send size={13} /> Submit for Approval
-              </button>
-            )}
-            {isDraft && (
-              <button onClick={() => handleAction(actions.cancelTransfer)}
-                disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
-                <Ban size={13} /> Cancel
-              </button>
-            )}
-            {isPending && (
-              <>
-                <button onClick={() => handleAction(actions.approveTransfer)}
-                  disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
-                  <CheckCircle size={13} /> Approve
-                </button>
-                <button onClick={() => handleAction(actions.rejectTransfer)}
-                  disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
-                  <XCircle size={13} /> Reject
-                </button>
-              </>
-            )}
-            {isApproved && (
-              <button onClick={() => handleAction(actions.dispatchTransfer)}
-                disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
-                <Truck size={13} /> Dispatch
-              </button>
-            )}
-            {isInTransit && (
-              <button onClick={() => handleAction(actions.receiveTransfer)}
-                disabled={actionLoading}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 active:scale-[0.98] transition-all flex items-center gap-1.5 disabled:opacity-50">
-                <PackageCheck size={13} /> Receive
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>
@@ -442,6 +790,8 @@ const TransferList = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState(null);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [receiveTransferData, setReceiveTransferData] = useState(null);
 
   const filters = useMemo(() => ({
     page,
@@ -470,6 +820,30 @@ const TransferList = () => {
     return result;
   };
 
+  const handleReceiveAction = async (transfer) => {
+    // Fetch full transfer detail with items
+    try {
+      const response = await fetchTransfer(transfer.id);
+      const detail = response.data.data || response.data;
+      setReceiveTransferData(detail);
+      setShowReceiveModal(true);
+    } catch {
+      // Fallback to list data
+      setReceiveTransferData(transfer);
+      setShowReceiveModal(true);
+    }
+  };
+
+  const handleReceiveSubmit = async (id, items) => {
+    const result = await actions.receiveTransfer(id, items);
+    if (result.success) {
+      setShowReceiveModal(false);
+      setReceiveTransferData(null);
+      refetch();
+    }
+    return result;
+  };
+
   const totalPages = Math.ceil(count / 25);
 
   return (
@@ -484,7 +858,7 @@ const TransferList = () => {
           <p className="text-xs text-white/30 mt-0.5">Move inventory between locations with full audit trail</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => actions.exportTransfers({ format: "csv" })}
+          <button onClick={() => actions.exportTransfers({ export_format: "xlsx" })}
             className="px-3.5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white/50 hover:text-white hover:bg-white/5 transition-all flex items-center gap-2">
             <FileDown size={14} /> Export
           </button>
@@ -566,10 +940,18 @@ const TransferList = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedTransfer(t); }}
-                          className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white/40 hover:text-white hover:bg-white/5 transition-colors uppercase tracking-wider">
-                          View
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          {t.status === "IN_TRANSIT" && (
+                            <button onClick={(e) => { e.stopPropagation(); handleReceiveAction(t); }}
+                              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/10 transition-colors uppercase tracking-wider flex items-center gap-1">
+                              <PackageCheck size={12} /> Receive
+                            </button>
+                          )}
+                          <button onClick={(e) => { e.stopPropagation(); setSelectedTransfer(t); }}
+                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold text-white/40 hover:text-white hover:bg-white/5 transition-colors uppercase tracking-wider">
+                            View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -613,6 +995,14 @@ const TransferList = () => {
         onClose={() => { setSelectedTransfer(null); refetch(); }}
         onAction={handleAction}
         actions={actions}
+      />
+
+      <ReceiveTransferModal
+        transfer={receiveTransferData}
+        isOpen={showReceiveModal}
+        onClose={() => { setShowReceiveModal(false); setReceiveTransferData(null); }}
+        onSubmit={handleReceiveSubmit}
+        loading={actions.loading}
       />
     </div>
   );

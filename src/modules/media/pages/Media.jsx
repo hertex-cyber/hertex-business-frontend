@@ -382,174 +382,59 @@ const Media = () => {
   }, [previewAsset]);
 
   return (
-    <div className="flex flex-col h-full">
-
-      {/* ===== Full-width Header ===== */}
-      <header className="px-10 pt-8 pb-0 flex justify-between items-end border-b border-white/5 relative z-20 bg-black/50 backdrop-blur-xl shrink-0">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            {currentCollection ? currentCollection.name : 'Media'}
-          </h1>
-          <p className="text-sm mb-4 text-white/40 font-medium">
-            {filteredAssets.length > 0
-              ? `${filteredAssets.length} asset${filteredAssets.length !== 1 ? 's' : ''}${
-                  activeTab ? ` (${count} total)` : ''
-                }`
-              : selectedCollection
-                ? 'No assets in this collection.'
-                : 'Select a collection to view its assets.'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 pb-8">
-          {selectedCollection && (
-            <div className="relative">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder={"Search by " + (currentCollection?.entity_type === 'contact' ? 'contact name' : currentCollection?.entity_type === 'staff' ? 'staff name' : 'file name') + "..."}
-                className="w-56 bg-white/5 border border-white/10 rounded-full pl-9 pr-3 py-2 text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 focus:bg-white/[0.06] transition-all"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => { setSearchInput(''); setSearchQuery(''); }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-white/30 hover:text-white transition-colors"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          )}
-          {selectedCollection && (
-            <>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  const coll = collections.find((c) => c.id === selectedCollection);
-                  if (coll && coll.entity_type && coll.entity_type !== 'generic') {
-                    setShowUploadDialog(true);
-                  } else {
-                    fileInputRef.current?.click();
-                  }
-                }}
-                disabled={uploading}
-                className="w-auto px-6 py-2 rounded-full text-[10px] uppercase tracking-widest font-black shadow-[0_0_20px_rgba(255,255,255,0.1)]"
-              >
-                {uploading ? (
-                  <Loader size={14} className="animate-spin mr-2" />
-                ) : (
-                  <Upload size={14} className="mr-2" />
-                )}
-                {uploading ? 'Uploading...' : 'Upload Assets'}
-              </Button>
-              <span className="text-[9px] text-white/20 font-medium">Max 10 MB per file</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept={currentAccept}
-                multiple
-                onChange={handleFileUpload}
-              />
-              <UploadQueuePanel
-                queue={queue}
-                onRetry={retryUpload}
-                onClearCompleted={clearCompleted}
-                totalItems={totalItems}
-                completedItems={completedItems}
-                active={uploading}
-              />
-            </>
-          )}
-        </div>
-      </header>
-
-      {/* ===== Below header: sidebar + content ===== */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-
-        {/* ===== Sidebar ===== */}
-        <aside className="w-64 shrink-0 border-r border-white/5 flex flex-col bg-black/40">
-          <div className="px-4 pt-6 pb-3 border-b border-white/5">
-            <div className="flex items-center gap-2 px-2">
-              <FolderOpen size={14} className="text-white/30" />
-              <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-white/30">Collections</h2>
-            </div>
-            <div className="mt-2.5 px-2 space-y-2">
-              {canCreate ? (
-                <button
-                  onClick={() => setShowCreateDialog(true)}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/15 text-xs text-white/50 hover:text-white hover:border-white/30 hover:bg-white/[0.06] transition-all"
-                >
-                  <Plus size={14} />
-                  <span className="font-semibold">New Collection</span>
-                </button>
-              ) : (
-                <p className="text-[9px] text-white/20 text-center px-2 py-1">
-                  You don't have permission to create collections
-                </p>
-              )}
-              {isAdmin && (
-                <button
-                  onClick={() => setShowCreatorPanel(true)}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-xs text-white/40 hover:text-white hover:bg-white/5 transition-all"
-                >
-                  <UserCheck size={13} />
-                  <span className="font-semibold">Manage Creators</span>
-                </button>
-              )}
-            </div>
+    <div className="flex min-h-full">
+      {/* ===== Sidebar ===== */}
+      <aside className="w-64 shrink-0 border-r border-white/5 flex flex-col bg-black/40 relative">
+        <div className="px-4 pt-6 pb-3 border-b border-white/5">
+          <div className="flex items-center gap-2 px-2">
+            <FolderOpen size={14} className="text-white/30" />
+            <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-white/30">Collections</h2>
           </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar py-2 px-2 space-y-1">
-            {collectionsLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader size={16} className="text-white/20 animate-spin" />
-              </div>
-            ) : collections.length === 0 ? (
-              <p className="text-[11px] text-white/20 text-center py-12 px-4">
-                No collections yet.
-                <br />
-                Create one below.
-              </p>
+          <div className="mt-2.5 px-2 space-y-2">
+            {canCreate ? (
+              <button
+                onClick={() => setShowCreateDialog(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/15 text-xs text-white/50 hover:text-white hover:border-white/30 hover:bg-white/[0.06] transition-all"
+              >
+                <Plus size={14} />
+                <span className="font-semibold">New Collection</span>
+              </button>
             ) : (
-              <>
-                {pinnedCollections.length > 0 && (
-                  <div className="mb-3">
-                    <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">
-                      Pinned
-                    </div>
-                    {pinnedCollections.map((c) => (
-                      <CollectionItem
-                        key={c.id}
-                        collection={c}
-                        currentUserId={user?.id}
-                        isAdmin={isAdmin}
-                        isSelected={selectedCollection === c.id}
-                        onSelect={setSelectedCollection}
-                        onTogglePin={handleTogglePin}
-                        onRename={handleRename}
-                        onShowConfirm={showConfirm}
-                        onShowDeleted={toggleShowDeleted}
-                        showingDeleted={showingDeleted}
-                        editingId={editingId}
-                        setEditingId={setEditingId}
-                        editName={editName}
-                        setEditName={setEditName}
-                        mutating={mutating}
-                        onOpenGroupPanel={setGroupPanelCollection}
-                      />
-                    ))}
+              <p className="text-[9px] text-white/20 text-center px-2 py-1">
+                You don't have permission to create collections
+              </p>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setShowCreatorPanel(true)}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-xs text-white/40 hover:text-white hover:bg-white/5 transition-all"
+              >
+                <UserCheck size={13} />
+                <span className="font-semibold">Manage Creators</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar py-2 px-2 space-y-1">
+          {collectionsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader size={16} className="text-white/20 animate-spin" />
+            </div>
+          ) : collections.length === 0 ? (
+            <p className="text-[11px] text-white/20 text-center py-12 px-4">
+              No collections yet.
+              <br />
+              Create one below.
+            </p>
+          ) : (
+            <>
+              {pinnedCollections.length > 0 && (
+                <div className="mb-3">
+                  <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">
+                    Pinned
                   </div>
-                )}
-                <div>
-                  {pinnedCollections.length > 0 && (
-                    <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">
-                      All Collections
-                    </div>
-                  )}
-                  {unpinnedCollections.map((c) => (
+                  {pinnedCollections.map((c) => (
                     <CollectionItem
                       key={c.id}
                       collection={c}
@@ -571,13 +456,127 @@ const Media = () => {
                     />
                   ))}
                 </div>
+              )}
+
+              <div>
+                {pinnedCollections.length > 0 && (
+                  <div className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white/20">
+                    All Collections
+                  </div>
+                )}
+                {unpinnedCollections.map((c) => (
+                  <CollectionItem
+                    key={c.id}
+                    collection={c}
+                    currentUserId={user?.id}
+                    isAdmin={isAdmin}
+                    isSelected={selectedCollection === c.id}
+                    onSelect={setSelectedCollection}
+                    onTogglePin={handleTogglePin}
+                    onRename={handleRename}
+                    onShowConfirm={showConfirm}
+                    onShowDeleted={toggleShowDeleted}
+                    showingDeleted={showingDeleted}
+                    editingId={editingId}
+                    setEditingId={setEditingId}
+                    editName={editName}
+                    setEditName={setEditName}
+                    mutating={mutating}
+                    onOpenGroupPanel={setGroupPanelCollection}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* ===== Main Content ===== */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="px-10 pt-8 pb-0 flex justify-between items-end border-b border-white/5 relative z-20">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black uppercase tracking-[0.2em] text-white/40">
+              <ImageIcon size={10} />
+              Digital Asset Management
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight text-white">
+              {currentCollection ? currentCollection.name : 'Media'}
+            </h1>
+            <p className="text-sm text-white/40 font-medium">
+              {filteredAssets.length > 0
+                ? `${filteredAssets.length} asset${filteredAssets.length !== 1 ? 's' : ''}${
+                    activeTab ? ` (${count} total)` : ''
+                  }`
+                : selectedCollection
+                  ? 'No assets in this collection.'
+                  : 'Select a collection to view its assets.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 pb-8">
+            {selectedCollection && (
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder={"Search by " + (currentCollection?.entity_type === 'contact' ? 'contact name' : currentCollection?.entity_type === 'staff' ? 'staff name' : 'file name') + "..."}
+                  className="w-56 bg-white/5 border border-white/10 rounded-full pl-9 pr-3 py-2 text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 focus:bg-white/[0.06] transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-white/30 hover:text-white transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            )}
+            {selectedCollection && (
+              <>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    const coll = collections.find((c) => c.id === selectedCollection);
+                    if (coll && coll.entity_type && coll.entity_type !== 'generic') {
+                      setShowUploadDialog(true);
+                    } else {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  disabled={uploading}
+                  className="w-auto px-6 py-2 rounded-full text-[10px] uppercase tracking-widest font-black shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                >
+                  {uploading ? (
+                    <Loader size={14} className="animate-spin mr-2" />
+                  ) : (
+                    <Upload size={14} className="mr-2" />
+                  )}
+                  {uploading ? 'Uploading...' : 'Upload Assets'}
+                </Button>
+                <span className="text-[9px] text-white/20 font-medium">Max 10 MB per file</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept={currentAccept}
+                  multiple
+                  onChange={handleFileUpload}
+                />
+                <UploadQueuePanel
+                  queue={queue}
+                  onRetry={retryUpload}
+                  onClearCompleted={clearCompleted}
+                  totalItems={totalItems}
+                  completedItems={completedItems}
+                  active={uploading}
+                />
               </>
             )}
           </div>
-        </aside>
-
-        {/* ===== Main Content ===== */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        </header>
 
         {selectedCollection && assets.length > 0 && (
           <div className="px-10 pt-4 pb-0 flex gap-1 border-b border-white/5">
@@ -853,7 +852,6 @@ const Media = () => {
           )}
         </main>
       </div>
-      </div>
 
       {previewAsset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setPreviewAsset(null)}>
@@ -916,7 +914,6 @@ const Media = () => {
     </div>
   );
 };
-
 
 // ===== Collection Sidebar Item =====
 const CollectionItem = ({

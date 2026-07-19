@@ -192,7 +192,7 @@ const UnitList = () => {
   };
 
   const handleFormSuccess = () => { setShowForm(false); setEditingUnit(null); refetch(); };
-  const handleExport = async () => { await actions.exportUnits({ format: "csv", ...filters }); };
+  const handleExport = async () => { await actions.exportUnits({ export_format: "xlsx", ...filters }); };
 
   const totalPages = Math.ceil(count / pageSize);
 

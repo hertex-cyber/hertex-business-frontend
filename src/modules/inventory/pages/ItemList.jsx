@@ -101,7 +101,7 @@ const ItemList = () => {
 
   const handleExport = async () => {
     setExportLoading(true);
-    await actions.exportItems({ format: "csv", ...filters });
+    await actions.exportItems({ export_format: "xlsx", ...filters });
     setExportLoading(false);
   };
 

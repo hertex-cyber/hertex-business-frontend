@@ -44,3 +44,6 @@ export const exportTransfers = (params = {}) =>
     params,
     responseType: "blob",
   });
+
+export const fetchTransferHistory = (id) =>
+  axios.get(`${BASE}/transfers/${id}/history/`);

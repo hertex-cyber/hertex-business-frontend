@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   Search, Download, Filter, RefreshCw,
-  PackageSearch, X, AlertTriangle, DollarSign,
+  PackageSearch, X, AlertTriangle, IndianRupee,
   Eye, Calendar,
 } from "lucide-react";
 import Button from "@/components/Button";
@@ -30,7 +30,7 @@ const StockAvailability = () => {
   const { loading: exportLoading, exportStock } = useStockExport();
 
   const handleExport = async () => {
-    await exportStock({ format: "csv", ...filters });
+    await exportStock({ export_format: "xlsx", ...filters });
   };
 
   const handleSnapshot = async () => {
@@ -96,7 +96,7 @@ const StockAvailability = () => {
             { id: "availability", label: "Availability", icon: PackageSearch },
             { id: "low-stock", label: "Low Stock", icon: AlertTriangle },
             { id: "out-of-stock", label: "Out of Stock", icon: X },
-            { id: "valuation", label: "Valuation", icon: DollarSign },
+            { id: "valuation", label: "Valuation", icon: IndianRupee },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -362,7 +362,7 @@ const StockAvailability = () => {
           <div>
             {!valuationData ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <DollarSign size={48} className="text-white/10 mb-4" />
+                <IndianRupee size={48} className="text-white/10 mb-4" />
                 <h3 className="text-lg font-semibold text-white/40 mb-1">Inventory Valuation</h3>
                 <p className="text-sm text-white/20 mb-4">Calculate the cost and selling value of your inventory.</p>
                 <button onClick={handleValuation} disabled={valuationLoading}
@@ -375,15 +375,15 @@ const StockAvailability = () => {
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Total Cost Value</p>
-                    <p className="text-2xl font-bold text-white">{Number(valuationData.summary.total_cost_value).toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-white">₹{Number(valuationData.summary.total_cost_value).toLocaleString("en-IN")}</p>
                   </div>
                   <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Total Selling Value</p>
-                    <p className="text-2xl font-bold text-emerald-400">{Number(valuationData.summary.total_selling_value).toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-emerald-400">₹{Number(valuationData.summary.total_selling_value).toLocaleString("en-IN")}</p>
                   </div>
                   <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-1">Potential Profit</p>
-                    <p className="text-2xl font-bold text-blue-400">{Number(valuationData.summary.potential_profit).toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-blue-400">₹{Number(valuationData.summary.potential_profit).toLocaleString("en-IN")}</p>
                   </div>
                 </div>
                 <div className="overflow-hidden rounded-2xl border border-white/5">

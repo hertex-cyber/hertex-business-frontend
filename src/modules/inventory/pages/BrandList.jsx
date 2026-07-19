@@ -111,7 +111,7 @@ const BrandList = () => {
   const handleEdit = (b) => { setEditingBrand(b); setShowForm(true); };
   const handleArchive = async (b) => { await actions.archiveBrand(b.id); refetch(); };
   const handleFormSuccess = () => { setShowForm(false); setEditingBrand(null); refetch(); };
-  const handleExport = async () => { await actions.exportBrands({ format: "csv", ...filters }); };
+  const handleExport = async () => { await actions.exportBrands({ export_format: "xlsx", ...filters }); };
 
   const totalPages = Math.ceil(count / pageSize);
 
