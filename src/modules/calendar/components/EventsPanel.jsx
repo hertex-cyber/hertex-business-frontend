@@ -1,8 +1,11 @@
-import React, { memo } from 'react';
+import React, { useState, memo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { Plus } from 'lucide-react';
+import AddEventModal from './AddEventModal';
 
 const EventsPanel = memo(({ selectedDate, events }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -10,7 +13,7 @@ const EventsPanel = memo(({ selectedDate, events }) => {
           <h3 className="text-sm font-bold text-white tracking-tight">Tasks</h3>
           <p className="text-[10px] text-white/30 font-medium">{format(selectedDate, 'MMMM d, yyyy')}</p>
         </div>
-        <button className="flex items-center gap-1.5 px-3 h-7 bg-white/5 border border-white/10 rounded-lg text-[10px] font-medium text-white/60 hover:bg-white/10 transition-all">
+        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 px-3 h-7 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium transition-all">
           <Plus size={12} />
           Add Event
         </button>
@@ -42,6 +45,8 @@ const EventsPanel = memo(({ selectedDate, events }) => {
           ))}
         </div>
       )}
+
+      <AddEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => setIsModalOpen(false)} />
     </div>
   );
 });
