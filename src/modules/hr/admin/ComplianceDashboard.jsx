@@ -11,7 +11,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { complianceAPI } from "../services/hrAPI";
+import { complianceAPI, lwfAPI } from "../services/hrAPI";
 import { formatDate } from "../utils/helpers";
 
 export const ComplianceDashboard = () => {
@@ -23,6 +23,8 @@ export const ComplianceDashboard = () => {
     tdsConfig: null,
     gratuityConfig: null,
     bonusConfig: null,
+    lwfConfigs: [],
+    lwfSummary: [],
   });
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [overdueEvents, setOverdueEvents] = useState([]);
@@ -37,7 +39,7 @@ export const ComplianceDashboard = () => {
     try {
       const [
         pfRes, esiRes, tdsRes, gratuityRes, bonusRes,
-        upcomingRes, overdueRes,
+        upcomingRes, overdueRes, lwfRes, lwfSumRes
       ] = await Promise.all([
         complianceAPI.getPFConfigs().catch(() => ({ data: [] })),
         complianceAPI.getESIConfigs().catch(() => ({ data: [] })),
@@ -46,6 +48,8 @@ export const ComplianceDashboard = () => {
         complianceAPI.getBonusConfigs().catch(() => ({ data: [] })),
         complianceAPI.getUpcomingCompliance(60).catch(() => ({ data: [] })),
         complianceAPI.getOverdueCompliance().catch(() => ({ data: [] })),
+        lwfAPI.getConfigs().catch(() => ({ data: [] })),
+        lwfAPI.getSummaryByState(new Date().getFullYear()).catch(() => ({ data: [] })),
       ]);
 
       setStats({
@@ -54,6 +58,8 @@ export const ComplianceDashboard = () => {
         tdsConfig: tdsRes.data?.results?.[0] || tdsRes.data?.[0] || null,
         gratuityConfig: gratuityRes.data?.results?.[0] || gratuityRes.data?.[0] || null,
         bonusConfig: bonusRes.data?.results?.[0] || bonusRes.data?.[0] || null,
+        lwfConfigs: lwfRes.data?.results || lwfRes.data || [],
+        lwfSummary: lwfSumRes.data?.results || lwfSumRes.data || [],
       });
       setUpcomingEvents(upcomingRes.data?.results || upcomingRes.data || []);
       setOverdueEvents(overdueRes.data?.results || overdueRes.data || []);
@@ -126,6 +132,7 @@ export const ComplianceDashboard = () => {
           {[
             { id: "overview", label: "Overview", icon: TrendingUp },
             { id: "compliance", label: "Compliance Calendar", icon: Calendar },
+            { id: "lwf", label: "LWF Compliance", icon: Shield },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -283,7 +290,7 @@ export const ComplianceDashboard = () => {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === "compliance" ? (
           /* Compliance Calendar Tab */
           <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -343,6 +350,71 @@ export const ComplianceDashboard = () => {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        ) : (
+          /* LWF Compliance Tab */
+          <div className="space-y-8 animate-fade-in">
+            {/* Config List */}
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4">Labour Welfare Fund Slab Configurations</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {stats.lwfConfigs.length === 0 ? (
+                  <p className="text-zinc-500 text-sm">No LWF configurations found.</p>
+                ) : (
+                  stats.lwfConfigs.map((cfg) => (
+                    <div key={cfg.id} className="p-4 bg-zinc-900/60 border border-zinc-800 rounded-lg flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-white">{cfg.state}</h3>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          Employee: ₹{cfg.employee_contribution} | Employer: ₹{cfg.employer_contribution}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 mt-0.5">Frequency: {cfg.frequency}</p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                        cfg.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                      }`}>
+                        {cfg.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Contributions Summary */}
+            <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4">LWF Contribution Deductions Summary</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-zinc-300">
+                  <thead className="bg-zinc-900/60 text-zinc-400 text-xs uppercase tracking-wider border-b border-zinc-800">
+                    <tr>
+                      <th className="px-6 py-4">State</th>
+                      <th className="px-6 py-4">Transactions Count</th>
+                      <th className="px-6 py-4">Employee Share</th>
+                      <th className="px-6 py-4">Employer Share</th>
+                      <th className="px-6 py-4 font-bold text-white">Total Contribution</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-900">
+                    {stats.lwfSummary.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="text-center py-8 text-zinc-500">No LWF contribution summaries available for the current year.</td>
+                      </tr>
+                    ) : (
+                      stats.lwfSummary.map((sum, index) => (
+                        <tr key={index} className="hover:bg-zinc-900/40 transition">
+                          <td className="px-6 py-4 font-semibold text-white">{sum.state}</td>
+                          <td className="px-6 py-4 text-zinc-400">{sum.count} deductions</td>
+                          <td className="px-6 py-4 text-zinc-400">₹{parseFloat(sum.total_employee).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                          <td className="px-6 py-4 text-zinc-400">₹{parseFloat(sum.total_employer).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                          <td className="px-6 py-4 font-bold text-emerald-400">₹{parseFloat(sum.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

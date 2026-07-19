@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Loader } from "lucide-react";
-import axios from "axios";
+import { employeeAPI, attendanceAPI, leaveAPI, masterDataAPI, complianceAPI, recruitmentAPI } from "../services/hrAPI";
 import HROverview from "../components/HROverview";
 import HRModules from "../components/HRModules";
 import HRAdminView from "../components/HRAdminView";
@@ -36,12 +36,12 @@ const MainHRDashboard = () => {
     setLoading(true);
     try {
       const [empRes, attRes, leaveRes, reqRes, compRes, holidayRes] = await Promise.all([
-        axios.get("/api/hr/employees/").catch(() => ({ data: { results: [] } })),
-        axios.get("/api/hr/attendance/today/").catch(() => ({ data: [] })),
-        axios.get("/api/hr/leave-applications/", { params: { approval_status: "PENDING" } }).catch(() => ({ data: { results: [] } })),
-        axios.get("/api/hr/job-requisitions/").catch(() => ({ data: { results: [] } })),
-        axios.get("/api/hr/compliance-calendar/overdue/").catch(() => ({ data: [] })),
-        axios.get("/api/hr/holidays/current_year/").catch(() => ({ data: [] })),
+        employeeAPI.getEmployees().catch(() => ({ data: { results: [] } })),
+        attendanceAPI.getTodayAttendance().catch(() => ({ data: [] })),
+        leaveAPI.getLeaveApplications({ approval_status: "PENDING" }).catch(() => ({ data: { results: [] } })),
+        recruitmentAPI.getRequisitions().catch(() => ({ data: { results: [] } })),
+        complianceAPI.getOverdueCompliance().catch(() => ({ data: [] })),
+        masterDataAPI.getCurrentYearHolidays().catch(() => ({ data: [] })),
       ]);
 
       const employees = empRes.data?.results || empRes.data || [];
