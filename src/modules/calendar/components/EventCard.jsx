@@ -4,7 +4,7 @@ import { Calendar } from 'lucide-react';
 
 const EventCard = ({ event }) => {
   return (
-    <div className="p-3 bg-emerald-500/10 border border-emerald-500/15 rounded-xl space-y-1.5">
+    <div className="p-3 bg-white/[0.06] border border-white/10 rounded-xl space-y-1.5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="shrink-0 w-6 h-6 rounded flex items-center justify-center border text-emerald-400 bg-emerald-500/10 border-emerald-500/20">
@@ -19,9 +19,6 @@ const EventCard = ({ event }) => {
         {event.contact_name && <p>Contact: {event.contact_name}</p>}
         {event.user_name && <p>Created by: {event.user_name}</p>}
       </div>
-      {event.description && (
-        <p className="text-[11px] text-white/50 leading-relaxed">{event.description}</p>
-      )}
     </div>
   );
 };

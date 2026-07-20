@@ -3,6 +3,7 @@ import axios from 'axios';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { Plus, Loader2 } from 'lucide-react';
 import AddEventModal from './AddEventModal';
+import UpdateTaskModal from './UpdateTaskModal';
 import TaskCard from './TaskCard';
 import EventCard from './EventCard';
 import FollowUpCard from './FollowUpCard';
@@ -12,8 +13,10 @@ import MeetingCard from './MeetingCard';
 
 const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [updateTask, setUpdateTask] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchKey, setFetchKey] = useState(0);
 
   useEffect(() => {
     const fetchDayEvents = async () => {
@@ -24,7 +27,7 @@ const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
         const res = await axios.get('/api/calendar/todos/', {
           params: { start: dayStart.toISOString(), end: dayEnd.toISOString() },
         });
-        setEvents(res.data.results || []);
+        setEvents((res.data.results || []).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)));
       } catch {
         setEvents([]);
       } finally {
@@ -32,7 +35,7 @@ const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
       }
     };
     fetchDayEvents();
-  }, [selectedDate]);
+  }, [selectedDate, fetchKey]);
 
   return (
     <div className="h-full flex flex-col gap-4 min-h-0">
@@ -58,7 +61,7 @@ const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-2 pr-1">
           {events.map((ev) => {
             switch (ev.todo_type) {
-              case 'task': return <TaskCard key={ev.id} task={ev} />;
+              case 'task': return <TaskCard key={ev.id} task={ev} onClick={() => setUpdateTask(ev)} />;
               case 'event': return <EventCard key={ev.id} event={ev} />;
               case 'followup': return <FollowUpCard key={ev.id} event={ev} />;
               case 'meeting': return <MeetingCard key={ev.id} event={ev} />;
@@ -69,6 +72,7 @@ const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
       )}
 
       <AddEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); onEventCreated?.(); }} />
+      <UpdateTaskModal task={updateTask} isOpen={!!updateTask} onClose={() => setUpdateTask(null)} onSuccess={() => { setUpdateTask(null); setFetchKey(k => k + 1); onEventCreated?.(); }} />
     </div>
   );
 });

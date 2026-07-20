@@ -19,6 +19,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [end, setEnd] = useState('');
   const [priority, setPriority] = useState('medium');
   const [assignedTo, setAssignedTo] = useState(null);
+  const [selectedAttendees, setSelectedAttendees] = useState([]);
   const [location, setLocation] = useState('');
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -61,7 +62,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
 
   const reset = () => {
     setTitle(''); setDescription(''); setStart(''); setEnd('');
-    setPriority('medium'); setAssignedTo(null); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
+    setPriority('medium'); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
     setShowPriorityDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
   };
 
@@ -149,8 +150,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
         payload = {
           ...basePayload,
           location: location || undefined,
-          assigned_to: assignedTo?.id || null,
-          attendee_ids: assignedTo ? [assignedTo.id] : [],
+          attendee_ids: selectedAttendees.map(a => a.id),
           start: start ? new Date(start).toISOString() : null,
         };
         break;
@@ -359,11 +359,14 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                         className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all" />
                     </div>
                     <div className="space-y-2 relative">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Attendees (multi-select)</label>
                       <button ref={userRef} type="button" onClick={openUserDropdown}
                         className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
-                        {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.email}</span> : <span className="text-white/20">Select a team member...</span>}
-                        <ChevronDown size={14} className="text-white/20" />
+                        <span className={selectedAttendees.length > 0 ? 'text-white' : 'text-white/20'}>
+                          {selectedAttendees.length === 0 ? 'Select attendees...' :
+                            `${selectedAttendees[0].first_name || selectedAttendees[0].email}${selectedAttendees.length > 1 ? ` +${selectedAttendees.length - 1}` : ''}`}
+                        </span>
+                        <ChevronDown size={14} className="text-white/20 shrink-0" />
                       </button>
                     </div>
                   </div>
@@ -423,21 +426,37 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
               ) : filteredUsers.length === 0 ? (
                 <p className="text-[10px] text-white/20 text-center py-6 uppercase tracking-widest">No users found</p>
               ) : (
-                filteredUsers.map(u => (
-                  <button key={u.id} type="button" onClick={() => { setAssignedTo(u); setShowUserDropdown(false); setDropdownPos(prev => ({ ...prev, user: null })); setUserSearch(''); }}
-                    className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left", assignedTo?.id === u.id && "bg-blue-500/5")}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-[9px] font-bold text-blue-400 uppercase">
-                        {(u.first_name?.[0] || u.email?.[0] || '?')}
+                filteredUsers.map(u => {
+                  const isSelected = activeTab === 'meetings'
+                    ? selectedAttendees.some(a => a.id === u.id)
+                    : assignedTo?.id === u.id;
+                  return (
+                    <button key={u.id} type="button" onClick={() => {
+                      if (activeTab === 'meetings') {
+                        setSelectedAttendees(prev =>
+                          prev.some(a => a.id === u.id) ? prev.filter(a => a.id !== u.id) : [...prev, u]
+                        );
+                      } else {
+                        setAssignedTo(u);
+                        setShowUserDropdown(false);
+                        setDropdownPos(prev => ({ ...prev, user: null }));
+                        setUserSearch('');
+                      }
+                    }}
+                      className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left", isSelected && "bg-blue-500/5")}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-[9px] font-bold text-blue-400 uppercase">
+                          {(u.first_name?.[0] || u.email?.[0] || '?')}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-white">{u.first_name || u.email}</p>
+                          {u.email && u.first_name && <p className="text-[9px] text-white/20">{u.email}</p>}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-white">{u.first_name || u.email}</p>
-                        {u.email && u.first_name && <p className="text-[9px] text-white/20">{u.email}</p>}
-                      </div>
-                    </div>
-                    {assignedTo?.id === u.id && <Check size={12} className="text-blue-400 shrink-0" />}
-                  </button>
-                ))
+                      {isSelected && <Check size={12} className="text-blue-400 shrink-0" />}
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
