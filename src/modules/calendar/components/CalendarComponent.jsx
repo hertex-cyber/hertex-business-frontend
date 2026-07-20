@@ -17,6 +17,7 @@ const CalendarComponent = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ const CalendarComponent = () => {
         if (!mounted.current) setInitialLoading(true);
         const monthStart = startOfMonth(currentDate);
         const monthEnd = endOfMonth(currentDate);
-        const res = await axios.get('/api/calendar/events/', {
+        const res = await axios.get('/api/calendar/todos/', {
           params: { start: monthStart.toISOString(), end: monthEnd.toISOString() },
         });
         setEvents(res.data.results || []);
@@ -38,7 +39,7 @@ const CalendarComponent = () => {
       }
     };
     fetchEvents();
-  }, [user, currentDate]);
+  }, [user, currentDate, refreshTrigger]);
 
   const days = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -81,14 +82,14 @@ const CalendarComponent = () => {
   }
 
   return (
-    <div className="grid grid-cols-[minmax(220px,25%)_1fr] gap-6">
-      <div>
-        <EventsPanel selectedDate={selectedDate} events={selectedEvents} />
+    <div className="h-full grid grid-cols-[minmax(220px,25%)_1fr] gap-6">
+      <div className="h-full min-h-0">
+        <EventsPanel selectedDate={selectedDate} onEventCreated={() => setRefreshTrigger(t => t + 1)} />
       </div>
 
-      <div className="space-y-6 pr-4">
+      <div className="space-y-6 pr-4 h-full min-h-0 overflow-y-auto custom-scrollbar">
         <div className="flex items-center justify-end gap-4">
-          <h2 className="text-lg font-bold text-white tracking-tight">{format(currentDate, 'MMMM yyyy')}</h2>
+          <h2 className="text-lg font-bold text-white tracking-tight">{format(selectedDate, 'MMMM d, yyyy')}</h2>
           <div className="flex items-center gap-1">
             <button onClick={prevMonth} className="p-1.5 rounded bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all">
               <ChevronLeft size={16} />
@@ -132,14 +133,15 @@ const CalendarComponent = () => {
                   </span>
                   {dayEvents.length > 0 && (
                     <div className="flex flex-wrap gap-0.5 mt-1">
-                      {dayEvents.slice(0, 3).map((ev) => (
-                        <span
-                          key={ev.id}
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            ev.priority === 'high' ? 'bg-red-500' : ev.priority === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'
-                          }`}
-                        />
-                      ))}
+                      {dayEvents.slice(0, 3).map((ev) => {
+                        const dotColor =
+                          ev.todo_type === 'task' ? 'bg-blue-500' :
+                          ev.todo_type === 'event' ? 'bg-emerald-500' :
+                          ev.todo_type === 'followup' ? 'bg-amber-500' :
+                          ev.todo_type === 'meeting' ? 'bg-purple-500' :
+                          'bg-white/30';
+                        return <span key={ev.id} className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />;
+                      })}
                       {dayEvents.length > 3 && (
                         <span className="text-[8px] text-white/30 font-bold">+{dayEvents.length - 3}</span>
                       )}

@@ -25,11 +25,17 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [userSearch, setUserSearch] = useState('');
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [contacts, setContacts] = useState([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ priority: null, user: null });
+  const [dropdownPos, setDropdownPos] = useState({ priority: null, user: null, contact: null });
   const priorityRef = useRef(null);
   const userRef = useRef(null);
+  const contactRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,17 +46,23 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
       setEnd(endStr);
 
       setUsersLoading(true);
-      axios.get('/api/auth/users/')
-        .then(res => setUsers(res.data.results || res.data || []))
+      axios.get('/api/auth/users/assignable/')
+        .then(res => setUsers(res.data || []))
         .catch(() => setUsers([]))
         .finally(() => setUsersLoading(false));
+
+      setContactsLoading(true);
+      axios.get('/api/contacts/')
+        .then(res => setContacts(res.data.results || res.data || []))
+        .catch(() => setContacts([]))
+        .finally(() => setContactsLoading(false));
     }
   }, [isOpen]);
 
   const reset = () => {
     setTitle(''); setDescription(''); setStart(''); setEnd('');
-    setPriority('medium'); setAssignedTo(null); setLocation(''); setUserSearch(''); setError('');
-    setShowPriorityDropdown(false); setShowUserDropdown(false);
+    setPriority('medium'); setAssignedTo(null); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
+    setShowPriorityDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -58,8 +70,9 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const openPriorityDropdown = () => {
     if (priorityRef.current) {
       const rect = priorityRef.current.getBoundingClientRect();
-      setDropdownPos({ priority: { top: rect.bottom + 4, left: rect.left, width: rect.width }, user: null });
+      setDropdownPos(prev => ({ ...prev, priority: { top: rect.bottom + 4, left: rect.left, width: rect.width }, user: null, contact: null }));
       setShowUserDropdown(false);
+      setShowContactDropdown(false);
       setShowPriorityDropdown(true);
     }
   };
@@ -67,9 +80,20 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const openUserDropdown = () => {
     if (userRef.current) {
       const rect = userRef.current.getBoundingClientRect();
-      setDropdownPos({ user: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null });
+      setDropdownPos(prev => ({ ...prev, user: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, contact: null }));
       setShowPriorityDropdown(false);
+      setShowContactDropdown(false);
       setShowUserDropdown(true);
+    }
+  };
+
+  const openContactDropdown = () => {
+    if (contactRef.current) {
+      const rect = contactRef.current.getBoundingClientRect();
+      setDropdownPos(prev => ({ ...prev, contact: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, user: null }));
+      setShowPriorityDropdown(false);
+      setShowUserDropdown(false);
+      setShowContactDropdown(true);
     }
   };
 
@@ -78,6 +102,86 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
     u.first_name?.toLowerCase().includes(userSearch.toLowerCase()) ||
     u.last_name?.toLowerCase().includes(userSearch.toLowerCase())
   );
+
+  const filteredContacts = contacts.filter(c =>
+    !contactSearch || c.name?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    c.email?.toLowerCase().includes(contactSearch.toLowerCase())
+  );
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError('');
+
+    const typeMap = { tasks: 'task', event: 'event', followup: 'followup', meetings: 'meeting' };
+
+    const basePayload = {
+      todo_type: typeMap[activeTab],
+      title,
+      description: description || undefined,
+    };
+
+    let payload;
+    switch (activeTab) {
+      case 'tasks':
+        payload = {
+          ...basePayload,
+          priority,
+          assigned_to: assignedTo?.id || null,
+          start: start ? new Date(start).toISOString() : null,
+        };
+        break;
+      case 'event':
+        payload = {
+          ...basePayload,
+          start: start ? new Date(start).toISOString() : null,
+        };
+        break;
+      case 'followup':
+        payload = {
+          ...basePayload,
+          contact: selectedContact?.id || null,
+          assigned_to: assignedTo?.id || null,
+          start: start ? new Date(start).toISOString() : null,
+        };
+        break;
+      case 'meetings':
+        payload = {
+          ...basePayload,
+          location: location || undefined,
+          assigned_to: assignedTo?.id || null,
+          attendee_ids: assignedTo ? [assignedTo.id] : [],
+          start: start ? new Date(start).toISOString() : null,
+        };
+        break;
+      default:
+        payload = basePayload;
+    }
+
+    try {
+      await axios.post('/api/calendar/todos/', payload);
+      reset();
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      const data = err.response?.data;
+      let msg = 'Failed to save. Please check all required fields.';
+      if (data) {
+        if (typeof data === 'string') {
+          msg = data;
+        } else if (data.detail) {
+          msg = data.detail;
+        } else {
+          const firstKey = Object.keys(data)[0];
+          const firstError = data[firstKey];
+          msg = Array.isArray(firstError) ? firstError[0] : firstError;
+        }
+      }
+      setError(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -122,7 +226,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <form onSubmit={(e) => e.preventDefault()} id="add-event-form">
+          <form onSubmit={handleSubmit} id="add-event-form">
             <div className="px-8 py-6 space-y-5 min-h-[360px]">
 
               {activeTab === 'tasks' && (
@@ -158,17 +262,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Start *</label>
-                      <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
-                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">End *</label>
-                      <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)}
-                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Deadline *</label>
+                    <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
+                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
                   </div>
                 </>
               )}
@@ -215,10 +312,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2 relative">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Priority</label>
-                      <button ref={priorityRef} type="button" onClick={openPriorityDropdown}
-                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700", priority === 'high' ? 'text-red-400' : priority === 'medium' ? 'text-yellow-400' : 'text-blue-400')}>
-                        <span className="capitalize">{priority}</span>
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Contact</label>
+                      <button ref={contactRef} type="button" onClick={openContactDropdown}
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
+                        {selectedContact ? <span className="text-white">{selectedContact.name || selectedContact.email}</span> : <span className="text-white/20">Select a contact...</span>}
                         <ChevronDown size={14} className="text-white/20" />
                       </button>
                     </div>
@@ -270,17 +367,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Start *</label>
-                      <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
-                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">End *</label>
-                      <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)}
-                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Date & Time *</label>
+                    <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
+                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
                   </div>
                 </>
               )}
@@ -346,6 +436,50 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                       </div>
                     </div>
                     {assignedTo?.id === u.id && <Check size={12} className="text-blue-400 shrink-0" />}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+          </>
+        )}
+
+        {showContactDropdown && dropdownPos.contact && (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => { setShowContactDropdown(false); setDropdownPos(prev => ({ ...prev, contact: null })); }} />
+            <div
+              style={{ position: 'fixed', top: dropdownPos.contact.top, left: dropdownPos.contact.left, width: dropdownPos.contact.width, zIndex: 9999 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden"
+          >
+            <div className="p-2 border-b border-zinc-800">
+              <div className="relative">
+                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+                <input autoFocus value={contactSearch} onChange={e => setContactSearch(e.target.value)}
+                  placeholder="Search contacts..."
+                  className="w-full bg-white/5 border border-zinc-800 rounded-md h-8 pl-8 pr-3 text-xs text-white placeholder:text-white/20 outline-none focus:border-blue-500/40 transition-all" />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto custom-scrollbar">
+              {contactsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 size={16} className="animate-spin text-blue-500/50" />
+                </div>
+              ) : filteredContacts.length === 0 ? (
+                <p className="text-[10px] text-white/20 text-center py-6 uppercase tracking-widest">No contacts found</p>
+              ) : (
+                filteredContacts.map(c => (
+                  <button key={c.id} type="button" onClick={() => { setSelectedContact(c); setShowContactDropdown(false); setDropdownPos(prev => ({ ...prev, contact: null })); setContactSearch(''); }}
+                    className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left", selectedContact?.id === c.id && "bg-blue-500/5")}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-[9px] font-bold text-blue-400 uppercase">
+                        {(c.name?.[0] || c.email?.[0] || '?')}
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-white">{c.name || c.email}</p>
+                        {c.email && c.name && <p className="text-[9px] text-white/20">{c.email}</p>}
+                      </div>
+                    </div>
+                    {selectedContact?.id === c.id && <Check size={12} className="text-blue-400 shrink-0" />}
                   </button>
                 ))
               )}

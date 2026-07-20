@@ -14,7 +14,7 @@ const CalendarPage = () => {
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-y-auto p-10 relative z-10 custom-scrollbar">
+      <main className="flex-1 min-h-0 p-10 relative z-10">
         <CalendarComponent />
       </main>
     </div>
