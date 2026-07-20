@@ -1,9 +1,12 @@
 import React, { useState, useEffect, memo } from 'react';
 import axios from 'axios';
 import { format, startOfDay, endOfDay } from 'date-fns';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, RefreshCw } from 'lucide-react';
 import AddEventModal from './AddEventModal';
 import UpdateTaskModal from './UpdateTaskModal';
+import UpdateEventModal from './UpdateEventModal';
+import UpdateFollowUpModal from './UpdateFollowUpModal';
+import UpdateMeetingModal from './UpdateMeetingModal';
 import TaskCard from './TaskCard';
 import EventCard from './EventCard';
 import FollowUpCard from './FollowUpCard';
@@ -14,6 +17,9 @@ import MeetingCard from './MeetingCard';
 const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updateTask, setUpdateTask] = useState(null);
+  const [updateEvent, setUpdateEvent] = useState(null);
+  const [updateFollowUp, setUpdateFollowUp] = useState(null);
+  const [updateMeeting, setUpdateMeeting] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchKey, setFetchKey] = useState(0);
@@ -44,10 +50,16 @@ const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
           <h3 className="text-sm font-bold text-white tracking-tight">Schedule</h3>
           <p className="text-[10px] text-white/30 font-medium">{format(selectedDate, 'MMMM d, yyyy')}</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 px-3 h-7 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium transition-all">
-          <Plus size={12} />
-          Add Event
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setFetchKey(k => k + 1)} disabled={loading}
+            className="p-1.5 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 disabled:opacity-30 transition-all">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-1.5 px-3 h-7 rounded-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/50 text-[10px] font-medium transition-all">
+            <Plus size={12} />
+            Add Event
+          </button>
+        </div>
       </div>
       {loading ? (
         <div className="flex flex-col items-center justify-center flex-1 text-white/20 min-h-0">
@@ -62,17 +74,20 @@ const EventsPanel = memo(({ selectedDate, onEventCreated }) => {
           {events.map((ev) => {
             switch (ev.todo_type) {
               case 'task': return <TaskCard key={ev.id} task={ev} onClick={() => setUpdateTask(ev)} />;
-              case 'event': return <EventCard key={ev.id} event={ev} />;
-              case 'followup': return <FollowUpCard key={ev.id} event={ev} />;
-              case 'meeting': return <MeetingCard key={ev.id} event={ev} />;
+              case 'event': return <EventCard key={ev.id} event={ev} onClick={() => setUpdateEvent(ev)} />;
+              case 'followup': return <FollowUpCard key={ev.id} event={ev} onClick={() => setUpdateFollowUp(ev)} />;
+              case 'meeting': return <MeetingCard key={ev.id} event={ev} onClick={() => setUpdateMeeting(ev)} />;
               default: return null;
             }
           })}
         </div>
       )}
 
-      <AddEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); onEventCreated?.(); }} />
+      <AddEventModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); setFetchKey(k => k + 1); onEventCreated?.(); }} />
       <UpdateTaskModal task={updateTask} isOpen={!!updateTask} onClose={() => setUpdateTask(null)} onSuccess={() => { setUpdateTask(null); setFetchKey(k => k + 1); onEventCreated?.(); }} />
+      <UpdateEventModal event={updateEvent} isOpen={!!updateEvent} onClose={() => setUpdateEvent(null)} onSuccess={() => { setUpdateEvent(null); setFetchKey(k => k + 1); onEventCreated?.(); }} />
+      <UpdateFollowUpModal event={updateFollowUp} isOpen={!!updateFollowUp} onClose={() => setUpdateFollowUp(null)} onSuccess={() => { setUpdateFollowUp(null); setFetchKey(k => k + 1); onEventCreated?.(); }} />
+      <UpdateMeetingModal event={updateMeeting} isOpen={!!updateMeeting} onClose={() => setUpdateMeeting(null)} onSuccess={() => { setUpdateMeeting(null); setFetchKey(k => k + 1); onEventCreated?.(); }} />
     </div>
   );
 });

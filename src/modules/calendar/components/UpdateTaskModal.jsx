@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Loader2, Check, ChevronDown, Search, CalendarPlus } from 'lucide-react';
+import { X, Loader2, Check, ChevronDown, Search, CalendarPlus, Trash2 } from 'lucide-react';
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 import axios from 'axios';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,14 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const [holdSubmitting, setHoldSubmitting] = useState(false);
   const [holdSaved, setHoldSaved] = useState(false);
   const [holdReason, setHoldReason] = useState('');
+  const [extensionRequest, setExtensionRequest] = useState('');
+  const [extSubmitting, setExtSubmitting] = useState(false);
+  const [extSaved, setExtSaved] = useState(false);
+  const [completionRemarks, setCompletionRemarks] = useState('');
+  const [compSubmitting, setCompSubmitting] = useState(false);
+  const [compSaved, setCompSaved] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
   const [dropdownPos, setDropdownPos] = useState({ priority: null, status: null, user: null });
   const priorityRef = useRef(null);
@@ -38,7 +47,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const isOverdue = task?.status === 'overdue';
   const canEdit = isAdmin && isCreator;
   const canEditDeadline = isCreator;
-  const canEditStatus = isCreator || (!isAdmin && isAssignee && !isOverdue);
+  const canEditStatus = isCreator || (!isAdmin && isAssignee);
 
   useEffect(() => {
     if (isOpen && task) {
@@ -49,6 +58,10 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
       setStatus(task.status || 'assigned');
       setAssignedTo(task.assigned_to ? { id: task.assigned_to, first_name: task.assigned_to_name } : null);
       setHoldReason(task.hold_reason || '');
+      setExtensionRequest(task.extension_request || '');
+      setExtSaved(false);
+      setCompletionRemarks(task.completion_remarks || '');
+      setCompSaved(false);
 
       setUsersLoading(true);
       axios.get('/api/auth/users/assignable/')
@@ -109,6 +122,36 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
     }
   };
 
+  const handleCompSubmit = async () => {
+    if (!completionRemarks.trim()) return;
+    setCompSubmitting(true);
+    setError('');
+    try {
+      await axios.patch(`/api/calendar/todos/${task.id}/`, { status: 'completed', completion_remarks: completionRemarks });
+      setCompSaved(true);
+    } catch (err) {
+      const data = err.response?.data;
+      setError(data?.detail || 'Failed to update.');
+    } finally {
+      setCompSubmitting(false);
+    }
+  };
+
+  const handleExtSubmit = async () => {
+    if (!extensionRequest.trim()) return;
+    setExtSubmitting(true);
+    setError('');
+    try {
+      await axios.patch(`/api/calendar/todos/${task.id}/`, { extension_request: extensionRequest });
+      setExtSaved(true);
+    } catch (err) {
+      const data = err.response?.data;
+      setError(data?.detail || 'Failed to update.');
+    } finally {
+      setExtSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canEdit && !canEditStatus) return;
@@ -121,7 +164,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
       return;
     }
 
-    const base = { status, hold_reason: holdReason || undefined };
+    const base = { status, hold_reason: holdReason || undefined, extension_request: extensionRequest || undefined, completion_remarks: completionRemarks || undefined };
     if (canEdit) {
       Object.assign(base, { title, description: description || undefined, priority, assigned_to: assignedTo?.id || null, start: deadline ? new Date(deadline).toISOString() : null });
     } else if (canEditDeadline) {
@@ -162,9 +205,12 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
             <h2 className="text-sm font-medium text-white uppercase tracking-wider">Update Task</h2>
             <p className="text-[9px] text-white/40 uppercase tracking-widest font-medium">Edit task details</p>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded bg-white/5 border border-zinc-800 text-white/30 hover:text-white transition-all">
-            <X size={14} />
-          </button>
+          {isCreator && (
+            <button type="button" onClick={() => setShowDeleteConfirm(true)}
+              className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
@@ -216,9 +262,9 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                   )}
                 </div>
               </div>
-              {status === 'on_hold' && (
+              {status === 'on_hold' && (!isCreator || holdReason) && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Hold Reason *</label>
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Hold Reason</label>
                   <div className="flex gap-2">
                     <textarea value={holdReason} onChange={e => setHoldReason(e.target.value)} disabled={isCreator || !canEditStatus || holdSaved}
                       placeholder="Why is this task on hold?"
@@ -238,6 +284,38 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                               {holdSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                             </button>
                             <button type="button" onClick={() => { setStatus('assigned'); setHoldReason(''); }}
+                              className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                              <X size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {status === 'completed' && (!isCreator || completionRemarks) && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Completion Remarks</label>
+                  <div className="flex gap-2">
+                    <textarea value={completionRemarks} onChange={e => setCompletionRemarks(e.target.value)} disabled={isCreator || !canEditStatus || compSaved}
+                      placeholder="Describe what was accomplished..."
+                      rows={2}
+                      className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
+                    {!isCreator && (
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        {compSaved ? (
+                          <button type="button" onClick={() => setCompSaved(false)}
+                            className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                          </button>
+                        ) : (
+                          <>
+                            <button type="button" onClick={handleCompSubmit} disabled={!completionRemarks.trim() || compSubmitting}
+                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                              {compSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                            </button>
+                            <button type="button" onClick={() => { setStatus('assigned'); setCompletionRemarks(''); }}
                               className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
                               <X size={16} />
                             </button>
@@ -268,23 +346,57 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                 </div>
               </div>
 
+              {status === 'overdue' && (isCreator ? extensionRequest : true) && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Request Extension</label>
+                  {!isCreator && !extSaved ? (
+                    <div className="flex gap-2">
+                      <textarea value={extensionRequest} onChange={e => setExtensionRequest(e.target.value)}
+                        placeholder="Why do you need more time?"
+                        rows={2}
+                        className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        <button type="button" onClick={handleExtSubmit} disabled={!extensionRequest.trim() || extSubmitting}
+                          className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                          {extSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                        </button>
+                        <button type="button" onClick={() => setExtensionRequest('')}
+                          className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <textarea value={extensionRequest} disabled rows={2}
+                        className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white/60 resize-none disabled:opacity-40" />
+                      {!isCreator && extSaved && (
+                        <button type="button" onClick={() => setExtSaved(false)}
+                          className="shrink-0 mt-0.5 p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all self-start">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {error && <p className="text-[10px] text-red-500 font-medium uppercase tracking-wider">{error}</p>}
             </div>
           </form>
         </div>
 
-        {canEditStatus && (
-          <div className="px-8 py-4 border-t border-zinc-800 bg-black/50 backdrop-blur-xl flex justify-end gap-3 shrink-0">
-            <button type="button" onClick={onClose} disabled={isSubmitting}
-              className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]">
-              Cancel
-            </button>
-            <button type="submit" form="update-task-form" disabled={isSubmitting || (!canEdit && !status) || (canEdit && !title.trim()) || (status === 'on_hold' && !isCreator && !holdReason.trim())}
+        <div className="px-8 py-4 border-t border-zinc-800 bg-black/50 backdrop-blur-xl flex justify-end gap-3 shrink-0">
+          <button type="button" onClick={onClose} disabled={isSubmitting}
+            className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]">
+            Cancel
+          </button>
+          {canEditStatus && (
+            <button type="submit" form="update-task-form" disabled={isSubmitting || (!canEdit && !status) || (canEdit && !title.trim()) || (status === 'on_hold' && !isCreator && !holdReason.trim()) || (status === 'completed' && !completionRemarks.trim())}
               className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2">
               {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CalendarPlus size={14} />Save</>}
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {showPriorityDropdown && dropdownPos.priority && canEdit && (
           <>
@@ -307,8 +419,8 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
             <div className="fixed inset-0 z-[9998]" onClick={() => { setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }} />
             <div style={{ position: 'fixed', top: dropdownPos.status.top, left: dropdownPos.status.left, width: dropdownPos.status.width, zIndex: 9999 }}
               className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden">
-              {STATUSES.filter(s => isCreator || s !== 'approved').map(s => (
-                <button key={s} type="button" onClick={() => { setStatus(s); setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }}
+              {STATUSES.filter(s => isCreator || (s !== 'approved' && s !== 'canceled')).map(s => (
+                <button key={s} type="button" onClick={() => { setStatus(s); if (s !== 'on_hold') setHoldReason(''); setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }}
                   className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left capitalize", status === s && "bg-blue-500/5")}>
                   <span className="text-xs font-medium text-white">{s.replace('_', ' ')}</span>
                   {status === s && <Check size={12} className="text-blue-400 shrink-0" />}
@@ -357,6 +469,28 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
             </div>
           </>
         )}
+
+        <ConfirmDeleteDialog
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={async () => {
+            setIsDeleting(true);
+            try {
+              await axios.delete(`/api/calendar/todos/${task.id}/`);
+              setShowDeleteConfirm(false);
+              onSuccess?.();
+              onClose();
+            } catch {
+              setShowDeleteConfirm(false);
+              setError('Failed to delete task.');
+            } finally {
+              setIsDeleting(false);
+            }
+          }}
+          isDeleting={isDeleting}
+          title="Delete Task"
+          description="This will permanently remove this task."
+        />
       </div>
     </div>,
     document.body

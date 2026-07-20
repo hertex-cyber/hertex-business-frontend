@@ -2,9 +2,9 @@ import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { Calendar } from 'lucide-react';
 
-const EventCard = ({ event }) => {
+const EventCard = ({ event, onClick }) => {
   return (
-    <div className="p-3 bg-white/[0.06] border border-white/10 rounded-xl space-y-1.5">
+    <div className="p-3 bg-white/[0.06] border border-white/10 rounded-xl space-y-1.5 cursor-pointer hover:bg-white/[0.08] transition-all" onClick={onClick}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="shrink-0 w-6 h-6 rounded flex items-center justify-center border text-emerald-400 bg-emerald-500/10 border-emerald-500/20">

@@ -21,6 +21,8 @@ const TaskCard = ({ task, onClick }) => {
             <span className="px-1.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[8px] font-black uppercase tracking-wider text-amber-400">On Hold</span>
           ) : task.status === 'overdue' ? (
             <span className="px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-wider text-red-400">Overdue</span>
+          ) : task.status === 'canceled' ? (
+            <span className="px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-wider text-red-400">Canceled</span>
           ) : task.status === 'approved' ? (
             <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[8px] font-black uppercase tracking-wider text-blue-400">Approved</span>
           ) : (
