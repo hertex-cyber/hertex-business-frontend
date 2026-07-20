@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Loader2, Check, ChevronDown, Search, CalendarPlus } from 'lucide-react';
+
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 
-const STATUSES = ['assigned', 'progress', 'completed', 'canceled', 'on_hold'];
+const STATUSES = ['assigned', 'progress', 'completed', 'canceled', 'on_hold', 'approved'];
 
 const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
@@ -22,6 +23,9 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [holdSubmitting, setHoldSubmitting] = useState(false);
+  const [holdSaved, setHoldSaved] = useState(false);
+  const [holdReason, setHoldReason] = useState('');
   const [error, setError] = useState('');
   const [dropdownPos, setDropdownPos] = useState({ priority: null, status: null, user: null });
   const priorityRef = useRef(null);
@@ -33,7 +37,8 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const isAssignee = task?.assigned_to === user?.id;
   const isOverdue = task?.status === 'overdue';
   const canEdit = isAdmin && isCreator;
-  const canEditStatus = canEdit || (!isAdmin && isAssignee && !isOverdue);
+  const canEditDeadline = isCreator;
+  const canEditStatus = isCreator || (!isAdmin && isAssignee && !isOverdue);
 
   useEffect(() => {
     if (isOpen && task) {
@@ -43,6 +48,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
       setPriority(task.priority || 'medium');
       setStatus(task.status || 'assigned');
       setAssignedTo(task.assigned_to ? { id: task.assigned_to, first_name: task.assigned_to_name } : null);
+      setHoldReason(task.hold_reason || '');
 
       setUsersLoading(true);
       axios.get('/api/auth/users/assignable/')
@@ -88,18 +94,42 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
     u.last_name?.toLowerCase().includes(userSearch.toLowerCase())
   );
 
+  const handleHoldSubmit = async () => {
+    if (!holdReason.trim()) return;
+    setHoldSubmitting(true);
+    setError('');
+    try {
+      await axios.patch(`/api/calendar/todos/${task.id}/`, { status: 'on_hold', hold_reason: holdReason });
+      setHoldSaved(true);
+    } catch (err) {
+      const data = err.response?.data;
+      setError(data?.detail || 'Failed to update.');
+    } finally {
+      setHoldSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!canEdit && !canEditStatus) return;
     setIsSubmitting(true);
     setError('');
 
-    const payload = canEdit
-      ? { title, description: description || undefined, priority, status, assigned_to: assignedTo?.id || null, start: deadline ? new Date(deadline).toISOString() : null }
-      : { status };
+    if (status === 'on_hold' && !isCreator && !holdReason.trim()) {
+      setError('Hold reason is required.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const base = { status, hold_reason: holdReason || undefined };
+    if (canEdit) {
+      Object.assign(base, { title, description: description || undefined, priority, assigned_to: assignedTo?.id || null, start: deadline ? new Date(deadline).toISOString() : null });
+    } else if (canEditDeadline) {
+      Object.assign(base, { start: deadline ? new Date(deadline).toISOString() : null });
+    }
 
     try {
-      await axios.patch(`/api/calendar/todos/${task.id}/`, payload);
+      await axios.patch(`/api/calendar/todos/${task.id}/`, base);
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -137,7 +167,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
           {!canEdit && !canEditStatus && (
             <div className="px-8 py-3 bg-red-500/10 border-b border-red-500/20">
               <p className="text-[10px] text-red-400 font-medium uppercase tracking-wider">{isOverdue ? 'This task is overdue' : 'Read-only — only the creator can edit this task.'}</p>
@@ -186,10 +216,42 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                   )}
                 </div>
               </div>
+              {status === 'on_hold' && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Hold Reason *</label>
+                  <div className="flex gap-2">
+                    <textarea value={holdReason} onChange={e => setHoldReason(e.target.value)} disabled={isCreator || !canEditStatus || holdSaved}
+                      placeholder="Why is this task on hold?"
+                      rows={2}
+                      className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
+                    {!isCreator && (
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        {holdSaved ? (
+                          <button type="button" onClick={() => setHoldSaved(false)}
+                            className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                          </button>
+                        ) : (
+                          <>
+                            <button type="button" onClick={handleHoldSubmit} disabled={!holdReason.trim() || holdSubmitting}
+                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                              {holdSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                            </button>
+                            <button type="button" onClick={() => { setStatus('assigned'); setHoldReason(''); }}
+                              className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                              <X size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Deadline</label>
-                  <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} disabled={!canEdit}
+                  <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} disabled={!canEditDeadline}
                     className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
                 </div>
                 <div className="space-y-2 relative">
@@ -217,7 +279,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
               className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]">
               Cancel
             </button>
-            <button type="submit" form="update-task-form" disabled={isSubmitting || (!canEdit && !status) || (canEdit && !title.trim())}
+            <button type="submit" form="update-task-form" disabled={isSubmitting || (!canEdit && !status) || (canEdit && !title.trim()) || (status === 'on_hold' && !isCreator && !holdReason.trim())}
               className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2">
               {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CalendarPlus size={14} />Save</>}
             </button>
@@ -245,7 +307,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
             <div className="fixed inset-0 z-[9998]" onClick={() => { setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }} />
             <div style={{ position: 'fixed', top: dropdownPos.status.top, left: dropdownPos.status.left, width: dropdownPos.status.width, zIndex: 9999 }}
               className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden">
-              {STATUSES.map(s => (
+              {STATUSES.filter(s => isCreator || s !== 'approved').map(s => (
                 <button key={s} type="button" onClick={() => { setStatus(s); setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }}
                   className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left capitalize", status === s && "bg-blue-500/5")}>
                   <span className="text-xs font-medium text-white">{s.replace('_', ' ')}</span>
