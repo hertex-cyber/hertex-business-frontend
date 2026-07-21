@@ -4,6 +4,7 @@ import { X, Mail, Phone, Tag, Calendar, Database, FileText, User, Trash2, Wallet
 import { TbEdit } from "react-icons/tb";
 import { cn } from '@/lib/utils';
 import axios from 'axios';
+import { useAuth } from '@/context/AuthContext';
 
 const STATUS_STYLES = {
     Lead:     'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -40,6 +41,7 @@ const Field = ({ icon: Icon, label, value, colorClass, isEditing, children }) =>
 };
 
 const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = [], onUpdate }) => {
+    const { user } = useAuth();
     const [isEditingUser, setIsEditingUser] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -695,7 +697,13 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                             </div>
                                             <button
                                                 onClick={() => setIsEditingUser(true)}
-                                                className="px-3 py-1.5 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 text-[9px] font-medium uppercase tracking-[0.15em] transition-all cursor-pointer self-start"
+                                                disabled={user?.role === 'Staff'}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-sm border text-[9px] font-medium uppercase tracking-[0.15em] transition-all self-start",
+                                                    user?.role === 'Staff' 
+                                                        ? "bg-zinc-950 border-zinc-900 text-white/20 cursor-not-allowed"
+                                                        : "bg-zinc-900/50 border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 cursor-pointer"
+                                                )}
                                             >
                                                 Edit
                                             </button>
