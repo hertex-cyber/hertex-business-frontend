@@ -140,7 +140,7 @@ class UserService {
    */
   static async getDepartments(params = {}) {
     try {
-      const response = await axios.get(`${BASE}/departments`, { params });
+      const response = await axios.get(`${BASE}/departments/`, { params });
       return response.data;
     } catch (error) {
       throw this.handleError(error);

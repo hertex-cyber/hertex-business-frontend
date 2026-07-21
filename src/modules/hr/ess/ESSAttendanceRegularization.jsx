@@ -2,13 +2,14 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, Loader, AlertCircle, CheckCircle2, XCircle, Plus, Calendar } from "lucide-react";
 import { useHR } from "../context/HRContext";
-import { regularizationAPI } from "../services/hrAPI";
+import { regularizationAPI, attendanceAPI } from "../services/hrAPI";
 import { formatDate } from "../utils/helpers";
 
 export const ESSAttendanceRegularization = () => {
   const navigate = useNavigate();
   const { loading, setLoadingState, error, setErrorState } = useHR();
   const [requests, setRequests] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     attendance: "",
@@ -21,6 +22,7 @@ export const ESSAttendanceRegularization = () => {
 
   useEffect(() => {
     fetchRequests();
+    fetchAttendanceRecords();
   }, []);
 
   const fetchRequests = async () => {
@@ -35,11 +37,23 @@ export const ESSAttendanceRegularization = () => {
     }
   };
 
+  const fetchAttendanceRecords = async () => {
+    try {
+      const res = await attendanceAPI.getAttendance().catch(() => ({ data: [] }));
+      setAttendanceRecords(res.data?.results || res.data || []);
+    } catch (err) {
+      setErrorState(err.message);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await regularizationAPI.createRequest(formData);
+      const payload = { ...formData };
+      if (!payload.requested_check_in) delete payload.requested_check_in;
+      if (!payload.requested_check_out) delete payload.requested_check_out;
+      await regularizationAPI.createRequest(payload);
       setShowForm(false);
       setFormData({ attendance: "", requested_status: "PRESENT", requested_check_in: "", requested_check_out: "", reason: "" });
       fetchRequests();
@@ -93,17 +107,24 @@ export const ESSAttendanceRegularization = () => {
             <h3 className="text-lg font-bold text-white mb-4">Submit Regularization Request</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-xs font-medium text-white/40 mb-1">Attendance Record ID</label>
-                <input type="text" required value={formData.attendance} onChange={(e) => setFormData({...formData, attendance: e.target.value})} placeholder="Enter attendance record UUID"
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50" />
+                <label className="block text-xs font-medium text-white/40 mb-1">Attendance Record</label>
+                <select required value={formData.attendance} onChange={(e) => setFormData({...formData, attendance: e.target.value})}
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50">
+                  <option value="" className="bg-[#0a0a0a] text-white">Select attendance record...</option>
+                  {attendanceRecords.map((att) => (
+                    <option key={att.id} value={att.id} className="bg-[#0a0a0a] text-white">
+                      {formatDate(att.date)} — {att.status?.replace(/_/g, " ")}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-white/40 mb-1">Requested Status</label>
                 <select value={formData.requested_status} onChange={(e) => setFormData({...formData, requested_status: e.target.value})}
                   className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500/50">
-                  <option value="PRESENT">Present</option>
-                  <option value="HALF_DAY">Half Day</option>
-                  <option value="WFH">Work From Home</option>
+                  <option value="PRESENT" className="bg-[#0a0a0a] text-white">Present</option>
+                  <option value="HALF_DAY" className="bg-[#0a0a0a] text-white">Half Day</option>
+                  <option value="WFH" className="bg-[#0a0a0a] text-white">Work From Home</option>
                 </select>
               </div>
               <div>

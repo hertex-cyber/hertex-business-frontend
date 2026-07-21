@@ -309,7 +309,7 @@ export const payrollEnhancedAPI = {
   // Generate bank file
   getBankFile: (month, year, format = "NEFT") =>
     hrClient.get("/payroll/bank_file/", {
-      params: { month, year, format },
+      params: { month, year, transfer_mode: format },
       responseType: "blob",
     }),
   

@@ -61,13 +61,14 @@ export const ESSDashboard = () => {
         updateLeaveBalance(leaveBalRes.data);
         const totalLeave =
           leaveBalRes.data?.reduce(
-            (sum, item) => sum + (item.current_balance || 0),
+            (sum, item) => sum + (Number(item.current_balance) || 0),
             0,
           ) || 0;
         setStats((prev) => ({ ...prev, leaveBalance: totalLeave }));
       }
-      if (salaryRes.data && salaryRes.data.length > 0) {
-        setEmployeeSalary(salaryRes.data[0]);
+      const salaryList = salaryRes.data?.results || salaryRes.data || [];
+      if (salaryList.length > 0) {
+        setEmployeeSalary(salaryList[0]);
       }
     } catch (err) {
       setErrorState(err.message);
@@ -404,19 +405,19 @@ export const ESSDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
                 <p className="text-xs text-white/40 mb-1">CTC (Annual)</p>
-                <p className="text-xl font-bold text-white">₹{employeeSalary.ctc?.toLocaleString("en-IN")}</p>
+                <p className="text-xl font-bold text-white">₹{Number(employeeSalary.ctc).toLocaleString("en-IN")}</p>
               </div>
               <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
                 <p className="text-xs text-white/40 mb-1">Gross Salary</p>
-                <p className="text-xl font-bold text-white">₹{employeeSalary.gross_salary?.toLocaleString("en-IN")}</p>
+                <p className="text-xl font-bold text-white">₹{Number(employeeSalary.gross_salary).toLocaleString("en-IN")}</p>
               </div>
               <div className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
                 <p className="text-xs text-white/40 mb-1">Basic Salary</p>
-                <p className="text-xl font-bold text-white">₹{employeeSalary.basic_salary?.toLocaleString("en-IN")}</p>
+                <p className="text-xl font-bold text-white">₹{Number(employeeSalary.basic_salary).toLocaleString("en-IN")}</p>
               </div>
               <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-transparent border border-emerald-500/20">
                 <p className="text-xs text-emerald-400/60 mb-1">Net Salary</p>
-                <p className="text-xl font-bold text-emerald-400">₹{employeeSalary.net_salary?.toLocaleString("en-IN")}</p>
+                <p className="text-xl font-bold text-emerald-400">₹{Number(employeeSalary.net_salary).toLocaleString("en-IN")}</p>
               </div>
             </div>
             <p className="text-xs text-white/30 mt-4">Effective from: {employeeSalary.effective_from}</p>

@@ -175,14 +175,14 @@ export const PayrollAdminDashboard = () => {
           <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))}
             className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
             {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>{new Date(2000, i).toLocaleString("default", { month: "long" })}</option>
+              <option key={i + 1} value={i + 1} className="bg-[#0a0a0a] text-white">{new Date(2000, i).toLocaleString("default", { month: "long" })}</option>
             ))}
           </select>
           <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))}
             className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
             {Array.from({ length: 5 }, (_, i) => {
               const y = now.getFullYear() - 2 + i;
-              return <option key={y} value={y}>{y}</option>;
+              return <option key={y} value={y} className="bg-[#0a0a0a] text-white">{y}</option>;
             })}
           </select>
         </div>
@@ -378,9 +378,9 @@ export const PayrollAdminDashboard = () => {
             <div className="flex items-center gap-4 mb-6">
               <select value={reportType} onChange={e => setReportType(e.target.value)}
                 className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm">
-                <option value="salary_register">Salary Register</option>
-                <option value="department_summary">Department Summary</option>
-                <option value="variance_report">Variance Report</option>
+                <option value="salary_register" className="bg-[#0a0a0a] text-white">Salary Register</option>
+                <option value="department_summary" className="bg-[#0a0a0a] text-white">Department Summary</option>
+                <option value="variance_report" className="bg-[#0a0a0a] text-white">Variance Report</option>
               </select>
               <button onClick={handleFetchReport} disabled={loading}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 flex items-center gap-2">

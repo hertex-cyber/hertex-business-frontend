@@ -19,7 +19,7 @@ const CreatorGroupPanel = ({ onClose, onSaved }) => {
     try {
       // Fetch all departments (groups) and creator groups in parallel
       const [deptRes, creatorRes] = await Promise.all([
-        axios.get('/api/auth/departments', { params: { page_size: 100 } }),
+        axios.get('/api/auth/departments/', { params: { page_size: 100 } }),
         mediaApi.listCreatorGroups(),
       ]);
 

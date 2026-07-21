@@ -138,9 +138,9 @@ export const ESSShiftSwap = () => {
                 <label className="block text-xs font-medium text-white/40 mb-1">Swap With (Colleague)</label>
                 <select required value={formData.target_employee} onChange={(e) => setFormData({...formData, target_employee: e.target.value})}
                   className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50">
-                  <option value="">Select colleague...</option>
-                  {employees.filter(e => e.id !== formData.target_employee).map((emp) => (
-                    <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                  <option value="" className="bg-[#0a0a0a] text-white">Select colleague...</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id} className="bg-[#0a0a0a] text-white">{emp.first_name} {emp.last_name}</option>
                   ))}
                 </select>
               </div>
