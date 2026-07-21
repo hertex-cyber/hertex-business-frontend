@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, CalendarPlus, Trash2, ChevronDown, Search, Check, X } from 'lucide-react';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
@@ -40,6 +40,7 @@ const UpdateFollowUpModal = ({ event, isOpen, onClose, onSuccess }) => {
   const statusRef = useRef(null);
   const userRef = useRef(null);
   const contactRef = useRef(null);
+  const prevAssignedToId = useRef(null);
 
   const isAdmin = user?.role === 'Superadmin' || user?.role === 'Admin';
   const isCreator = event?.user === user?.id;
@@ -61,7 +62,7 @@ const UpdateFollowUpModal = ({ event, isOpen, onClose, onSuccess }) => {
       setCompletionRemarks(event.completion_remarks || '');
       setCompSaved(!!event.completion_remarks);
       if (!isAdmin && isCreator) {
-        setAssignedTo({ id: user.id, first_name: user.first_name || user.email });
+        setAssignedTo({ id: user.id, first_name: user.first_name || user.email, role: user.role });
       } else {
         setAssignedTo(event.assigned_to ? { id: event.assigned_to, first_name: event.assigned_to_name } : null);
       }
@@ -74,13 +75,46 @@ const UpdateFollowUpModal = ({ event, isOpen, onClose, onSuccess }) => {
         .catch(() => setUsers([]))
         .finally(() => setUsersLoading(false));
 
+    }
+  }, [isOpen, event]);
+
+  const loadContacts = useCallback((userObj, search) => {
+    if (userObj?.id) {
       setContactsLoading(true);
-      axios.get('/api/contacts/')
+      const params = new URLSearchParams();
+      const isAdminUser = userObj.role === 'Superadmin' || userObj.role === 'Admin';
+      if (userObj.role && !isAdminUser) params.set('assigned_user', userObj.id);
+      if (search) params.set('search', search);
+      axios.get(`/api/contacts/?${params}`)
         .then(res => setContacts(res.data.results || res.data || []))
         .catch(() => setContacts([]))
         .finally(() => setContactsLoading(false));
+    } else {
+      setContacts([]);
     }
-  }, [isOpen, event]);
+  }, []);
+
+  useEffect(() => {
+    if (assignedTo?.id) {
+      if (prevAssignedToId.current !== assignedTo.id) {
+        setSelectedContact(null);
+        setContactSearch('');
+      }
+      prevAssignedToId.current = assignedTo.id;
+      loadContacts(assignedTo, '');
+    } else {
+      setContacts([]);
+    }
+  }, [assignedTo, loadContacts]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (assignedTo?.id) {
+        loadContacts(assignedTo, contactSearch);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [contactSearch, assignedTo, loadContacts]);
 
   const openStatusDropdown = () => {
     if (statusRef.current) {
@@ -114,11 +148,6 @@ const UpdateFollowUpModal = ({ event, isOpen, onClose, onSuccess }) => {
     !userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
     u.first_name?.toLowerCase().includes(userSearch.toLowerCase()) ||
     u.last_name?.toLowerCase().includes(userSearch.toLowerCase())
-  );
-
-  const filteredContacts = contacts.filter(c =>
-    !contactSearch || c.name?.toLowerCase().includes(contactSearch.toLowerCase()) ||
-    c.email?.toLowerCase().includes(contactSearch.toLowerCase())
   );
 
   const handleCancelSubmit = async () => {
@@ -265,8 +294,8 @@ const UpdateFollowUpModal = ({ event, isOpen, onClose, onSuccess }) => {
                 <div className="space-y-2 relative">
                   <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Contact</label>
                   {canEdit ? (
-                    <button ref={contactRef} type="button" onClick={openContactDropdown}
-                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
+                    <button ref={contactRef} type="button" onClick={openContactDropdown} disabled={!assignedTo}
+                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all", assignedTo ? "text-white/60 hover:border-zinc-700 cursor-pointer" : "text-white/20 cursor-not-allowed opacity-40")}>
                       {selectedContact ? <span className="text-white">{selectedContact.name || selectedContact.id}</span> : <span className="text-white/20">Select contact...</span>}
                       <ChevronDown size={14} className="text-white/20" />
                     </button>
@@ -482,10 +511,10 @@ const UpdateFollowUpModal = ({ event, isOpen, onClose, onSuccess }) => {
               <div className="max-h-48 overflow-y-auto custom-scrollbar">
                 {contactsLoading ? (
                   <div className="flex items-center justify-center py-6"><Loader2 size={16} className="animate-spin text-blue-500/50" /></div>
-                ) : filteredContacts.length === 0 ? (
+                ) : contacts.length === 0 ? (
                   <p className="text-[10px] text-white/20 text-center py-6 uppercase tracking-widest">No contacts found</p>
                 ) : (
-                  filteredContacts.map(c => (
+                  contacts.map(c => (
                     <button key={c.id} type="button" onClick={() => { setSelectedContact(c); setShowContactDropdown(false); setDropdownPos(prev => ({ ...prev, contact: null })); setContactSearch(''); }}
                       className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left", selectedContact?.id === c.id && "bg-blue-500/5")}>
                       <div className="flex items-center gap-3">

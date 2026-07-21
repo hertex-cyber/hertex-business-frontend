@@ -48,7 +48,8 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const canEdit = isCreator;
   const canEditAssignee = isAdmin && isCreator;
   const canEditDeadline = isCreator;
-  const canEditStatus = isCreator || (!isAdmin && isAssignee);
+  const canEditStatus = isCreator || isAssignee;
+  const canSave = isCreator || isAssignee;
 
   useEffect(() => {
     if (isOpen && task) {
@@ -159,7 +160,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canEdit && !canEditStatus) return;
+    if (!canEdit && !canSave) return;
     setIsSubmitting(true);
     setError('');
 
@@ -275,7 +276,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                       placeholder="Why is this task on hold?"
                       rows={2}
                       className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
-                    {!isCreator && (
+                    {canEditStatus && (
                       <div className="flex flex-col gap-1.5 shrink-0">
                         {holdSaved ? (
                           <button type="button" onClick={() => setHoldSaved(false)}
@@ -307,7 +308,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                       placeholder="Describe what was accomplished..."
                       rows={2}
                       className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
-                    {!isCreator && (
+                    {canEditStatus && (
                       <div className="flex flex-col gap-1.5 shrink-0">
                         {compSaved ? (
                           <button type="button" onClick={() => setCompSaved(false)}
@@ -354,7 +355,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
               {status === 'overdue' && (isCreator ? extensionRequest : true) && (
                 <div className="space-y-2">
                   <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Request Extension</label>
-                  {!isCreator && !extSaved ? (
+                  {canEditStatus && !extSaved ? (
                     <div className="flex gap-2">
                       <textarea value={extensionRequest} onChange={e => setExtensionRequest(e.target.value)}
                         placeholder="Why do you need more time?"
@@ -375,7 +376,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                     <div className="flex gap-2">
                       <textarea value={extensionRequest} disabled rows={2}
                         className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white/60 resize-none disabled:opacity-40" />
-                      {!isCreator && extSaved && (
+                      {canEditStatus && extSaved && (
                         <button type="button" onClick={() => setExtSaved(false)}
                           className="shrink-0 mt-0.5 p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all self-start">
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -395,7 +396,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
             className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]">
             Cancel
           </button>
-          {canEditStatus && (
+          {canSave && (
             <button type="submit" form="update-task-form" disabled={isSubmitting || (!canEdit && !status) || (canEdit && !title.trim()) || (status === 'on_hold' && !isCreator && !holdReason.trim()) || (status === 'completed' && !completionRemarks.trim())}
               className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2">
               {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CalendarPlus size={14} />Save</>}

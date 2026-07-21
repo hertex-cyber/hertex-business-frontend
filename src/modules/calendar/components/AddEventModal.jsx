@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarPlus, Loader2, Check, ChevronDown, Search, X, ListChecks, Calendar, Bell, Users } from 'lucide-react';
 import axios from 'axios';
@@ -47,6 +47,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const followUpStatusRef = useRef(null);
   const userRef = useRef(null);
   const contactRef = useRef(null);
+  const prevAssignedToId = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -63,19 +64,52 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
           const usersData = res.data || [];
           setUsers(usersData);
           if (!isAdmin && user) {
-            setAssignedTo({ id: user.id, first_name: user.first_name || user.email, email: user.email });
+            setAssignedTo({ id: user.id, first_name: user.first_name || user.email, email: user.email, role: user.role });
           }
         })
         .catch(() => setUsers([]))
         .finally(() => setUsersLoading(false));
 
+    }
+  }, [isOpen]);
+
+  const loadContacts = useCallback((user, search) => {
+    if (user?.id) {
       setContactsLoading(true);
-      axios.get('/api/contacts/')
+      const params = new URLSearchParams();
+      const isAdminUser = user.role === 'Superadmin' || user.role === 'Admin';
+      if (!isAdminUser) params.set('assigned_user', user.id);
+      if (search) params.set('search', search);
+      axios.get(`/api/contacts/?${params}`)
         .then(res => setContacts(res.data.results || res.data || []))
         .catch(() => setContacts([]))
         .finally(() => setContactsLoading(false));
+    } else {
+      setContacts([]);
     }
-  }, [isOpen]);
+  }, []);
+
+  useEffect(() => {
+    if (assignedTo?.id) {
+      if (prevAssignedToId.current !== assignedTo.id) {
+        setSelectedContact(null);
+        setContactSearch('');
+      }
+      prevAssignedToId.current = assignedTo.id;
+      loadContacts(assignedTo, '');
+    } else {
+      setContacts([]);
+    }
+  }, [assignedTo, loadContacts]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (assignedTo?.id) {
+        loadContacts(assignedTo, contactSearch);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [contactSearch, assignedTo, loadContacts]);
 
   const reset = () => {
     setTitle(''); setDescription(''); setStart(''); setEnd('');
@@ -145,11 +179,6 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
     !userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
     u.first_name?.toLowerCase().includes(userSearch.toLowerCase()) ||
     u.last_name?.toLowerCase().includes(userSearch.toLowerCase())
-  );
-
-  const filteredContacts = contacts.filter(c =>
-    !contactSearch || c.name?.toLowerCase().includes(contactSearch.toLowerCase()) ||
-    c.email?.toLowerCase().includes(contactSearch.toLowerCase())
   );
 
   const handleSubmit = async (e) => {
@@ -303,11 +332,15 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                     <div className="space-y-2 relative">
                       <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
-                      <button ref={userRef} type="button" onClick={openUserDropdown}
-                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
-                        {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.email}</span> : <span className="text-white/20">Select a team member...</span>}
-                        <ChevronDown size={14} className="text-white/20" />
-                      </button>
+                      {isAdmin ? (
+                        <button ref={userRef} type="button" onClick={openUserDropdown}
+                          className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
+                          {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.email}</span> : <span className="text-white/20">Select a team member...</span>}
+                          <ChevronDown size={14} className="text-white/20" />
+                        </button>
+                      ) : (
+                        <div className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm text-white/40">{assignedTo?.first_name || 'Unassigned'}</div>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -419,10 +452,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                       )}
                     </div>
                     <div className="space-y-2 relative">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
-                      <button ref={userRef} type="button" onClick={openUserDropdown}
-                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
-                        {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.email}</span> : <span className="text-white/20">Select a team member...</span>}
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Contact</label>
+                      <button ref={contactRef} type="button" onClick={openContactDropdown} disabled={!assignedTo}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all", assignedTo ? "text-white/60 hover:border-zinc-700 cursor-pointer" : "text-white/20 cursor-not-allowed opacity-40")}>
+                        {selectedContact ? <span className="text-white">{selectedContact.name || selectedContact.email}</span> : <span className="text-white/20">Select a contact...</span>}
                         <ChevronDown size={14} className="text-white/20" />
                       </button>
                     </div>
@@ -626,10 +659,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                 <div className="flex items-center justify-center py-6">
                   <Loader2 size={16} className="animate-spin text-blue-500/50" />
                 </div>
-              ) : filteredContacts.length === 0 ? (
+              ) : contacts.length === 0 ? (
                 <p className="text-[10px] text-white/20 text-center py-6 uppercase tracking-widest">No contacts found</p>
               ) : (
-                filteredContacts.map(c => (
+                contacts.map(c => (
                   <button key={c.id} type="button" onClick={() => { setSelectedContact(c); setShowContactDropdown(false); setDropdownPos(prev => ({ ...prev, contact: null })); setContactSearch(''); }}
                     className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left", selectedContact?.id === c.id && "bg-blue-500/5")}>
                     <div className="flex items-center gap-3">
