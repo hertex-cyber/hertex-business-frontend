@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { CalendarPlus, Loader2, Check, ChevronDown, Search, X, ListChecks, Calendar, Bell, Users } from 'lucide-react';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
 const TABS = [
   { id: 'tasks', label: 'Tasks', icon: ListChecks },
@@ -12,6 +13,8 @@ const TABS = [
 ];
 
 const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'Superadmin' || user?.role === 'Admin';
   const [activeTab, setActiveTab] = useState('tasks');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -26,8 +29,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [userSearch, setUserSearch] = useState('');
   const [eventStatus, setEventStatus] = useState('upcoming');
   const [isFullDay, setIsFullDay] = useState(false);
+  const [followUpStatus, setFollowUpStatus] = useState('follow_up');
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showEventStatusDropdown, setShowEventStatusDropdown] = useState(false);
+  const [showFollowUpStatusDropdown, setShowFollowUpStatusDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -36,14 +41,16 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ priority: null, eventStatus: null, user: null, contact: null });
+  const [dropdownPos, setDropdownPos] = useState({ priority: null, eventStatus: null, followUpStatus: null, user: null, contact: null });
   const priorityRef = useRef(null);
   const eventStatusRef = useRef(null);
+  const followUpStatusRef = useRef(null);
   const userRef = useRef(null);
   const contactRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
+      reset();
       const now = new Date();
       const startStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00`;
       const endStr = new Date(now.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
@@ -52,7 +59,13 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
 
       setUsersLoading(true);
       axios.get('/api/auth/users/assignable/')
-        .then(res => setUsers(res.data || []))
+        .then(res => {
+          const usersData = res.data || [];
+          setUsers(usersData);
+          if (!isAdmin && user) {
+            setAssignedTo({ id: user.id, first_name: user.first_name || user.email, email: user.email });
+          }
+        })
         .catch(() => setUsers([]))
         .finally(() => setUsersLoading(false));
 
@@ -66,8 +79,8 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
 
   const reset = () => {
     setTitle(''); setDescription(''); setStart(''); setEnd('');
-    setPriority('medium'); setEventStatus('upcoming'); setIsFullDay(false); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
-    setShowPriorityDropdown(false); setShowEventStatusDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
+    setPriority('medium'); setEventStatus('upcoming'); setFollowUpStatus('follow_up'); setIsFullDay(false); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
+    setShowPriorityDropdown(false); setShowEventStatusDropdown(false); setShowFollowUpStatusDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -91,6 +104,18 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
       setShowUserDropdown(false);
       setShowContactDropdown(false);
       setShowEventStatusDropdown(true);
+    }
+  };
+
+  const openFollowUpStatusDropdown = () => {
+    if (followUpStatusRef.current) {
+      const rect = followUpStatusRef.current.getBoundingClientRect();
+      setDropdownPos(prev => ({ ...prev, followUpStatus: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, user: null, contact: null }));
+      setShowPriorityDropdown(false);
+      setShowEventStatusDropdown(false);
+      setShowUserDropdown(false);
+      setShowContactDropdown(false);
+      setShowFollowUpStatusDropdown(true);
     }
   };
 
@@ -163,6 +188,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
       case 'followup':
         payload = {
           ...basePayload,
+          status: followUpStatus,
           contact: selectedContact?.id || null,
           assigned_to: assignedTo?.id || null,
           start: start ? new Date(start).toISOString() : null,
@@ -352,11 +378,25 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
 
               {activeTab === 'followup' && (
                 <>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Follow-Up Title *</label>
-                    <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
-                      placeholder="Enter follow-up title"
-                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Follow-Up Title *</label>
+                      <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
+                        placeholder="Enter follow-up title"
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                      <button ref={followUpStatusRef} type="button" onClick={openFollowUpStatusDropdown}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize",
+                          followUpStatus === 'failed' ? 'text-red-400' :
+                          followUpStatus === 'complete' ? 'text-emerald-400' :
+                          followUpStatus === 'cancelled' ? 'text-white/40' :
+                          'text-blue-400')}>
+                        <span>{followUpStatus.replace('_', ' ')}</span>
+                        <ChevronDown size={14} className="text-white/20" />
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Notes</label>
@@ -367,12 +407,16 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2 relative">
-                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Contact</label>
-                      <button ref={contactRef} type="button" onClick={openContactDropdown}
-                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
-                        {selectedContact ? <span className="text-white">{selectedContact.name || selectedContact.email}</span> : <span className="text-white/20">Select a contact...</span>}
-                        <ChevronDown size={14} className="text-white/20" />
-                      </button>
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
+                      {isAdmin ? (
+                        <button ref={userRef} type="button" onClick={openUserDropdown}
+                          className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
+                          {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.email}</span> : <span className="text-white/20">Select a team member...</span>}
+                          <ChevronDown size={14} className="text-white/20" />
+                        </button>
+                      ) : (
+                        <div className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm text-white/40">{assignedTo?.first_name || 'Unassigned'}</div>
+                      )}
                     </div>
                     <div className="space-y-2 relative">
                       <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
@@ -480,7 +524,29 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
           </>
         )}
 
-        {showUserDropdown && dropdownPos.user && (
+        {showFollowUpStatusDropdown && dropdownPos.followUpStatus && (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => { setShowFollowUpStatusDropdown(false); setDropdownPos(prev => ({ ...prev, followUpStatus: null })); }} />
+            <div
+              style={{ position: 'fixed', top: dropdownPos.followUpStatus.top, left: dropdownPos.followUpStatus.left, width: dropdownPos.followUpStatus.width, zIndex: 9999 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden"
+          >
+            {['follow_up', 'complete', 'cancelled'].map(s => (
+              <button key={s} type="button" onClick={() => { setFollowUpStatus(s); setShowFollowUpStatusDropdown(false); setDropdownPos(prev => ({ ...prev, followUpStatus: null })); }}
+                className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left capitalize", followUpStatus === s && "bg-blue-500/5")}>
+                <span className={cn("text-xs font-medium capitalize",
+                  s === 'failed' ? 'text-red-400' :
+                  s === 'complete' ? 'text-emerald-400' :
+                  s === 'cancelled' ? 'text-white/40' :
+                  'text-blue-400')}>{s.replace('_', ' ')}</span>
+                {followUpStatus === s && <Check size={12} className="text-blue-400 shrink-0" />}
+              </button>
+            ))}
+          </div>
+          </>
+        )}
+
+        {showUserDropdown && dropdownPos.user && isAdmin && (
           <>
             <div className="fixed inset-0 z-[9998]" onClick={() => { setShowUserDropdown(false); setDropdownPos(prev => ({ ...prev, user: null })); }} />
             <div

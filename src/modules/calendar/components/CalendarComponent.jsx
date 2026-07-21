@@ -79,16 +79,13 @@ const CalendarComponent = () => {
     );
   }
 
-  if (initialLoading && error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400/60">
-        <p className="text-sm font-medium">{error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="h-full grid grid-cols-[minmax(220px,25%)_1fr] gap-6">
+      {error && (
+        <div className="col-span-full px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <p className="text-xs text-red-400 font-medium">{error}</p>
+        </div>
+      )}
       <div className="h-full min-h-0">
         <EventsPanel selectedDate={selectedDate} onEventCreated={() => setRefreshTrigger(t => t + 1)} />
       </div>

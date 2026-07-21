@@ -65,6 +65,12 @@ const CRM = () => {
       fetchDepartments();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (selectedPipeline?.id) {
+      fetchUsers({ page_size: 1000 });
+    }
+  }, [selectedPipeline?.id]);
   const [deals, setDeals] = useState({
     lead: { items: [], nextPage: null, hasMore: false, count: 0 },
     qualified: { items: [], nextPage: null, hasMore: false, count: 0 },

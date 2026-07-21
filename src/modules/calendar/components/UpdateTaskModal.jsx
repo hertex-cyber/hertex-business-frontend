@@ -45,7 +45,8 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const isCreator = task?.user === user?.id;
   const isAssignee = task?.assigned_to === user?.id;
   const isOverdue = task?.status === 'overdue';
-  const canEdit = isAdmin && isCreator;
+  const canEdit = isCreator;
+  const canEditAssignee = isAdmin && isCreator;
   const canEditDeadline = isCreator;
   const canEditStatus = isCreator || (!isAdmin && isAssignee);
 
@@ -56,7 +57,11 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
       setDeadline(task.start ? task.start.slice(0, 16) : '');
       setPriority(task.priority || 'medium');
       setStatus(task.status || 'assigned');
-      setAssignedTo(task.assigned_to ? { id: task.assigned_to, first_name: task.assigned_to_name } : null);
+      if (!isAdmin && isCreator) {
+        setAssignedTo({ id: user.id, first_name: user.first_name || user.email });
+      } else {
+        setAssignedTo(task.assigned_to ? { id: task.assigned_to, first_name: task.assigned_to_name } : null);
+      }
       setHoldReason(task.hold_reason || '');
       setExtensionRequest(task.extension_request || '');
       setExtSaved(false);
@@ -334,7 +339,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                 </div>
                 <div className="space-y-2 relative">
                   <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
-                  {canEdit ? (
+                  {canEditAssignee ? (
                     <button ref={userRef} type="button" onClick={openUserDropdown}
                       className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
                       {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.id}</span> : <span className="text-white/20">Unassigned</span>}
@@ -430,7 +435,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
           </>
         )}
 
-        {showUserDropdown && dropdownPos.user && canEdit && (
+        {showUserDropdown && dropdownPos.user && canEditAssignee && (
           <>
             <div className="fixed inset-0 z-[9998]" onClick={() => { setShowUserDropdown(false); setDropdownPos(prev => ({ ...prev, user: null })); }} />
             <div style={{ position: 'fixed', top: dropdownPos.user.top, left: dropdownPos.user.left, width: dropdownPos.user.width, zIndex: 9999 }}
