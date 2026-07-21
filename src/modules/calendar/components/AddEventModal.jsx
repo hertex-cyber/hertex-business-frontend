@@ -24,7 +24,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [eventStatus, setEventStatus] = useState('upcoming');
+  const [isFullDay, setIsFullDay] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
+  const [showEventStatusDropdown, setShowEventStatusDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -33,15 +36,16 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ priority: null, user: null, contact: null });
+  const [dropdownPos, setDropdownPos] = useState({ priority: null, eventStatus: null, user: null, contact: null });
   const priorityRef = useRef(null);
+  const eventStatusRef = useRef(null);
   const userRef = useRef(null);
   const contactRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
       const now = new Date();
-      const startStr = now.toISOString().slice(0, 16);
+      const startStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T00:00`;
       const endStr = new Date(now.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
       setStart(startStr);
       setEnd(endStr);
@@ -62,8 +66,8 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
 
   const reset = () => {
     setTitle(''); setDescription(''); setStart(''); setEnd('');
-    setPriority('medium'); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
-    setShowPriorityDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
+    setPriority('medium'); setEventStatus('upcoming'); setIsFullDay(false); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
+    setShowPriorityDropdown(false); setShowEventStatusDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -71,18 +75,31 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const openPriorityDropdown = () => {
     if (priorityRef.current) {
       const rect = priorityRef.current.getBoundingClientRect();
-      setDropdownPos(prev => ({ ...prev, priority: { top: rect.bottom + 4, left: rect.left, width: rect.width }, user: null, contact: null }));
+      setDropdownPos(prev => ({ ...prev, priority: { top: rect.bottom + 4, left: rect.left, width: rect.width }, eventStatus: null, user: null, contact: null }));
+      setShowEventStatusDropdown(false);
       setShowUserDropdown(false);
       setShowContactDropdown(false);
       setShowPriorityDropdown(true);
     }
   };
 
+  const openEventStatusDropdown = () => {
+    if (eventStatusRef.current) {
+      const rect = eventStatusRef.current.getBoundingClientRect();
+      setDropdownPos(prev => ({ ...prev, eventStatus: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, user: null, contact: null }));
+      setShowPriorityDropdown(false);
+      setShowUserDropdown(false);
+      setShowContactDropdown(false);
+      setShowEventStatusDropdown(true);
+    }
+  };
+
   const openUserDropdown = () => {
     if (userRef.current) {
       const rect = userRef.current.getBoundingClientRect();
-      setDropdownPos(prev => ({ ...prev, user: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, contact: null }));
+      setDropdownPos(prev => ({ ...prev, user: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, contact: null }));
       setShowPriorityDropdown(false);
+      setShowEventStatusDropdown(false);
       setShowContactDropdown(false);
       setShowUserDropdown(true);
     }
@@ -91,8 +108,9 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const openContactDropdown = () => {
     if (contactRef.current) {
       const rect = contactRef.current.getBoundingClientRect();
-      setDropdownPos(prev => ({ ...prev, contact: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, user: null }));
+      setDropdownPos(prev => ({ ...prev, contact: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, user: null }));
       setShowPriorityDropdown(false);
+      setShowEventStatusDropdown(false);
       setShowUserDropdown(false);
       setShowContactDropdown(true);
     }
@@ -135,7 +153,11 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
       case 'event':
         payload = {
           ...basePayload,
+          status: eventStatus,
           start: start ? new Date(start).toISOString() : null,
+          end: isFullDay
+            ? (start ? new Date(new Date(start).setHours(23, 59, 59, 999)).toISOString() : null)
+            : (end ? new Date(end).toISOString() : null),
         };
         break;
       case 'followup':
@@ -280,16 +302,49 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                         className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all" />
                     </div>
                     <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                      <button ref={eventStatusRef} type="button" onClick={openEventStatusDropdown}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize",
+                          eventStatus === 'live' ? 'text-emerald-400' :
+                          eventStatus === 'cancelled' ? 'text-red-400' :
+                          eventStatus === 'ended' ? 'text-white/40' :
+                          'text-blue-400')}>
+                        <span>{eventStatus}</span>
+                        <ChevronDown size={14} className="text-white/20" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-[15px] pt-5">
+                    <label className="text-xs font-medium uppercase tracking-[0.2em] text-white leading-none">Single Day</label>
+                    <button type="button" onClick={() => {
+                        if (!isFullDay && start) {
+                          const d = new Date(start);
+                          setStart(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T00:00`);
+                        }
+                        setIsFullDay(!isFullDay);
+                      }}
+                      className={cn("w-11 h-6 rounded-full transition-all relative shrink-0",
+                        isFullDay ? "bg-blue-500" : "bg-zinc-700")}>
+                      <div className={cn("w-4 h-4 rounded-full bg-white absolute top-1 transition-all", isFullDay ? "left-6" : "left-1")} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Event Date *</label>
                       <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
                         className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">End Date</label>
+                      <input type="datetime-local" value={end} onChange={e => setEnd(e.target.value)} disabled={isFullDay}
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Description</label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)}
                       placeholder="Add details about this event..."
-                      rows={11}
+                      rows={7}
                       className="w-full bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
                   </div>
                 </>
@@ -397,6 +452,28 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                 className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left", priority === p && "bg-blue-500/5")}>
                 <span className={cn("text-xs font-medium capitalize", p === 'high' ? 'text-red-400' : p === 'medium' ? 'text-yellow-400' : 'text-blue-400')}>{p}</span>
                 {priority === p && <Check size={12} className="text-blue-400 shrink-0" />}
+              </button>
+            ))}
+          </div>
+          </>
+        )}
+
+        {showEventStatusDropdown && dropdownPos.eventStatus && (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => { setShowEventStatusDropdown(false); setDropdownPos(prev => ({ ...prev, eventStatus: null })); }} />
+            <div
+              style={{ position: 'fixed', top: dropdownPos.eventStatus.top, left: dropdownPos.eventStatus.left, width: dropdownPos.eventStatus.width, zIndex: 9999 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden"
+          >
+            {['upcoming', 'live', 'cancelled', 'ended'].map(s => (
+              <button key={s} type="button" onClick={() => { setEventStatus(s); setShowEventStatusDropdown(false); setDropdownPos(prev => ({ ...prev, eventStatus: null })); }}
+                className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left capitalize", eventStatus === s && "bg-blue-500/5")}>
+                <span className={cn("text-xs font-medium capitalize",
+                  s === 'live' ? 'text-emerald-400' :
+                  s === 'cancelled' ? 'text-red-400' :
+                  s === 'ended' ? 'text-white/40' :
+                  'text-blue-400')}>{s}</span>
+                {eventStatus === s && <Check size={12} className="text-blue-400 shrink-0" />}
               </button>
             ))}
           </div>
@@ -519,7 +596,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
           <button
             type="submit"
             form="add-event-form"
-            disabled={isSubmitting || !title.trim() || !start}
+            disabled={isSubmitting || !title.trim() || !start || (activeTab === 'event' && !description.trim())}
             className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
           >
             {isSubmitting

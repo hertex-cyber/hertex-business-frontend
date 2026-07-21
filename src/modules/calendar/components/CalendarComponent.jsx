@@ -52,9 +52,15 @@ const CalendarComponent = () => {
   const eventsByDate = useMemo(() => {
     const map = {};
     events.forEach((ev) => {
-      const key = format(parseISO(ev.start), 'yyyy-MM-dd');
-      if (!map[key]) map[key] = [];
-      map[key].push(ev);
+      const start = parseISO(ev.start);
+      const dates = ev.end
+        ? eachDayOfInterval({ start, end: parseISO(ev.end) })
+        : [start];
+      dates.forEach((d) => {
+        const key = format(d, 'yyyy-MM-dd');
+        if (!map[key]) map[key] = [];
+        map[key].push(ev);
+      });
     });
     return map;
   }, [events]);
