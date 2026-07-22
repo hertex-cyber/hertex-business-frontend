@@ -4,6 +4,10 @@ import { CalendarPlus, Loader2, Check, ChevronDown, Search, X, ListChecks, Calen
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import {
+  MEETING_STATUS_OPTIONS, getMeetingStatusTextColor,
+  getMeetingStatusDropdownItemStyle, getMeetingStatusDotColor
+} from '../constants';
 
 const TABS = [
   { id: 'tasks', label: 'Tasks', icon: ListChecks },
@@ -24,15 +28,20 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [assignedTo, setAssignedTo] = useState(null);
   const [selectedAttendees, setSelectedAttendees] = useState([]);
   const [location, setLocation] = useState('');
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingStartTime, setMeetingStartTime] = useState('');
+  const [meetingEndTime, setMeetingEndTime] = useState('');
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [eventStatus, setEventStatus] = useState('upcoming');
   const [isFullDay, setIsFullDay] = useState(false);
   const [followUpStatus, setFollowUpStatus] = useState('follow_up');
+  const [meetingStatus, setMeetingStatus] = useState('upcoming');
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showEventStatusDropdown, setShowEventStatusDropdown] = useState(false);
   const [showFollowUpStatusDropdown, setShowFollowUpStatusDropdown] = useState(false);
+  const [showMeetingStatusDropdown, setShowMeetingStatusDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -41,10 +50,11 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ priority: null, eventStatus: null, followUpStatus: null, user: null, contact: null });
+  const [dropdownPos, setDropdownPos] = useState({ priority: null, eventStatus: null, followUpStatus: null, meetingStatus: null, user: null, contact: null });
   const priorityRef = useRef(null);
   const eventStatusRef = useRef(null);
   const followUpStatusRef = useRef(null);
+  const meetingStatusRef = useRef(null);
   const userRef = useRef(null);
   const contactRef = useRef(null);
   const prevAssignedToId = useRef(null);
@@ -57,6 +67,11 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
       const endStr = new Date(now.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
       setStart(startStr);
       setEnd(endStr);
+      setMeetingDate(now.toISOString().slice(0, 10));
+      const defaultTime = now.toISOString().slice(11, 16);
+      setMeetingStartTime(defaultTime);
+      const end = new Date(now.getTime() + 60 * 60 * 1000);
+      setMeetingEndTime(end.toISOString().slice(11, 16));
 
       setUsersLoading(true);
       axios.get('/api/auth/users/assignable/')
@@ -113,8 +128,8 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
 
   const reset = () => {
     setTitle(''); setDescription(''); setStart(''); setEnd('');
-    setPriority('medium'); setEventStatus('upcoming'); setFollowUpStatus('follow_up'); setIsFullDay(false); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setUserSearch(''); setContactSearch(''); setError('');
-    setShowPriorityDropdown(false); setShowEventStatusDropdown(false); setShowFollowUpStatusDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
+    setPriority('medium'); setEventStatus('upcoming'); setFollowUpStatus('follow_up'); setIsFullDay(false); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setMeetingDate(''); setMeetingStartTime(''); setMeetingEndTime(''); setUserSearch(''); setContactSearch(''); setError('');
+    setShowPriorityDropdown(false); setShowEventStatusDropdown(false); setShowFollowUpStatusDropdown(false); setShowMeetingStatusDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -138,6 +153,19 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
       setShowUserDropdown(false);
       setShowContactDropdown(false);
       setShowEventStatusDropdown(true);
+    }
+  };
+
+  const openMeetingStatusDropdown = () => {
+    if (meetingStatusRef.current) {
+      const rect = meetingStatusRef.current.getBoundingClientRect();
+      setDropdownPos(prev => ({ ...prev, meetingStatus: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, followUpStatus: null, user: null, contact: null }));
+      setShowPriorityDropdown(false);
+      setShowEventStatusDropdown(false);
+      setShowFollowUpStatusDropdown(false);
+      setShowMeetingStatusDropdown(true);
+      setShowUserDropdown(false);
+      setShowContactDropdown(false);
     }
   };
 
@@ -226,9 +254,11 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
       case 'meetings':
         payload = {
           ...basePayload,
+          status: meetingStatus,
           location: location || undefined,
           attendee_ids: selectedAttendees.map(a => a.id),
-          start: start ? new Date(start).toISOString() : null,
+          start: meetingDate && meetingStartTime ? new Date(`${meetingDate}T${meetingStartTime}`).toISOString() : null,
+          end: meetingDate && meetingEndTime ? new Date(`${meetingDate}T${meetingEndTime}`).toISOString() : null,
         };
         break;
       default:
@@ -503,9 +533,29 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Date & Time *</label>
-                    <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
-                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
+                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                    <button ref={meetingStatusRef} type="button" onClick={openMeetingStatusDropdown}
+                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getMeetingStatusTextColor(meetingStatus))}>
+                      <span>{meetingStatus}</span>
+                      <ChevronDown size={14} className="text-white/20" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Date *</label>
+                      <input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)}
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Start Time *</label>
+                      <input type="time" value={meetingStartTime} onChange={e => setMeetingStartTime(e.target.value)}
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">End Time *</label>
+                      <input type="time" value={meetingEndTime} onChange={e => setMeetingEndTime(e.target.value)}
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
+                    </div>
                   </div>
                 </>
               )}
@@ -576,6 +626,23 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
               </button>
             ))}
           </div>
+          </>
+        )}
+
+        {showMeetingStatusDropdown && dropdownPos.meetingStatus && (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => { setShowMeetingStatusDropdown(false); setDropdownPos(prev => ({ ...prev, meetingStatus: null })); }} />
+            <div style={{ position: 'fixed', top: dropdownPos.meetingStatus.top, left: dropdownPos.meetingStatus.left, width: dropdownPos.meetingStatus.width, zIndex: 9999 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden p-1">
+              {MEETING_STATUS_OPTIONS.map(opt => (
+                <button key={opt.value} type="button" onClick={() => { setMeetingStatus(opt.value); setShowMeetingStatusDropdown(false); setDropdownPos(prev => ({ ...prev, meetingStatus: null })); }}
+                  className={cn("w-full px-4 py-2.5 text-left text-xs font-medium rounded-lg transition-all capitalize flex items-center gap-2", getMeetingStatusDropdownItemStyle(opt.value, meetingStatus === opt.value))}>
+                  <div className={cn("w-1.5 h-1.5 rounded-full", getMeetingStatusDotColor(opt.value))} />
+                  {opt.label}
+                  {meetingStatus === opt.value && <Check size={12} className="ml-auto shrink-0" />}
+                </button>
+              ))}
+            </div>
           </>
         )}
 
@@ -695,7 +762,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
           <button
             type="submit"
             form="add-event-form"
-            disabled={isSubmitting || !title.trim() || !start || (activeTab === 'event' && !description.trim())}
+            disabled={isSubmitting || !title.trim() || (activeTab === 'meetings' ? (!meetingDate || !meetingStartTime || !meetingEndTime) : !start) || (activeTab === 'event' && !description.trim())}
             className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2"
           >
             {isSubmitting

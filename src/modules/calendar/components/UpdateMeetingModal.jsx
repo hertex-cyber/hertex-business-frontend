@@ -5,23 +5,32 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import {
+  MEETING_STATUS_OPTIONS, getMeetingStatusTextColor,
+  getMeetingStatusDropdownItemStyle, getMeetingStatusDotColor
+} from '../constants';
 
 const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [start, setStart] = useState('');
+  const [status, setStatus] = useState('upcoming');
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingStartTime, setMeetingStartTime] = useState('');
+  const [meetingEndTime, setMeetingEndTime] = useState('');
   const [selectedAttendees, setSelectedAttendees] = useState([]);
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ user: null });
+  const [dropdownPos, setDropdownPos] = useState({ status: null, user: null });
+  const statusRef = useRef(null);
   const userRef = useRef(null);
 
   const isCreator = event?.user === user?.id;
@@ -32,7 +41,11 @@ const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
       setTitle(event.title || '');
       setDescription(event.description || '');
       setLocation(event.location || '');
-      setStart(event.start ? event.start.slice(0, 16) : '');
+      setStatus(event.status || 'upcoming');
+      const s = event.start || '';
+      setMeetingDate(s ? s.slice(0, 10) : '');
+      setMeetingStartTime(s ? s.slice(11, 16) : '');
+      setMeetingEndTime(event.end ? event.end.slice(11, 16) : '');
       setSelectedAttendees((event.attendees || []).map(a => ({ id: a.user, first_name: a.user_name })));
       setError('');
 
@@ -44,10 +57,20 @@ const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
     }
   }, [isOpen, event]);
 
+  const openStatusDropdown = () => {
+    if (statusRef.current) {
+      const rect = statusRef.current.getBoundingClientRect();
+      setDropdownPos({ status: { top: rect.bottom + 4, left: rect.left, width: rect.width }, user: null });
+      setShowUserDropdown(false);
+      setShowStatusDropdown(true);
+    }
+  };
+
   const openUserDropdown = () => {
     if (userRef.current) {
       const rect = userRef.current.getBoundingClientRect();
-      setDropdownPos({ user: { top: rect.bottom + 4, left: rect.left, width: rect.width } });
+      setDropdownPos({ user: { top: rect.bottom + 4, left: rect.left, width: rect.width }, status: null });
+      setShowStatusDropdown(false);
       setShowUserDropdown(true);
     }
   };
@@ -68,9 +91,11 @@ const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
       await axios.patch(`/api/calendar/todos/${event.id}/`, {
         title,
         description: description || undefined,
+        status,
         location: location || undefined,
         attendee_ids: selectedAttendees.map(a => a.id),
-        start: start ? new Date(start).toISOString() : null,
+        start: meetingDate && meetingStartTime ? new Date(`${meetingDate}T${meetingStartTime}`).toISOString() : null,
+        end: meetingDate && meetingEndTime ? new Date(`${meetingDate}T${meetingEndTime}`).toISOString() : undefined,
       });
       onSuccess?.();
       onClose();
@@ -155,9 +180,33 @@ const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Date & Time</label>
-                <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} disabled={!canEdit}
-                  className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                {canEdit ? (
+                  <button ref={statusRef} type="button" onClick={openStatusDropdown}
+                    className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getMeetingStatusTextColor(status))}>
+                    <span>{status}</span>
+                    <ChevronDown size={14} className="text-white/20" />
+                  </button>
+                ) : (
+                  <div className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm capitalize", getMeetingStatusTextColor(status))}>{status}</div>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Date</label>
+                  <input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} disabled={!canEdit}
+                    className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Start Time</label>
+                  <input type="time" value={meetingStartTime} onChange={e => setMeetingStartTime(e.target.value)} disabled={!canEdit}
+                    className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">End Time</label>
+                  <input type="time" value={meetingEndTime} onChange={e => setMeetingEndTime(e.target.value)} disabled={!canEdit}
+                    className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
+                </div>
               </div>
               {error && <p className="text-[10px] text-red-500 font-medium uppercase tracking-wider">{error}</p>}
             </div>
@@ -170,12 +219,29 @@ const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
             Cancel
           </button>
           {canEdit && (
-            <button type="submit" form="update-meeting-form" disabled={isSubmitting || !title.trim() || !start}
+            <button type="submit" form="update-meeting-form" disabled={isSubmitting || !title.trim() || !meetingDate || !meetingStartTime}
               className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2">
               {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CalendarPlus size={14} />Save</>}
             </button>
           )}
         </div>
+
+        {showStatusDropdown && dropdownPos.status && canEdit && (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => { setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }} />
+            <div style={{ position: 'fixed', top: dropdownPos.status.top, left: dropdownPos.status.left, width: dropdownPos.status.width, zIndex: 9999 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden p-1">
+              {MEETING_STATUS_OPTIONS.map(opt => (
+                <button key={opt.value} type="button" onClick={() => { setStatus(opt.value); setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }}
+                  className={cn("w-full px-4 py-2.5 text-left text-xs font-medium rounded-lg transition-all capitalize flex items-center gap-2", getMeetingStatusDropdownItemStyle(opt.value, status === opt.value))}>
+                  <div className={cn("w-1.5 h-1.5 rounded-full", getMeetingStatusDotColor(opt.value))} />
+                  {opt.label}
+                  {status === opt.value && <Check size={12} className="ml-auto shrink-0" />}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {showUserDropdown && dropdownPos.user && canEdit && (
           <>
