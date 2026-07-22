@@ -25,7 +25,7 @@ const MeetingCard = ({ event, onClick }) => {
         </div>
       </div>
       <div className="text-[10px] text-white/30 font-medium space-y-0.5">
-        {event.start && <p>{format(parseISO(event.start), 'h:mm a')}</p>}
+        {event.start && <p>Date: {format(parseISO(event.start), 'MMM d, yyyy h:mm a')}</p>}
         {event.contact_name && <p>Contact: {event.contact_name}</p>}
         {event.assigned_to_name && <p>Assigned to: {event.assigned_to_name}</p>}
         {event.user_name && <p>Created by: {event.user_name}</p>}

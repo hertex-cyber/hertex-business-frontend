@@ -1,18 +1,17 @@
 import React from 'react';
-import { Upload, Tag } from 'lucide-react';
+import { Upload } from 'lucide-react';
 
 const UploadStep = ({ fileInputRef, onFileChange, importName, onImportNameChange }) => (
     <div className="h-full flex flex-col gap-5">
         {/* Import Name */}
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-zinc-900/50 border border-zinc-800">
-            <Tag size={14} className="text-blue-500/50 shrink-0" />
-            <div className="flex-1">
-                <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-1.5">Import Name / Source</p>
+        <div className="max-w-[320px]">
+            <p className="text-[11px] uppercase text-white/60 mb-1.5">Import Name</p>
+            <div className="rounded-lg border border-zinc-700 bg-zinc-900/30 px-3 py-2">
                 <input
                     type="text"
                     value={importName}
                     onChange={(e) => onImportNameChange(e.target.value)}
-                    placeholder="e.g. Q1 Trade Show, LinkedIn Export..."
+                    placeholder="e.g. Q1 Trade Show"
                     className="w-full bg-transparent text-sm text-white placeholder:text-white/20 outline-none border-none focus:outline-none"
                 />
             </div>

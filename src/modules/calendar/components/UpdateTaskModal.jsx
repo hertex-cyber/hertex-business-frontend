@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Loader2, Check, ChevronDown, Search, CalendarPlus, Trash2 } from 'lucide-react';
+import { X, Loader2, Check, ChevronDown, Search, CalendarPlus, Trash2, Calendar, Clock, User } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
-import { TASK_STATUS_OPTIONS, getTaskStatusTextColor } from '../constants';
+import { TASK_STATUS_OPTIONS, TASK_STATUS_STYLES, getTaskStatusTextColor } from '../constants';
 
 const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
@@ -63,6 +64,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
         setAssignedTo(task.assigned_to ? { id: task.assigned_to, first_name: task.assigned_to_name } : null);
       }
       setHoldReason(task.hold_reason || '');
+      setHoldSaved(!!task.hold_reason);
       setExtensionRequest(task.extension_request || '');
       setExtSaved(!!task.extension_request);
       setCompletionRemarks(task.completion_remarks || '');
@@ -205,203 +207,431 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="px-8 py-6 border-b border-zinc-800 bg-white/[0.02] flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-sm font-medium text-white uppercase tracking-wider">Update Task</h2>
-            <p className="text-[9px] text-white/40 uppercase tracking-widest font-medium">Edit task details</p>
+        {canEdit && (
+          <div className="px-8 py-6 border-b border-zinc-800 bg-white/[0.02] flex items-center justify-between shrink-0">
+            <div>
+              <h2 className="text-sm font-medium text-white uppercase tracking-wider">Update Task</h2>
+              <p className="text-[9px] text-white/40 uppercase tracking-widest font-medium">Edit task details</p>
+            </div>
+            {isCreator && (
+              <button type="button" onClick={() => setShowDeleteConfirm(true)}
+                className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
-          {isCreator && (
-            <button type="button" onClick={() => setShowDeleteConfirm(true)}
-              className="p-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
-              <Trash2 size={14} />
-            </button>
-          )}
-        </div>
+        )}
 
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-          {!canEdit && !canEditStatus && (
-            <div className="px-8 py-3 bg-red-500/10 border-b border-red-500/20">
-              <p className="text-[10px] text-red-400 font-medium uppercase tracking-wider">{isOverdue ? 'This task is overdue' : 'Read-only — only the creator can edit this task.'}</p>
-            </div>
-          )}
-          {canEditStatus && !canEdit && (
-            <div className="px-8 py-3 bg-blue-500/10 border-b border-blue-500/20">
-              <p className="text-[10px] text-blue-400 font-medium uppercase tracking-wider">You can update the status of this task.</p>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} id="update-task-form">
-            <div className="px-8 py-6 space-y-5">
-              <div className="space-y-2">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Task Name</label>
-                <input value={title} onChange={e => setTitle(e.target.value)} disabled={!canEdit}
-                  className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Description</label>
-                <textarea value={description} onChange={e => setDescription(e.target.value)} disabled={!canEdit} rows={3}
-                  className="w-full bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40 disabled:cursor-not-allowed" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Priority</label>
-                  {canEdit ? (
-                    <button ref={priorityRef} type="button" onClick={openPriorityDropdown}
-                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700", priority === 'high' ? 'text-red-400' : priority === 'medium' ? 'text-yellow-400' : 'text-blue-400')}>
-                      <span className="capitalize">{priority}</span>
-                      <ChevronDown size={14} className="text-white/20" />
-                    </button>
-                  ) : (
-                    <div className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm text-white/40 capitalize">{priority}</div>
-                  )}
-                </div>
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
-                  {canEditStatus ? (
-                    <button ref={statusRef} type="button" onClick={openStatusDropdown}
-                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getTaskStatusTextColor(status))}>
-                      <span>{status || 'assigned'}</span>
-                      <ChevronDown size={14} className="text-white/20" />
-                    </button>
-                  ) : (
-                    <div className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm text-white/40 capitalize">{status || 'assigned'}</div>
-                  )}
-                </div>
-              </div>
-              {status === 'on_hold' && (!isCreator || holdReason) && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Hold Reason</label>
-                  <div className="flex gap-2">
-                    <textarea value={holdReason} onChange={e => setHoldReason(e.target.value)} disabled={isCreator || !canEditStatus || holdSaved}
-                      placeholder="Why is this task on hold?"
-                      rows={2}
-                      className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
-                    {!isCreator && canEditStatus && (
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        {holdSaved ? (
-                          <button type="button" onClick={() => setHoldSaved(false)}
-                            className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                          </button>
-                        ) : (
-                          <>
-                            <button type="button" onClick={handleHoldSubmit} disabled={!holdReason.trim() || holdSubmitting}
-                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
-                              {holdSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                            </button>
-                            <button type="button" onClick={() => { setStatus('assigned'); setHoldReason(''); }}
-                              className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
-                              <X size={16} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
+        {canEdit ? (
+          <>
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <form onSubmit={handleSubmit} id="update-task-form">
+                <div className="px-8 py-6 space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Task Name</label>
+                    <input value={title} onChange={e => setTitle(e.target.value)}
+                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all" />
                   </div>
-                </div>
-              )}
-              {status === 'completed' && (!isCreator || completionRemarks) && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Completion Remarks</label>
-                  <div className="flex gap-2">
-                    <textarea value={completionRemarks} onChange={e => setCompletionRemarks(e.target.value)} disabled={isCreator || !canEditStatus || compSaved}
-                      placeholder="Describe what was accomplished..."
-                      rows={2}
-                      className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
-                    {!isCreator && canEditStatus && (
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        {compSaved ? (
-                          <button type="button" onClick={() => setCompSaved(false)}
-                            className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                          </button>
-                        ) : (
-                          <>
-                            <button type="button" onClick={handleCompSubmit} disabled={!completionRemarks.trim() || compSubmitting}
-                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
-                              {compSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                            </button>
-                            <button type="button" onClick={() => { setStatus('assigned'); setCompletionRemarks(''); }}
-                              className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
-                              <X size={16} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Description</label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+                      className="w-full bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
                   </div>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Deadline</label>
-                  <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} disabled={!canEditDeadline}
-                    className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
-                </div>
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
-                  {canEditAssignee ? (
-                    <button ref={userRef} type="button" onClick={openUserDropdown}
-                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
-                      {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.id}</span> : <span className="text-white/20">Unassigned</span>}
-                      <ChevronDown size={14} className="text-white/20" />
-                    </button>
-                  ) : (
-                    <div className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm text-white/40">{assignedTo?.first_name || 'Unassigned'}</div>
-                  )}
-                </div>
-              </div>
-
-              {status === 'overdue' && (isCreator ? extensionRequest : true) && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Request Extension</label>
-                  {!isCreator && canEditStatus && !extSaved ? (
-                    <div className="flex gap-2">
-                      <textarea value={extensionRequest} onChange={e => setExtensionRequest(e.target.value)}
-                        placeholder="Why do you need more time?"
-                        rows={2}
-                        className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        <button type="button" onClick={handleExtSubmit} disabled={!extensionRequest.trim() || extSubmitting}
-                          className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                          {extSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                        </button>
-                        <button type="button" onClick={() => setExtensionRequest('')}
-                          className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
-                          <X size={16} />
-                        </button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 relative">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Priority</label>
+                      <button ref={priorityRef} type="button" onClick={openPriorityDropdown}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700", priority === 'high' ? 'text-red-400' : priority === 'medium' ? 'text-yellow-400' : 'text-blue-400')}>
+                        <span className="capitalize">{priority}</span>
+                        <ChevronDown size={14} className="text-white/20" />
+                      </button>
+                    </div>
+                    <div className="space-y-2 relative">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                      <button ref={statusRef} type="button" onClick={openStatusDropdown}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getTaskStatusTextColor(status))}>
+                        <span>{status || 'assigned'}</span>
+                        <ChevronDown size={14} className="text-white/20" />
+                      </button>
+                    </div>
+                  </div>
+                  {status === 'on_hold' && (!isCreator || holdReason) && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Hold Reason</label>
+                      <div className="flex gap-2">
+                        <textarea value={holdReason} onChange={e => setHoldReason(e.target.value)} disabled={isCreator || !canEditStatus || holdSaved}
+                          placeholder="Why is this task on hold?"
+                          rows={2}
+                          className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
+                        {!isCreator && canEditStatus && (
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            {holdSaved ? (
+                              <button type="button" onClick={() => setHoldSaved(false)}
+                                className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                              </button>
+                            ) : (
+                              <>
+                                <button type="button" onClick={handleHoldSubmit} disabled={!holdReason.trim() || holdSubmitting}
+                                  className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                                  {holdSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                </button>
+                                <button type="button" onClick={() => { setStatus('assigned'); setHoldReason(''); }}
+                                  className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                                  <X size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <textarea value={extensionRequest} disabled rows={2}
-                        className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white/60 resize-none disabled:opacity-40" />
-                      {!isCreator && canEditStatus && extSaved && (
-                        <button type="button" onClick={() => setExtSaved(false)}
-                          className="shrink-0 mt-0.5 p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all self-start">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  )}
+                  {status === 'completed' && (!isCreator || completionRemarks) && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Completion Remarks</label>
+                      <div className="flex gap-2">
+                        <textarea value={completionRemarks} onChange={e => setCompletionRemarks(e.target.value)} disabled={isCreator || !canEditStatus || compSaved}
+                          placeholder="Describe what was accomplished..."
+                          rows={2}
+                          className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
+                        {!isCreator && canEditStatus && (
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            {compSaved ? (
+                              <button type="button" onClick={() => setCompSaved(false)}
+                                className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                              </button>
+                            ) : (
+                              <>
+                                <button type="button" onClick={handleCompSubmit} disabled={!completionRemarks.trim() || compSubmitting}
+                                  className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                                  {compSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                </button>
+                                <button type="button" onClick={() => { setStatus('assigned'); setCompletionRemarks(''); }}
+                                  className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                                  <X size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Deadline</label>
+                      <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} disabled={!canEditDeadline}
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark] disabled:opacity-40 disabled:cursor-not-allowed" />
+                    </div>
+                    <div className="space-y-2 relative">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
+                      {canEditAssignee ? (
+                        <button ref={userRef} type="button" onClick={openUserDropdown}
+                          className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
+                          {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.id}</span> : <span className="text-white/20">Unassigned</span>}
+                          <ChevronDown size={14} className="text-white/20" />
                         </button>
+                      ) : (
+                        <div className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm text-white/40">{assignedTo?.first_name || 'Unassigned'}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {status === 'overdue' && (isCreator ? extensionRequest : true) && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Request Extension</label>
+                      {!isCreator && canEditStatus && !extSaved ? (
+                        <div className="flex gap-2">
+                          <textarea value={extensionRequest} onChange={e => setExtensionRequest(e.target.value)}
+                            placeholder="Why do you need more time?"
+                            rows={2}
+                            className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            <button type="button" onClick={handleExtSubmit} disabled={!extensionRequest.trim() || extSubmitting}
+                              className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                              {extSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                            </button>
+                            <button type="button" onClick={() => setExtensionRequest('')}
+                              className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <textarea value={extensionRequest} disabled rows={2}
+                            className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white/60 resize-none disabled:opacity-40" />
+                          {!isCreator && canEditStatus && extSaved && (
+                            <button type="button" onClick={() => setExtSaved(false)}
+                              className="shrink-0 mt-0.5 p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all self-start">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
+                  {error && <p className="text-[10px] text-red-500 font-medium uppercase tracking-wider">{error}</p>}
+                </div>
+              </form>
+            </div>
+
+            <div className="px-8 py-4 border-t border-zinc-800 bg-black/50 backdrop-blur-xl flex justify-end gap-3 shrink-0">
+              <button type="button" onClick={onClose} disabled={isSubmitting}
+                className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]">
+                Cancel
+              </button>
+              {canSave && (
+                <button type="submit" form="update-task-form" disabled={isSubmitting || (!canEdit && !status) || (canEdit && !title.trim()) || (status === 'on_hold' && !isCreator && !holdReason.trim()) || (status === 'completed' && !completionRemarks.trim())}
+                  className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2">
+                  {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CalendarPlus size={14} />Save</>}
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="shrink-0">
+                <div className="px-8 py-4 border-b border-zinc-800">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] font-medium mb-1">Update Task</p>
+                      <h2 className="text-lg font-bold text-white pr-4">{task.title}</h2>
+                    </div>
+                    {status && (
+                      <span className={cn("shrink-0 px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase tracking-wider", TASK_STATUS_STYLES[status] || 'text-white/40 bg-white/5 border-white/10')}>
+                        {TASK_STATUS_OPTIONS.find(o => o.value === status)?.label || status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {!canEdit && !canEditStatus && (
+                  <div className="px-8 py-3 bg-red-500/10 border-b border-red-500/20">
+                    <p className="text-[10px] text-red-400 font-medium uppercase tracking-wider">{isOverdue ? 'This task is overdue' : 'Read-only — only the creator can edit this task.'}</p>
+                  </div>
+                )}
+                {canEditStatus && !canEdit && (
+                  <div className="px-8 py-3 bg-blue-500/10 border-b border-blue-500/20">
+                    <p className="text-[10px] text-blue-400 font-medium uppercase tracking-wider">You can update the status of this task.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+              {description && (
+                <div className="px-8 pt-4">
+                  <div className="space-y-2">
+                    <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-medium">Description</p>
+                    <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{description}</p>
+                  </div>
                 </div>
               )}
-              {error && <p className="text-[10px] text-red-500 font-medium uppercase tracking-wider">{error}</p>}
-            </div>
-          </form>
-        </div>
 
-        <div className="px-8 py-4 border-t border-zinc-800 bg-black/50 backdrop-blur-xl flex justify-end gap-3 shrink-0">
-          <button type="button" onClick={onClose} disabled={isSubmitting}
-            className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]">
-            Cancel
-          </button>
-          {canSave && (
-            <button type="submit" form="update-task-form" disabled={isSubmitting || (!canEdit && !status) || (canEdit && !title.trim()) || (status === 'on_hold' && !isCreator && !holdReason.trim()) || (status === 'completed' && !completionRemarks.trim())}
-              className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2">
-              {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CalendarPlus size={14} />Save</>}
-            </button>
-          )}
-        </div>
+              <form id="update-task-poster-form" onSubmit={handleSubmit}>
+              <div className="px-8 pt-3 pb-2">
+                <div className="grid grid-cols-2 gap-3">
+                  {deadline && (
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/[0.03] border border-zinc-800/50">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                        <Calendar size={14} className="text-blue-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] font-medium">Deadline</p>
+                        <p className="text-xs text-white font-medium truncate">{format(parseISO(deadline), 'MMM d, yyyy h:mm a')}</p>
+                      </div>
+                    </div>
+                  )}
+                  {canEditStatus && (
+                    <div className="space-y-2 relative">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                      <button ref={statusRef} type="button" onClick={openStatusDropdown}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getTaskStatusTextColor(status))}>
+                        <span>{status || 'assigned'}</span>
+                        <ChevronDown size={14} className="text-white/20" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  {assignedTo?.first_name ? (
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/[0.03] border border-zinc-800/50">
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                        <User size={14} className="text-purple-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] font-medium">Assigned To</p>
+                        <p className="text-xs text-white font-medium truncate">{assignedTo.first_name}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/[0.03] border border-zinc-800/50">
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+                        <User size={14} className="text-purple-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] font-medium">Assigned To</p>
+                        <p className="text-xs text-white/40 font-medium truncate">Unassigned</p>
+                      </div>
+                    </div>
+                  )}
+                  {priority && (
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg bg-white/[0.03] border border-zinc-800/50">
+                      <div className={cn("w-8 h-8 rounded-lg border flex items-center justify-center shrink-0",
+                        priority === 'high' ? 'bg-red-500/10 border-red-500/20' :
+                        priority === 'medium' ? 'bg-yellow-500/10 border-yellow-500/20' :
+                        'bg-blue-500/10 border-blue-500/20')}>
+                        <Clock size={14} className={cn(
+                          priority === 'high' ? 'text-red-400' :
+                          priority === 'medium' ? 'text-yellow-400' :
+                          'text-blue-400')} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] font-medium">Priority</p>
+                        <p className={cn("text-xs font-medium truncate capitalize",
+                          priority === 'high' ? 'text-red-400' :
+                          priority === 'medium' ? 'text-yellow-400' :
+                          'text-blue-400')}>{priority}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {canEditStatus && (status === 'on_hold' || status === 'completed' || status === 'overdue') && (
+                <div className="px-8 pb-6 space-y-4">
+
+                    {status === 'on_hold' && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Hold Reason</label>
+                        <div className="flex gap-2">
+                          <textarea value={holdReason} onChange={e => setHoldReason(e.target.value)} disabled={holdSaved}
+                            placeholder="Why is this task on hold?"
+                            rows={2}
+                            className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            {holdSaved ? (
+                              <button type="button" onClick={() => setHoldSaved(false)}
+                                className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                              </button>
+                            ) : (
+                              <>
+                                <button type="button" onClick={handleHoldSubmit} disabled={!holdReason.trim() || holdSubmitting}
+                                  className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                                  {holdSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                </button>
+                                <button type="button" onClick={() => { setStatus('assigned'); setHoldReason(''); }}
+                                  className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                                  <X size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {status === 'completed' && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Completion Remarks</label>
+                        <div className="flex gap-2">
+                          <textarea value={completionRemarks} onChange={e => setCompletionRemarks(e.target.value)} disabled={compSaved}
+                            placeholder="Describe what was accomplished..."
+                            rows={2}
+                            className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            {compSaved ? (
+                              <button type="button" onClick={() => setCompSaved(false)}
+                                className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                              </button>
+                            ) : (
+                              <>
+                                <button type="button" onClick={handleCompSubmit} disabled={!completionRemarks.trim() || compSubmitting}
+                                  className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                                  {compSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                </button>
+                                <button type="button" onClick={() => { setStatus('assigned'); setCompletionRemarks(''); }}
+                                  className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                                  <X size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {status === 'overdue' && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Request Extension</label>
+                        {!extSaved ? (
+                          <div className="flex gap-2">
+                            <textarea value={extensionRequest} onChange={e => setExtensionRequest(e.target.value)}
+                              placeholder="Why do you need more time?"
+                              rows={2}
+                              className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
+                            <div className="flex flex-col gap-1.5 shrink-0">
+                              <button type="button" onClick={handleExtSubmit} disabled={!extensionRequest.trim() || extSubmitting}
+                                className="p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                                {extSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                              </button>
+                              <button type="button" onClick={() => setExtensionRequest('')}
+                                className="p-2 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all">
+                                <X size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <textarea value={extensionRequest} disabled rows={2}
+                              className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white/60 resize-none" />
+                            <button type="button" onClick={() => setExtSaved(false)}
+                              className="shrink-0 mt-0.5 p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all self-start">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  {error && <p className="text-[10px] text-red-500 font-medium uppercase tracking-wider">{error}</p>}
+                </div>
+              )}
+              </form>
+            </div>
+
+          <div className="px-8 py-4 border-t border-zinc-800 bg-black/50 backdrop-blur-xl flex items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {task?.user_name && (
+                <>
+                  <div className="w-7 h-7 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                    <User size={12} className="text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] font-medium">Created by</p>
+                    <p className="text-xs text-white font-medium truncate">{task.user_name}</p>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <button type="button" onClick={onClose}
+                className="px-6 py-2 rounded-sm bg-zinc-900/50 border border-zinc-800 text-white/40 hover:text-white hover:bg-zinc-800 transition-all text-[10px] font-medium uppercase tracking-[0.2em]">
+                Close
+              </button>
+              <button type="submit" form="update-task-poster-form" disabled={isSubmitting || (status === 'on_hold' && !holdReason.trim()) || (status === 'completed' && !completionRemarks.trim())}
+                className="px-6 py-2 rounded-sm bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed text-[10px] font-medium uppercase tracking-[0.2em] transition-all flex items-center gap-2">
+                {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CalendarPlus size={14} />Save</>}
+              </button>
+            </div>
+          </div>
+            </div>
+        </>
+      )}
 
         {showPriorityDropdown && dropdownPos.priority && canEdit && (
           <>

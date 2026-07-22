@@ -50,15 +50,20 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const [contactSearch, setContactSearch] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
   const [showContactDropdown, setShowContactDropdown] = useState(false);
+  const [pipelines, setPipelines] = useState([]);
+  const [pipelinesLoading, setPipelinesLoading] = useState(false);
+  const [selectedPipeline, setSelectedPipeline] = useState(null);
+  const [showPipelineDropdown, setShowPipelineDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [dropdownPos, setDropdownPos] = useState({ priority: null, eventStatus: null, followUpStatus: null, meetingStatus: null, user: null, contact: null });
+  const [dropdownPos, setDropdownPos] = useState({ priority: null, eventStatus: null, followUpStatus: null, meetingStatus: null, user: null, contact: null, pipeline: null });
   const priorityRef = useRef(null);
   const eventStatusRef = useRef(null);
   const followUpStatusRef = useRef(null);
   const meetingStatusRef = useRef(null);
   const userRef = useRef(null);
   const contactRef = useRef(null);
+  const pipelineRef = useRef(null);
   const prevAssignedToId = useRef(null);
 
   useEffect(() => {
@@ -87,18 +92,27 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
         .catch(() => setUsers([]))
         .finally(() => setUsersLoading(false));
 
+      setPipelinesLoading(true);
+      axios.get('/api/crm/pipelines/')
+        .then(res => setPipelines(res.data.results || res.data || []))
+        .catch(() => setPipelines([]))
+        .finally(() => setPipelinesLoading(false));
+
     }
   }, [isOpen]);
 
-  const loadContacts = useCallback((user, search) => {
-    if (user?.id) {
+  const loadContacts = useCallback((pipeline, userObj, search) => {
+    if (pipeline?.id && userObj?.id) {
       setContactsLoading(true);
       const params = new URLSearchParams();
-      const isAdminUser = user.role === 'Superadmin' || user.role === 'Admin';
-      if (!isAdminUser) params.set('assigned_user', user.id);
+      params.set('pipeline', pipeline.id);
+      params.set('assigned_user', userObj.id);
       if (search) params.set('search', search);
-      axios.get(`/api/contacts/?${params}`)
-        .then(res => setContacts(res.data.results || res.data || []))
+      axios.get(`/api/crm/pipeline/?${params}`)
+        .then(res => {
+          const items = res.data.results || res.data || [];
+          setContacts(items.map(c => ({ id: c.contact_details?.id, name: c.contact_details?.name, email: c.contact_details?.email })));
+        })
         .catch(() => setContacts([]))
         .finally(() => setContactsLoading(false));
     } else {
@@ -107,31 +121,31 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   }, []);
 
   useEffect(() => {
-    if (assignedTo?.id) {
+    if (selectedPipeline?.id && assignedTo?.id) {
       if (prevAssignedToId.current !== assignedTo.id) {
         setSelectedContact(null);
         setContactSearch('');
       }
       prevAssignedToId.current = assignedTo.id;
-      loadContacts(assignedTo, '');
+      loadContacts(selectedPipeline, assignedTo, '');
     } else {
       setContacts([]);
     }
-  }, [assignedTo, loadContacts]);
+  }, [selectedPipeline, assignedTo, loadContacts]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (assignedTo?.id) {
-        loadContacts(assignedTo, contactSearch);
+      if (selectedPipeline?.id && assignedTo?.id) {
+        loadContacts(selectedPipeline, assignedTo, contactSearch);
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [contactSearch, assignedTo, loadContacts]);
+  }, [contactSearch, selectedPipeline, assignedTo, loadContacts]);
 
   const reset = () => {
     setTitle(''); setDescription(''); setStart(''); setEnd('');
-    setPriority('medium'); setEventStatus('upcoming'); setFollowUpStatus('follow_up'); setIsFullDay(false); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setLocation(''); setMeetingDate(''); setMeetingStartTime(''); setMeetingEndTime(''); setUserSearch(''); setContactSearch(''); setError('');
-    setShowPriorityDropdown(false); setShowEventStatusDropdown(false); setShowFollowUpStatusDropdown(false); setShowMeetingStatusDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false);
+    setPriority('medium'); setEventStatus('upcoming'); setFollowUpStatus('follow_up'); setIsFullDay(false); setAssignedTo(null); setSelectedAttendees([]); setSelectedContact(null); setSelectedPipeline(null); setLocation(''); setMeetingDate(''); setMeetingStartTime(''); setMeetingEndTime(''); setUserSearch(''); setContactSearch(''); setError('');
+    setShowPriorityDropdown(false); setShowEventStatusDropdown(false); setShowFollowUpStatusDropdown(false); setShowMeetingStatusDropdown(false); setShowUserDropdown(false); setShowContactDropdown(false); setShowPipelineDropdown(false);
   };
 
   const handleClose = () => { reset(); onClose(); };
@@ -174,11 +188,10 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const openFollowUpStatusDropdown = () => {
     if (followUpStatusRef.current) {
       const rect = followUpStatusRef.current.getBoundingClientRect();
-      setDropdownPos(prev => ({ ...prev, followUpStatus: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, user: null, contact: null }));
-      setShowPriorityDropdown(false);
-      setShowEventStatusDropdown(false);
+      setDropdownPos(prev => ({ ...prev, followUpStatus: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, user: null, contact: null, pipeline: null }));
       setShowUserDropdown(false);
       setShowContactDropdown(false);
+      setShowPipelineDropdown(false);
       setShowFollowUpStatusDropdown(true);
     }
   };
@@ -186,10 +199,9 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const openUserDropdown = () => {
     if (userRef.current) {
       const rect = userRef.current.getBoundingClientRect();
-      setDropdownPos(prev => ({ ...prev, user: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, contact: null }));
-      setShowPriorityDropdown(false);
-      setShowEventStatusDropdown(false);
+      setDropdownPos(prev => ({ ...prev, user: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, contact: null, pipeline: null }));
       setShowContactDropdown(false);
+      setShowPipelineDropdown(false);
       setShowUserDropdown(true);
     }
   };
@@ -197,11 +209,20 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
   const openContactDropdown = () => {
     if (contactRef.current) {
       const rect = contactRef.current.getBoundingClientRect();
-      setDropdownPos(prev => ({ ...prev, contact: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, user: null }));
-      setShowPriorityDropdown(false);
-      setShowEventStatusDropdown(false);
+      setDropdownPos(prev => ({ ...prev, contact: { top: rect.bottom + 4, left: rect.left, width: rect.width }, priority: null, eventStatus: null, user: null, pipeline: null }));
       setShowUserDropdown(false);
+      setShowPipelineDropdown(false);
       setShowContactDropdown(true);
+    }
+  };
+
+  const openPipelineDropdown = () => {
+    if (pipelineRef.current) {
+      const rect = pipelineRef.current.getBoundingClientRect();
+      setDropdownPos(prev => ({ ...prev, pipeline: { top: rect.bottom + 4, left: rect.left, width: rect.width }, followUpStatus: null, user: null, contact: null }));
+      setShowUserDropdown(false);
+      setShowContactDropdown(false);
+      setShowPipelineDropdown(true);
     }
   };
 
@@ -248,6 +269,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
         payload = {
           ...basePayload,
           status: followUpStatus,
+          pipeline: selectedPipeline?.id || null,
           contact: selectedContact?.id || null,
           assigned_to: assignedTo?.id || null,
           start: start ? new Date(start).toISOString() : null,
@@ -459,19 +481,27 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                       </button>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Notes</label>
-                    <textarea value={description} onChange={e => setDescription(e.target.value)}
-                      placeholder="Add follow-up notes..."
-                      rows={3}
-                      className="w-full bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 relative">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Pipeline</label>
+                      <button ref={pipelineRef} type="button" onClick={openPipelineDropdown}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700", selectedPipeline ? "text-white" : "text-white/20")}>
+                        <span>{selectedPipeline?.name || 'Select pipeline...'}</span>
+                        <ChevronDown size={14} className="text-white/20" />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Follow-Up Date *</label>
+                      <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2 relative">
                       <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Assign To</label>
                       {isAdmin ? (
-                        <button ref={userRef} type="button" onClick={openUserDropdown}
-                          className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm text-white/60 hover:border-zinc-700 transition-all">
+                        <button ref={userRef} type="button" onClick={openUserDropdown} disabled={!selectedPipeline}
+                          className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all", selectedPipeline ? "text-white/60 hover:border-zinc-700 cursor-pointer" : "text-white/20 cursor-not-allowed opacity-40")}>
                           {assignedTo ? <span className="text-white">{assignedTo.first_name || assignedTo.email}</span> : <span className="text-white/20">Select a team member...</span>}
                           <ChevronDown size={14} className="text-white/20" />
                         </button>
@@ -481,17 +511,19 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                     </div>
                     <div className="space-y-2 relative">
                       <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Contact</label>
-                      <button ref={contactRef} type="button" onClick={openContactDropdown} disabled={!assignedTo}
-                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all", assignedTo ? "text-white/60 hover:border-zinc-700 cursor-pointer" : "text-white/20 cursor-not-allowed opacity-40")}>
+                      <button ref={contactRef} type="button" onClick={openContactDropdown} disabled={!assignedTo || !selectedPipeline}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all", assignedTo && selectedPipeline ? "text-white/60 hover:border-zinc-700 cursor-pointer" : "text-white/20 cursor-not-allowed opacity-40")}>
                         {selectedContact ? <span className="text-white">{selectedContact.name || selectedContact.email}</span> : <span className="text-white/20">Select a contact...</span>}
                         <ChevronDown size={14} className="text-white/20" />
                       </button>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Follow-Up Date *</label>
-                    <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)}
-                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white focus:border-blue-500/40 outline-none transition-all [color-scheme:dark]" />
+                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Notes</label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)}
+                      placeholder="Add follow-up notes..."
+                      rows={3}
+                      className="w-full bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none" />
                   </div>
                 </>
               )}
@@ -700,6 +732,30 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
               )}
             </div>
           </div>
+          </>
+        )}
+
+        {showPipelineDropdown && dropdownPos.pipeline && (
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={() => { setShowPipelineDropdown(false); setDropdownPos(prev => ({ ...prev, pipeline: null })); }} />
+            <div style={{ position: 'fixed', top: dropdownPos.pipeline.top, left: dropdownPos.pipeline.left, width: dropdownPos.pipeline.width, zIndex: 9999 }}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden">
+              <div className="max-h-48 overflow-y-auto custom-scrollbar">
+                {pipelinesLoading ? (
+                  <div className="flex items-center justify-center py-6"><Loader2 size={16} className="animate-spin text-blue-500/50" /></div>
+                ) : pipelines.length === 0 ? (
+                  <p className="text-[10px] text-white/20 text-center py-6 uppercase tracking-widest">No pipelines found</p>
+                ) : (
+                  pipelines.map(p => (
+                    <button key={p.id} type="button" onClick={() => { setSelectedPipeline(p); setAssignedTo(null); setSelectedContact(null); setShowPipelineDropdown(false); setDropdownPos(prev => ({ ...prev, pipeline: null })); }}
+                      className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left", selectedPipeline?.id === p.id && "bg-blue-500/5")}>
+                      <span className="text-xs font-medium text-white">{p.name}</span>
+                      {selectedPipeline?.id === p.id && <Check size={12} className="text-blue-400 shrink-0" />}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
           </>
         )}
 

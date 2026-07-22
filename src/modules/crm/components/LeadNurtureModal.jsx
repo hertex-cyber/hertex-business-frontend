@@ -327,7 +327,7 @@ const LeadNurtureModal = ({ isOpen, onClose, pipeline, stages, departments = [],
                             <HeartPulse size={20} />
                         </div>
                         <div>
-                            <h2 className="text-base font-medium text-white uppercase tracking-wider">Lead Nurture Setup</h2>
+                            <h2 className="text-base font-medium text-white uppercase tracking-wider">Lead Retarget Setup</h2>
                             <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium">
                                 Source: <span className="text-blue-400 font-semibold">{pipeline?.name}</span>
                             </p>
