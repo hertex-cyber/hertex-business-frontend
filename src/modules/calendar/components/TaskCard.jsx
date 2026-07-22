@@ -2,9 +2,12 @@ import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TASK_STATUS_OPTIONS, TASK_STATUS_STYLES } from '../constants';
 
 const TaskCard = ({ task, onClick }) => {
   const isOverdue = task.status === 'overdue';
+  const statusStyle = TASK_STATUS_STYLES[task.status];
+  const showStatusBadge = !!statusStyle;
   return (
     <button type="button" onClick={onClick} className={cn("w-full text-left p-3 rounded-xl space-y-1.5 transition-all cursor-pointer", isOverdue ? "bg-red-500/10 border border-red-500/30 hover:bg-red-500/15" : "bg-white/[0.06] border border-white/10 hover:bg-white/[0.09]")}>
       <div className="flex items-start justify-between gap-2">
@@ -15,16 +18,10 @@ const TaskCard = ({ task, onClick }) => {
           <p className="text-sm font-bold text-white leading-tight truncate">{task.title}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          {task.status === 'completed' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-black uppercase tracking-wider text-emerald-400">Completed</span>
-          ) : task.status === 'on_hold' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[8px] font-black uppercase tracking-wider text-amber-400">On Hold</span>
-          ) : task.status === 'overdue' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-wider text-red-400">Overdue</span>
-          ) : task.status === 'canceled' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-wider text-red-400">Canceled</span>
-          ) : task.status === 'approved' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[8px] font-black uppercase tracking-wider text-blue-400">Approved</span>
+          {showStatusBadge ? (
+            <span className={cn("px-1.5 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider", statusStyle)}>
+              {TASK_STATUS_OPTIONS.find(o => o.value === task.status)?.label || task.status}
+            </span>
           ) : (
             <>
               {task.priority === 'high' && (

@@ -6,8 +6,7 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
-
-const STATUSES = ['assigned', 'progress', 'completed', 'canceled', 'on_hold', 'approved'];
+import { TASK_STATUS_OPTIONS, getTaskStatusTextColor } from '../constants';
 
 const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
@@ -65,9 +64,9 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
       }
       setHoldReason(task.hold_reason || '');
       setExtensionRequest(task.extension_request || '');
-      setExtSaved(false);
+      setExtSaved(!!task.extension_request);
       setCompletionRemarks(task.completion_remarks || '');
-      setCompSaved(false);
+      setCompSaved(!!task.completion_remarks);
 
       setUsersLoading(true);
       axios.get('/api/auth/users/assignable/')
@@ -259,7 +258,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                   <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
                   {canEditStatus ? (
                     <button ref={statusRef} type="button" onClick={openStatusDropdown}
-                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", status === 'completed' ? 'text-emerald-400' : status === 'progress' ? 'text-blue-400' : status === 'canceled' ? 'text-red-400' : status === 'on_hold' ? 'text-amber-400' : 'text-white/60')}>
+                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getTaskStatusTextColor(status))}>
                       <span>{status || 'assigned'}</span>
                       <ChevronDown size={14} className="text-white/20" />
                     </button>
@@ -276,7 +275,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                       placeholder="Why is this task on hold?"
                       rows={2}
                       className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
-                    {canEditStatus && (
+                    {!isCreator && canEditStatus && (
                       <div className="flex flex-col gap-1.5 shrink-0">
                         {holdSaved ? (
                           <button type="button" onClick={() => setHoldSaved(false)}
@@ -286,7 +285,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                         ) : (
                           <>
                             <button type="button" onClick={handleHoldSubmit} disabled={!holdReason.trim() || holdSubmitting}
-                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
                               {holdSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                             </button>
                             <button type="button" onClick={() => { setStatus('assigned'); setHoldReason(''); }}
@@ -308,7 +307,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                       placeholder="Describe what was accomplished..."
                       rows={2}
                       className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all resize-none disabled:opacity-40" />
-                    {canEditStatus && (
+                    {!isCreator && canEditStatus && (
                       <div className="flex flex-col gap-1.5 shrink-0">
                         {compSaved ? (
                           <button type="button" onClick={() => setCompSaved(false)}
@@ -318,7 +317,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                         ) : (
                           <>
                             <button type="button" onClick={handleCompSubmit} disabled={!completionRemarks.trim() || compSubmitting}
-                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
+                              className={cn("p-2 rounded border transition-all", "bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 disabled:opacity-30 disabled:cursor-not-allowed")}>
                               {compSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                             </button>
                             <button type="button" onClick={() => { setStatus('assigned'); setCompletionRemarks(''); }}
@@ -355,7 +354,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
               {status === 'overdue' && (isCreator ? extensionRequest : true) && (
                 <div className="space-y-2">
                   <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Request Extension</label>
-                  {canEditStatus && !extSaved ? (
+                  {!isCreator && canEditStatus && !extSaved ? (
                     <div className="flex gap-2">
                       <textarea value={extensionRequest} onChange={e => setExtensionRequest(e.target.value)}
                         placeholder="Why do you need more time?"
@@ -376,7 +375,7 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
                     <div className="flex gap-2">
                       <textarea value={extensionRequest} disabled rows={2}
                         className="flex-1 bg-white/5 border border-zinc-800 rounded-md px-4 py-3 text-sm text-white/60 resize-none disabled:opacity-40" />
-                      {canEditStatus && extSaved && (
+                      {!isCreator && canEditStatus && extSaved && (
                         <button type="button" onClick={() => setExtSaved(false)}
                           className="shrink-0 mt-0.5 p-2 rounded bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all self-start">
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
@@ -425,11 +424,11 @@ const UpdateTaskModal = ({ task, isOpen, onClose, onSuccess }) => {
             <div className="fixed inset-0 z-[9998]" onClick={() => { setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }} />
             <div style={{ position: 'fixed', top: dropdownPos.status.top, left: dropdownPos.status.left, width: dropdownPos.status.width, zIndex: 9999 }}
               className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden">
-              {STATUSES.filter(s => isCreator || (s !== 'approved' && s !== 'canceled')).map(s => (
-                <button key={s} type="button" onClick={() => { setStatus(s); if (s !== 'on_hold') setHoldReason(''); setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }}
-                  className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left capitalize", status === s && "bg-blue-500/5")}>
-                  <span className="text-xs font-medium text-white">{s.replace('_', ' ')}</span>
-                  {status === s && <Check size={12} className="text-blue-400 shrink-0" />}
+              {TASK_STATUS_OPTIONS.filter(opt => isCreator || (opt.value !== 'approved' && opt.value !== 'canceled')).map(opt => (
+                <button key={opt.value} type="button" onClick={() => { setStatus(opt.value); if (opt.value !== 'on_hold') setHoldReason(''); setShowStatusDropdown(false); setDropdownPos(prev => ({ ...prev, status: null })); }}
+                  className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left capitalize", status === opt.value && "bg-blue-500/5")}>
+                  <span className="text-xs font-medium text-white">{opt.label}</span>
+                  {status === opt.value && <Check size={12} className="text-blue-400 shrink-0" />}
                 </button>
               ))}
             </div>

@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import {
   MEETING_STATUS_OPTIONS, getMeetingStatusTextColor,
-  getMeetingStatusDropdownItemStyle, getMeetingStatusDotColor
+  getMeetingStatusDropdownItemStyle, getMeetingStatusDotColor,
+  EVENT_STATUS_OPTIONS, getEventStatusTextColor,
+  getEventStatusDropdownItemStyle, getEventStatusDotColor
 } from '../constants';
 
 const TABS = [
@@ -393,11 +395,7 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                     <div className="space-y-2">
                       <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
                       <button ref={eventStatusRef} type="button" onClick={openEventStatusDropdown}
-                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize",
-                          eventStatus === 'live' ? 'text-emerald-400' :
-                          eventStatus === 'cancelled' ? 'text-red-400' :
-                          eventStatus === 'ended' ? 'text-white/40' :
-                          'text-blue-400')}>
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getEventStatusTextColor(eventStatus))}>
                         <span>{eventStatus}</span>
                         <ChevronDown size={14} className="text-white/20" />
                       </button>
@@ -500,11 +498,21 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
 
               {activeTab === 'meetings' && (
                 <>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Meeting Title *</label>
-                    <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
-                      placeholder="Enter meeting title"
-                      className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Meeting Title *</label>
+                      <input autoFocus value={title} onChange={e => setTitle(e.target.value)}
+                        placeholder="Enter meeting title"
+                        className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                      <button ref={meetingStatusRef} type="button" onClick={openMeetingStatusDropdown}
+                        className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getMeetingStatusTextColor(meetingStatus))}>
+                        <span>{meetingStatus}</span>
+                        <ChevronDown size={14} className="text-white/20" />
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Agenda</label>
@@ -531,14 +539,6 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
                         <ChevronDown size={14} className="text-white/20 shrink-0" />
                       </button>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
-                    <button ref={meetingStatusRef} type="button" onClick={openMeetingStatusDropdown}
-                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getMeetingStatusTextColor(meetingStatus))}>
-                      <span>{meetingStatus}</span>
-                      <ChevronDown size={14} className="text-white/20" />
-                    </button>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -590,17 +590,14 @@ const AddEventModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="fixed inset-0 z-[9998]" onClick={() => { setShowEventStatusDropdown(false); setDropdownPos(prev => ({ ...prev, eventStatus: null })); }} />
             <div
               style={{ position: 'fixed', top: dropdownPos.eventStatus.top, left: dropdownPos.eventStatus.left, width: dropdownPos.eventStatus.width, zIndex: 9999 }}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden"
+              className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden p-1"
           >
-            {['upcoming', 'live', 'cancelled', 'ended'].map(s => (
-              <button key={s} type="button" onClick={() => { setEventStatus(s); setShowEventStatusDropdown(false); setDropdownPos(prev => ({ ...prev, eventStatus: null })); }}
-                className={cn("w-full px-4 py-2.5 flex items-center justify-between hover:bg-white/[0.03] transition-all text-left capitalize", eventStatus === s && "bg-blue-500/5")}>
-                <span className={cn("text-xs font-medium capitalize",
-                  s === 'live' ? 'text-emerald-400' :
-                  s === 'cancelled' ? 'text-red-400' :
-                  s === 'ended' ? 'text-white/40' :
-                  'text-blue-400')}>{s}</span>
-                {eventStatus === s && <Check size={12} className="text-blue-400 shrink-0" />}
+            {EVENT_STATUS_OPTIONS.map(opt => (
+              <button key={opt.value} type="button" onClick={() => { setEventStatus(opt.value); setShowEventStatusDropdown(false); setDropdownPos(prev => ({ ...prev, eventStatus: null })); }}
+                className={cn("w-full px-4 py-2.5 text-left text-xs font-medium rounded-lg transition-all capitalize flex items-center gap-2", getEventStatusDropdownItemStyle(opt.value, eventStatus === opt.value))}>
+                <div className={cn("w-1.5 h-1.5 rounded-full", getEventStatusDotColor(opt.value))} />
+                {opt.label}
+                {eventStatus === opt.value && <Check size={12} className="ml-auto shrink-0" />}
               </button>
             ))}
           </div>

@@ -144,10 +144,24 @@ const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
           )}
           <form onSubmit={handleSubmit} id="update-meeting-form">
             <div className="px-8 py-6 space-y-5">
-              <div className="space-y-2">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Meeting Title</label>
-                <input value={title} onChange={e => setTitle(e.target.value)} disabled={!canEdit}
-                  className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Meeting Title</label>
+                  <input value={title} onChange={e => setTitle(e.target.value)} disabled={!canEdit}
+                    className="w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 text-sm text-white placeholder:text-white/20 focus:border-blue-500/40 outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
+                  {canEdit ? (
+                    <button ref={statusRef} type="button" onClick={openStatusDropdown}
+                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getMeetingStatusTextColor(status))}>
+                      <span>{status}</span>
+                      <ChevronDown size={14} className="text-white/20" />
+                    </button>
+                  ) : (
+                    <div className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm capitalize", getMeetingStatusTextColor(status))}>{status}</div>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Agenda</label>
@@ -178,18 +192,6 @@ const UpdateMeetingModal = ({ event, isOpen, onClose, onSuccess }) => {
                     </div>
                   )}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
-                {canEdit ? (
-                  <button ref={statusRef} type="button" onClick={openStatusDropdown}
-                    className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getMeetingStatusTextColor(status))}>
-                    <span>{status}</span>
-                    <ChevronDown size={14} className="text-white/20" />
-                  </button>
-                ) : (
-                  <div className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm capitalize", getMeetingStatusTextColor(status))}>{status}</div>
-                )}
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">

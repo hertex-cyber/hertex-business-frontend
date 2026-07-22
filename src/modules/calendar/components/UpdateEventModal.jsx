@@ -5,8 +5,7 @@ import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
-
-const EVENT_STATUSES = ['upcoming', 'live', 'cancelled', 'ended'];
+import { EVENT_STATUS_OPTIONS, getEventStatusTextColor } from '../constants';
 
 const UpdateEventModal = ({ event, isOpen, onClose, onSuccess }) => {
   const { user } = useAuth();
@@ -116,20 +115,12 @@ const UpdateEventModal = ({ event, isOpen, onClose, onSuccess }) => {
                   <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/30">Status</label>
                   {canEdit ? (
                     <button ref={statusRef} type="button" onClick={openStatusDropdown}
-                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize",
-                        status === 'live' ? 'text-emerald-400' :
-                        status === 'cancelled' ? 'text-red-400' :
-                        status === 'ended' ? 'text-white/40' :
-                        'text-blue-400')}>
+                      className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center justify-between text-sm transition-all hover:border-zinc-700 capitalize", getEventStatusTextColor(status))}>
                       <span>{status}</span>
                       <ChevronDown size={14} className="text-white/20" />
                     </button>
                   ) : (
-                    <div className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm capitalize",
-                      status === 'live' ? 'text-emerald-400' :
-                      status === 'cancelled' ? 'text-red-400' :
-                      status === 'ended' ? 'text-white/40' :
-                      'text-blue-400')}>{status}</div>
+                    <div className={cn("w-full bg-white/5 border border-zinc-800 rounded-md h-11 px-4 flex items-center text-sm capitalize", getEventStatusTextColor(status))}>{status}</div>
                   )}
                 </div>
               </div>
@@ -180,19 +171,15 @@ const UpdateEventModal = ({ event, isOpen, onClose, onSuccess }) => {
             <div className="fixed inset-0 z-[9998]" onClick={() => { setShowStatusDropdown(false); setDropdownPos(null); }} />
             <div style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999 }}
               className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl overflow-hidden">
-              {EVENT_STATUSES.map(s => {
-                const isDisabled = (status === 'live' || status === 'ended') && (s === 'upcoming' || s === 'cancelled');
+              {EVENT_STATUS_OPTIONS.map(opt => {
+                const isDisabled = (status === 'live' || status === 'ended') && (opt.value === 'upcoming' || opt.value === 'cancelled');
                 return (
-                  <button key={s} type="button" disabled={isDisabled}
-                    onClick={() => { if (!isDisabled) { setStatus(s); setShowStatusDropdown(false); setDropdownPos(null); } }}
+                  <button key={opt.value} type="button" disabled={isDisabled}
+                    onClick={() => { if (!isDisabled) { setStatus(opt.value); setShowStatusDropdown(false); setDropdownPos(null); } }}
                     className={cn("w-full px-4 py-2.5 flex items-center justify-between transition-all text-left capitalize",
-                      isDisabled ? "opacity-30 cursor-not-allowed" : "hover:bg-white/[0.03]", status === s && "bg-blue-500/5")}>
-                    <span className={cn("text-xs font-medium capitalize",
-                      s === 'live' ? 'text-emerald-400' :
-                      s === 'cancelled' ? 'text-red-400' :
-                      s === 'ended' ? 'text-white/40' :
-                      'text-blue-400')}>{s}</span>
-                    {status === s && <Check size={12} className="text-blue-400 shrink-0" />}
+                      isDisabled ? "opacity-30 cursor-not-allowed" : "hover:bg-white/[0.03]", status === opt.value && "bg-blue-500/5")}>
+                    <span className={cn("text-xs font-medium capitalize", getEventStatusTextColor(opt.value))}>{opt.label}</span>
+                    {status === opt.value && <Check size={12} className="text-blue-400 shrink-0" />}
                   </button>
                 );
               })}

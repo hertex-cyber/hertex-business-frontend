@@ -2,8 +2,10 @@ import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EVENT_STATUS_OPTIONS, EVENT_STATUS_STYLES } from '../constants';
 
 const EventCard = ({ event, onClick }) => {
+  const statusStyle = EVENT_STATUS_STYLES[event.status] || EVENT_STATUS_STYLES.upcoming;
   return (
     <div className={cn("p-3 rounded-xl space-y-1.5 cursor-pointer transition-all",
       event.status === 'cancelled' ? "bg-red-500/10 border border-red-500/30 hover:bg-red-500/15" :
@@ -17,15 +19,9 @@ const EventCard = ({ event, onClick }) => {
           <p className="text-sm font-bold text-white leading-tight truncate">{event.title}</p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          {event.status === 'live' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-black uppercase tracking-wider text-emerald-400">Live</span>
-          ) : event.status === 'cancelled' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[8px] font-black uppercase tracking-wider text-red-400">Cancelled</span>
-          ) : event.status === 'ended' ? (
-            <span className="px-1.5 py-0.5 rounded-full bg-white/10 border border-white/10 text-[8px] font-black uppercase tracking-wider text-white/40">Ended</span>
-          ) : (
-            <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[8px] font-black uppercase tracking-wider text-blue-400">Upcoming</span>
-          )}
+          <span className={cn("px-1.5 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider", statusStyle)}>
+            {EVENT_STATUS_OPTIONS.find(o => o.value === event.status)?.label || event.status}
+          </span>
         </div>
       </div>
       <div className="text-[10px] text-white/30 font-medium space-y-0.5">
