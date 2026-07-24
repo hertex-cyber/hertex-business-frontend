@@ -328,7 +328,10 @@ const CRM = () => {
     if (!destColumn || (sourceColumn === destColumn && overId === activeId))
       return;
 
-    const newDeals = { ...deals };
+    const newDeals = {};
+    Object.keys(deals).forEach(key => {
+      newDeals[key] = { ...deals[key], items: [...deals[key].items] };
+    });
     const draggedCard = newDeals[sourceColumn].items[sourceIndex];
     newDeals[sourceColumn].items.splice(sourceIndex, 1);
 
@@ -367,20 +370,25 @@ const CRM = () => {
     try {
       setIsDeleting(true);
       await axios.delete(`/api/crm/pipeline/${dealToDelete.id}/`);
-      
-      // Find the stage ID from the deal's raw data
-      const stageId = dealToDelete.raw?.stage;
-      if (stageId) {
-        setDeals(prev => ({
-          ...prev,
-          [stageId]: {
-            ...prev[stageId],
-            items: prev[stageId].items.filter(item => item.id !== dealToDelete.id),
-            count: Math.max(0, (prev[stageId]?.count || 0) - 1)
+
+      // Find and remove the deal from whichever stage it's in
+      setDeals(prev => {
+        const next = { ...prev };
+        for (const key of Object.keys(next)) {
+          const stage = next[key];
+          const idx = stage.items.findIndex(item => item.id === dealToDelete.id);
+          if (idx !== -1) {
+            next[key] = {
+              ...stage,
+              items: [...stage.items.slice(0, idx), ...stage.items.slice(idx + 1)],
+              count: Math.max(0, (stage.count || 0) - 1)
+            };
+            break;
           }
-        }));
-      }
-      
+        }
+        return next;
+      });
+
       setIsDetailsOpen(false);
       setShowDeleteConfirm(false);
       setDealToDelete(null);
@@ -390,6 +398,11 @@ const CRM = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDeleteCard = (card) => {
+    setDealToDelete(card);
+    setShowDeleteConfirm(true);
   };
 
   const handleDeletePipeline = (id) => {
@@ -573,6 +586,7 @@ const CRM = () => {
                           isLoadingMore={stageData.isLoadingMore}
                           onLoadMore={() => fetchMoreDeals(stage.id)}
                           onViewCard={handleViewDeal}
+                          onDeleteCard={handleDeleteCard}
                         />
                       );
                     })}
@@ -711,7 +725,7 @@ const CRM = () => {
       <ConfirmDeleteDialog 
         isOpen={showDeleteConfirm}
         title="Delete Deal"
-        description={`Are you sure you want to delete the deal for ${dealToDelete?.name}? This action cannot be undone.`}
+        description={`Are you sure? This will remove ${dealToDelete?.name} from this pipeline.`}
         isDeleting={isDeleting}
         onConfirm={handleDeleteDeal}
         onCancel={() => setShowDeleteConfirm(false)}

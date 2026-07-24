@@ -1213,11 +1213,19 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                     return (
                                                         <div key={log.id} className="relative group">
                                                             {/* Timeline node */}
-                                                            <div className="absolute -left-[25px] top-1 w-2 h-2 rounded-full bg-zinc-950 border border-zinc-800 group-hover:border-emerald-500/50 transition-colors" />
+                                                            <div className={cn("absolute -left-[25px] top-1 w-2 h-2 rounded-full border transition-colors",
+                                                                log.activity_type === 'Pipeline Changed'
+                                                                    ? "bg-amber-500/40 border-amber-500/60"
+                                                                    : "bg-zinc-950 border-zinc-800 group-hover:border-emerald-500/50"
+                                                            )} />
 
-                                                            <div className="flex flex-col space-y-1.5 bg-zinc-950/20 border border-zinc-900 rounded p-3.5 hover:bg-zinc-950/40 hover:border-zinc-800/80 transition-all duration-300">
+                                                            <div className={cn("flex flex-col space-y-1.5 rounded p-3.5 transition-all duration-300",
+                                                                log.activity_type === 'Pipeline Changed'
+                                                                    ? "bg-amber-500/[0.06] border border-amber-500/20 hover:bg-amber-500/[0.1] hover:border-amber-500/30"
+                                                                    : "bg-white/[0.04] border border-zinc-800 hover:bg-white/[0.06] hover:border-zinc-700"
+                                                            )}>
                                                                 <div className="flex items-start justify-between gap-4">
-                                                                    <span className="text-[9.5px] font-medium text-white/80 uppercase tracking-wide leading-relaxed">
+                                                                    <span className="text-[9.5px] font-semibold text-white/90 uppercase tracking-wide leading-relaxed">
                                                                         {log.description}
                                                                     </span>
                                                                     <span className="text-[8px] font-mono text-white/30 uppercase shrink-0 mt-0.5">
@@ -1225,14 +1233,10 @@ const DealDetailsDialog = ({ isOpen, onClose, deal, onDelete, eligibleUsers = []
                                                                     </span>
                                                                 </div>
 
-                                                                <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                                                                    <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">
-                                                                        Event Type: <span className="text-white/40">{log.activity_type}</span>
-                                                                    </span>
-                                                                    
+                                                                <div className="flex items-center justify-end pt-2 border-t border-white/5">
                                                                     <div className="flex items-center gap-1.5">
-                                                                        <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">Actor</span>
-                                                                        <span className="text-[8.5px] font-mono text-white/50 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded leading-none">
+                                                                        <span className="text-[7.5px] font-mono text-white/30 uppercase tracking-widest">Actor</span>
+                                                                        <span className="text-[8.5px] font-mono text-white/70 bg-zinc-900 border border-zinc-700 px-2.5 py-1 leading-none">
                                                                             {log.user_details 
                                                                                 ? `${log.user_details.first_name || ''} ${log.user_details.last_name || ''}`.trim() || log.user_details.email
                                                                                 : 'System'

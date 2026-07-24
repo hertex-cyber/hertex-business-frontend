@@ -1216,8 +1216,8 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
 
                                     {/* ACTIVITY TAB: Audit Logs */}
                                     {activeTab === 'activity' && (
-                                        <div className="flex-1 flex flex-col min-h-[300px] mt-2">
-                                            <div className="flex items-center gap-2 mb-4">
+                                        <div className="flex-1 flex flex-col min-h-[300px] mt-2 overflow-hidden">
+                                            <div className="flex items-center gap-2 mb-4 shrink-0">
                                                 <Clock size={14} className="text-white/40" />
                                                 <h3 className="text-[10px] font-semibold text-white uppercase tracking-widest">Activity History</h3>
                                             </div>
@@ -1227,7 +1227,8 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
                                                     <Loader2 className="w-5 h-5 animate-spin text-white/20" />
                                                 </div>
                                             ) : logs && logs.length > 0 ? (
-                                                <div className="relative pl-5 border-l border-zinc-900 space-y-6 py-2 ml-2">
+                                                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                                                    <div className="relative pl-5 border-l border-zinc-900 space-y-6 py-2 ml-2">
                                                     {logs.map((log) => {
                                                         const date = new Date(log.created_at);
                                                         const formattedDate = date.toLocaleDateString('en-US', {
@@ -1243,11 +1244,23 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
                                                         return (
                                                             <div key={log.id} className="relative group">
                                                                 {/* Timeline node */}
-                                                                <div className="absolute -left-[25px] top-1 w-2 h-2 rounded-full bg-zinc-950 border border-zinc-800 group-hover:border-emerald-500/50 transition-colors" />
+                                                                <div className={cn("absolute -left-[25px] top-1 w-2 h-2 rounded-full border transition-colors",
+                                                                    log.activity_type === 'Pipeline Changed'
+                                                                        ? "bg-amber-500/40 border-amber-500/60"
+                                                                        : log.activity_type === 'Deal Deleted'
+                                                                        ? "bg-red-500/40 border-red-500/60"
+                                                                        : "bg-zinc-950 border-zinc-800 group-hover:border-emerald-500/50"
+                                                                )} />
 
-                                                                <div className="flex flex-col space-y-1.5 bg-zinc-950/20 border border-zinc-900 rounded p-3.5 hover:bg-zinc-950/40 hover:border-zinc-800/80 transition-all duration-300">
+                                                                <div className={cn("flex flex-col space-y-1.5 rounded p-3.5 transition-all duration-300",
+                                                                    log.activity_type === 'Pipeline Changed'
+                                                                        ? "bg-amber-500/[0.06] border border-amber-500/20 hover:bg-amber-500/[0.1] hover:border-amber-500/30"
+                                                                        : log.activity_type === 'Deal Deleted'
+                                                                        ? "bg-red-500/[0.06] border border-red-500/20 hover:bg-red-500/[0.1] hover:border-red-500/30"
+                                                                        : "bg-white/[0.04] border border-zinc-800 hover:bg-white/[0.06] hover:border-zinc-700"
+                                                                )}>
                                                                     <div className="flex items-start justify-between gap-4">
-                                                                        <span className="text-[9.5px] font-medium text-white/80 uppercase tracking-wide leading-relaxed">
+                                                                        <span className="text-[9.5px] font-semibold text-white/90 uppercase tracking-wide leading-relaxed">
                                                                             {log.description}
                                                                         </span>
                                                                         <span className="text-[8px] font-mono text-white/30 uppercase shrink-0 mt-0.5">
@@ -1256,13 +1269,15 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
                                                                     </div>
 
                                                                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                                                                        <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">
-                                                                            Event Type: <span className="text-white/40">{log.activity_type}</span>
-                                                                        </span>
+                                                                        {log.pipeline_name && (
+                                                                            <span className="text-[8.5px] font-mono text-white/70 bg-zinc-900 border border-zinc-700 px-2.5 py-1 leading-none uppercase">
+                                                                                {log.pipeline_name}
+                                                                            </span>
+                                                                        )}
                                                                         
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            <span className="text-[7.5px] font-mono text-white/20 uppercase tracking-widest">Actor</span>
-                                                                            <span className="text-[8.5px] font-mono text-white/50 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded leading-none">
+                                                                        <div className="flex items-center gap-1.5 ml-auto">
+                                                                            <span className="text-[7.5px] font-mono text-white/30 uppercase tracking-widest">Actor</span>
+                                                                            <span className="text-[8.5px] font-mono text-white/70 bg-zinc-900 border border-zinc-700 px-2.5 py-1 leading-none">
                                                                                 {log.user_details 
                                                                                     ? `${log.user_details.first_name || ''} ${log.user_details.last_name || ''}`.trim() || log.user_details.email
                                                                                     : 'System'
@@ -1274,6 +1289,7 @@ const ContactDetailModal = ({ contact, onClose, onDeleted, onUpdated }) => {
                                                             </div>
                                                         );
                                                     })}
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[250px] rounded-lg border border-dashed border-zinc-900 bg-white/[0.005]">

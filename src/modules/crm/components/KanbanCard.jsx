@@ -1,10 +1,29 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { MoreVertical } from 'lucide-react';
+import { LuSettings2 } from "react-icons/lu";
+import { Trash2, UserPlus, ArrowRightLeft } from 'lucide-react';
+import { BiSolidAddToQueue } from "react-icons/bi";
 
-export const KanbanCardUI = ({ card, isOverlay, onView }) => {
+export const KanbanCardUI = ({ card, isOverlay, onView, onDelete, onAssign, onMoveToPipeline, onCopyToPipeline, showMenu: showMenuProp, setShowMenu: setShowMenuProp }) => {
+  const [showMenuInternal, setShowMenuInternal] = useState(false);
+  const showMenu = showMenuProp !== undefined ? showMenuProp : showMenuInternal;
+  const setShowMenu = setShowMenuProp || setShowMenuInternal;
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
   const getStatusColor = (status) => {
     const colors = {
       'Lead': 'from-blue-500/10 to-blue-500/5 border-blue-500/20 text-blue-400',
@@ -25,12 +44,19 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
     return colors[priority] || 'text-white/40 bg-white/5 border-white/10';
   };
 
+  const menuItems = [
+    { label: 'Assign', icon: UserPlus, onClick: () => { onAssign?.(card); setShowMenu(false); } },
+    { label: 'Move to Pipeline', icon: ArrowRightLeft, onClick: () => { onMoveToPipeline?.(card); setShowMenu(false); } },
+    { label: 'Add to Pipeline', icon: BiSolidAddToQueue, onClick: () => { onCopyToPipeline?.(card); setShowMenu(false); } },
+    { label: 'Delete', icon: Trash2, onClick: () => { onDelete?.(card); setShowMenu(false); }, color: 'text-red-400' },
+  ];
+
   return (
     <div
       className={cn(
-        'p-4 rounded-lg bg-zinc-900/40 border border-white/5 cursor-grab active:cursor-grabbing transition-all duration-300 touch-none relative w-full group',
+        'p-4 rounded-lg bg-zinc-900/40 border border-white/5 cursor-grab active:cursor-grabbing touch-none relative w-full group transition-[opacity,border-color,background-color] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
         !isOverlay && 'hover:border-blue-500/30 hover:bg-zinc-900/60',
-        isOverlay && 'w-[288px] bg-zinc-900 border-blue-500/50 shadow-[0_20px_50px_rgba(0,0,0,0.5)] scale-[1.02] z-50 cursor-grabbing'
+        isOverlay && 'bg-zinc-900 border-white/5 z-50 cursor-grabbing'
       )}
     >
       <div className="space-y-4">
@@ -50,15 +76,50 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
               </div>
             </div>
           </div>
-          <button 
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            className="p-1.5 rounded-lg hover:bg-white/5 text-white/20 transition-all opacity-0 group-hover:opacity-100 cursor-pointer relative z-10"
-          >
-            <MoreVertical size={14} />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button 
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+              className={cn(
+              "p-1.5 rounded-sm bg-white/5 border border-zinc-800 text-white/40 hover:bg-white/10 hover:text-white/60 transition-all cursor-pointer relative",
+              showMenu ? "z-[10000]" : "z-10"
+            )}
+            >
+              <LuSettings2 size={14} />
+            </button>
+
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-[9998]" onClick={() => setShowMenu(false)} />
+                <div className="absolute top-full right-0 mt-1 w-44 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl z-[9999] overflow-hidden py-1">
+                  {menuItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.label}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          item.onClick();
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-3 py-2 text-[11px] font-medium transition-colors text-left",
+                          item.color || "text-white/70",
+                          "hover:bg-white/5"
+                        )}
+                      >
+                        <Icon size={13} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-white/5">
@@ -95,7 +156,8 @@ export const KanbanCardUI = ({ card, isOverlay, onView }) => {
 
 
 
-const KanbanCard = ({ card, onView }) => {
+const KanbanCard = ({ card, onView, onDelete, onAssign, onMoveToPipeline, onCopyToPipeline }) => {
+  const [showMenu, setShowMenu] = useState(false);
   const {
     attributes,
     listeners,
@@ -117,8 +179,12 @@ const KanbanCard = ({ card, onView }) => {
       style={style}
       {...attributes}
       {...listeners}
+      onPointerDown={(e) => {
+        listeners.onPointerDown?.(e);
+        if (showMenu) setShowMenu(false);
+      }}
     >
-      <KanbanCardUI card={card} onView={onView} />
+      <KanbanCardUI card={card} onView={onView} onDelete={onDelete} onAssign={onAssign} onMoveToPipeline={onMoveToPipeline} onCopyToPipeline={onCopyToPipeline} showMenu={showMenu} setShowMenu={setShowMenu} />
     </div>
   );
 };

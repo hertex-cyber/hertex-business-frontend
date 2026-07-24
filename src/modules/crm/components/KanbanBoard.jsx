@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import KanbanCard from './KanbanCard';
 import { Plus } from 'lucide-react';
 
-const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoadMore, onViewCard }) => {
+const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoadMore, onViewCard, onDeleteCard }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
   });
@@ -58,7 +58,7 @@ const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoa
         >
           {cards.length === 0 ? (
             <div className={cn(
-              'flex-1 flex items-center justify-center border-2 border-dashed border-white/10 rounded-lg transition-colors min-h-[100px]'
+              'flex-1 flex items-center justify-center border-2 border-dashed border-white/10 rounded-lg min-h-[100px]'
             )}>
               <p className="text-[9px] text-white/20 font-medium uppercase tracking-widest">
                 Drop deals here
@@ -71,6 +71,7 @@ const KanbanColumn = ({ column, cards, totalCount, hasMore, isLoadingMore, onLoa
                   key={card.id}
                   card={card}
                   onView={onViewCard}
+                  onDelete={onDeleteCard}
                 />
               ))}
               
